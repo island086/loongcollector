@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1734668444855,
+  "lastUpdate": 1735291506288,
   "repoUrl": "https://github.com/alibaba/loongcollector",
   "entries": {
     "benchmark": [
@@ -439,6 +439,46 @@ window.BENCHMARK_DATA = {
           {
             "name": "Memory_Usage_Avg - performance_file_to_blackhole_ilogtail",
             "value": 38.73763020833336,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "alibaba",
+            "username": "alibaba"
+          },
+          "committer": {
+            "name": "alibaba",
+            "username": "alibaba"
+          },
+          "id": "da5604ec6213a0cc2b3a7070bcb2c79b44e31fdf",
+          "message": "Optimize the limiter code to meet better isolation and recovery scenarios",
+          "timestamp": "2024-12-26T11:09:04Z",
+          "url": "https://github.com/alibaba/loongcollector/pull/1985/commits/da5604ec6213a0cc2b3a7070bcb2c79b44e31fdf"
+        },
+        "date": 1735291505299,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CPU_Usage_Max - performance_file_to_blackhole_ilogtail",
+            "value": 44.5350971563111,
+            "unit": "%"
+          },
+          {
+            "name": "CPU_Usage_Avg - performance_file_to_blackhole_ilogtail",
+            "value": 39.51192455965587,
+            "unit": "%"
+          },
+          {
+            "name": "Memory_Usage_Max - performance_file_to_blackhole_ilogtail",
+            "value": 41.40625,
+            "unit": "MB"
+          },
+          {
+            "name": "Memory_Usage_Avg - performance_file_to_blackhole_ilogtail",
+            "value": 37.32639215225563,
             "unit": "MB"
           }
         ]
