@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1735820780882,
+  "lastUpdate": 1736251930120,
   "repoUrl": "https://github.com/alibaba/loongcollector",
   "entries": {
     "benchmark": [
@@ -639,6 +639,46 @@ window.BENCHMARK_DATA = {
           {
             "name": "Memory_Usage_Avg - performance_file_to_blackhole_ilogtail",
             "value": 41.75593280075188,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "alibaba",
+            "username": "alibaba"
+          },
+          "committer": {
+            "name": "alibaba",
+            "username": "alibaba"
+          },
+          "id": "98ca095452576fe98dc65f8728e5bf33af724c5c",
+          "message": "fix the issue where flusher_sls does not work when coexisting with extended flushers",
+          "timestamp": "2025-01-07T09:01:22Z",
+          "url": "https://github.com/alibaba/loongcollector/pull/2015/commits/98ca095452576fe98dc65f8728e5bf33af724c5c"
+        },
+        "date": 1736251929623,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CPU_Usage_Max - performance_file_to_blackhole_ilogtail",
+            "value": 45.34936956444604,
+            "unit": "%"
+          },
+          {
+            "name": "CPU_Usage_Avg - performance_file_to_blackhole_ilogtail",
+            "value": 41.23156402440892,
+            "unit": "%"
+          },
+          {
+            "name": "Memory_Usage_Max - performance_file_to_blackhole_ilogtail",
+            "value": 43.34375,
+            "unit": "MB"
+          },
+          {
+            "name": "Memory_Usage_Avg - performance_file_to_blackhole_ilogtail",
+            "value": 39.232651654411754,
             "unit": "MB"
           }
         ]
