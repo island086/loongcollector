@@ -19,8 +19,8 @@
 #include <json/json.h>
 #include "common/Flags.h"
 
-DECLARE_FLAG_STRING(loong_collector_operator_service);
-DECLARE_FLAG_INT32(loong_collector_k8s_meta_service_port);
+DECLARE_FLAG_STRING(operator_service);
+DECLARE_FLAG_INT32(k8s_meta_service_port);
 
 namespace logtail {
 
@@ -47,7 +47,7 @@ namespace logtail {
     struct ContainerData {
         std::unordered_map<std::string, k8sContainerInfo> containers;
     };
-    
+
     enum class containerInfoType {
         ContainerIdInfo,
         IpInfo
@@ -61,8 +61,8 @@ namespace logtail {
             int32_t mServicePort;
             K8sMetadata(size_t cacheSize)
               : containerCache(cacheSize, 0), ipCache(cacheSize, 0){
-                mServiceHost = STRING_FLAG(loong_collector_operator_service);
-                mServicePort = INT32_FLAG(loong_collector_k8s_meta_service_port);
+                mServiceHost = STRING_FLAG(operator_service);
+                mServicePort = INT32_FLAG(k8s_meta_service_port);
               }
             K8sMetadata(const K8sMetadata&) = delete;
             K8sMetadata& operator=(const K8sMetadata&) = delete;
@@ -87,10 +87,10 @@ namespace logtail {
             // get info by ip from cache
             std::shared_ptr<k8sContainerInfo> GetInfoByIpFromCache(const std::string& ip);
             bool SendRequestToOperator(const std::string& urlHost, const std::string& output, containerInfoType infoType);
-    
+
     #ifdef APSARA_UNIT_TEST_MAIN
         friend class k8sMetadataUnittest;
     #endif
-    };  
-    
+    };
+
 } // namespace logtail
