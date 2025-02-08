@@ -16,10 +16,10 @@
 
 #pragma once
 
-#include <json/json.h>
-
 #include <memory>
 #include <string>
+
+#include "json/json.h"
 
 #include "config/TaskConfig.h"
 #include "task_pipeline/Task.h"

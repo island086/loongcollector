@@ -13,12 +13,12 @@
 // limitations under the License.
 
 #include <cstdlib>
+
 #include <sstream>
 
-#include "constants/Constants.h"
+#include "collection_pipeline/plugin/instance/ProcessorInstance.h"
 #include "common/JsonUtil.h"
-#include "config/PipelineConfig.h"
-#include "pipeline/plugin/instance/ProcessorInstance.h"
+#include "constants/TagConstants.h"
 #include "plugin/processor/inner/ProcessorSplitLogStringNative.h"
 #include "unittest/Unittest.h"
 
@@ -33,7 +33,7 @@ public:
     void TestProcessCommon();
     void TestEnableRawContent();
 
-    PipelineContext mContext;
+    CollectionPipelineContext mContext;
 };
 
 UNIT_TEST_CASE(ProcessorSplitLogStringNativeUnittest, TestInit)
@@ -41,7 +41,7 @@ UNIT_TEST_CASE(ProcessorSplitLogStringNativeUnittest, TestProcessJson)
 UNIT_TEST_CASE(ProcessorSplitLogStringNativeUnittest, TestProcessCommon)
 UNIT_TEST_CASE(ProcessorSplitLogStringNativeUnittest, TestEnableRawContent)
 
-PluginInstance::PluginMeta getPluginMeta(){
+PluginInstance::PluginMeta getPluginMeta() {
     PluginInstance::PluginMeta pluginMeta{"1"};
     return pluginMeta;
 }
@@ -49,7 +49,6 @@ PluginInstance::PluginMeta getPluginMeta(){
 void ProcessorSplitLogStringNativeUnittest::TestInit() {
     // make config
     Json::Value config;
-    config["AppendingLogPositionMeta"] = false;
 
     ProcessorSplitLogStringNative processor;
     processor.SetContext(mContext);
@@ -60,10 +59,10 @@ void ProcessorSplitLogStringNativeUnittest::TestProcessJson() {
     // make config
     Json::Value config;
     config["SplitChar"] = '\0';
-    config["AppendingLogPositionMeta"] = true;
     // make events
     auto sourceBuffer = std::make_shared<SourceBuffer>();
     PipelineEventGroup eventGroup(sourceBuffer);
+    eventGroup.SetMetadata(EventGroupMetaKey::LOG_FILE_OFFSET_KEY, GetDefaultTagKeyString(TagKey::FILE_OFFSET_KEY));
     std::stringstream inJson;
     inJson << R"({
         "events" :
@@ -97,33 +96,39 @@ void ProcessorSplitLogStringNativeUnittest::TestProcessJson() {
         [
             {
                 "contents" :
-                {
-                    "__file_offset__": "1",
+                {")"
+            + DEFAULT_LOG_TAG_FILE_OFFSET + R"(": "1",
                     "content" : "{\n\"k1\":\"v1\"\n}"
                 },
                 "fileOffset": 1,
                 "rawSize": )"
-               << strlen(R"({n"k1":"v1"n}0)") << R"(,
+               << strlen(R"({n"k1":"v1"n}0)")
+               << R"(,
                 "timestamp" : 12345678901,
                 "timestampNanosecond" : 0,
                 "type" : 1
             },
             {
                 "contents" :
-                {
-                    "__file_offset__": ")"
+                {")"
+            + DEFAULT_LOG_TAG_FILE_OFFSET + R"(": ")"
                << strlen(R"({n"k1":"v1"n}0)") + 1 << R"(",
                     "content" : "{\n\"k2\":\"v2\"\n}"
                 },
                 "fileOffset": )"
                << strlen(R"({n"k1":"v1"n}0)") + 1 << R"(,
                 "rawSize": )"
-               << strlen(R"({n"k2":"v2"n})") << R"(,
+               << strlen(R"({n"k2":"v2"n})")
+               << R"(,
                 "timestamp" : 12345678901,
                 "timestampNanosecond" : 0,
                 "type" : 1
             }
-        ]
+        ],
+        "metadata": {
+            "log.file.offset": ")"
+            + DEFAULT_LOG_TAG_FILE_OFFSET + R"("
+        }
     })";
     std::string outJson = logGroupList[0].ToJsonString(true);
     APSARA_TEST_STREQ_FATAL(CompactJson(expectJson.str()).c_str(), CompactJson(outJson).c_str());
@@ -134,7 +139,6 @@ void ProcessorSplitLogStringNativeUnittest::TestProcessJson() {
 void ProcessorSplitLogStringNativeUnittest::TestProcessCommon() {
     // make config
     Json::Value config;
-    config["AppendingLogPositionMeta"] = false;
     // make events
     auto sourceBuffer = std::make_shared<SourceBuffer>();
     PipelineEventGroup eventGroup(sourceBuffer);

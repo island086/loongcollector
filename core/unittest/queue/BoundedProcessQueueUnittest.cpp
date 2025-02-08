@@ -14,11 +14,11 @@
 
 #include <memory>
 
+#include "collection_pipeline/CollectionPipelineManager.h"
+#include "collection_pipeline/queue/BoundedProcessQueue.h"
+#include "collection_pipeline/queue/SenderQueue.h"
 #include "common/FeedbackInterface.h"
 #include "models/PipelineEventGroup.h"
-#include "pipeline/PipelineManager.h"
-#include "pipeline/queue/BoundedProcessQueue.h"
-#include "pipeline/queue/SenderQueue.h"
 #include "unittest/Unittest.h"
 #include "unittest/queue/FeedbackInterfaceMock.h"
 
@@ -50,7 +50,7 @@ protected:
     }
 
 private:
-    static PipelineContext sCtx;
+    static CollectionPipelineContext sCtx;
     static const QueueKey sKey = 0;
     static const size_t sCap = 6;
     static const size_t sLowWatermark = 2;
@@ -68,7 +68,7 @@ private:
     unique_ptr<BoundedSenderQueueInterface> mSenderQueue2;
 };
 
-PipelineContext BoundedProcessQueueUnittest::sCtx;
+CollectionPipelineContext BoundedProcessQueueUnittest::sCtx;
 
 void BoundedProcessQueueUnittest::TestPush() {
     // push first
@@ -121,7 +121,8 @@ void BoundedProcessQueueUnittest::TestMetric() {
     APSARA_TEST_EQUAL(4U, mQueue->mMetricsRecordRef->GetLabels()->size());
     APSARA_TEST_TRUE(mQueue->mMetricsRecordRef.HasLabel(METRIC_LABEL_KEY_PROJECT, ""));
     APSARA_TEST_TRUE(mQueue->mMetricsRecordRef.HasLabel(METRIC_LABEL_KEY_PIPELINE_NAME, "test_config"));
-    APSARA_TEST_TRUE(mQueue->mMetricsRecordRef.HasLabel(METRIC_LABEL_KEY_COMPONENT_NAME, METRIC_LABEL_VALUE_COMPONENT_NAME_PROCESS_QUEUE));
+    APSARA_TEST_TRUE(mQueue->mMetricsRecordRef.HasLabel(METRIC_LABEL_KEY_COMPONENT_NAME,
+                                                        METRIC_LABEL_VALUE_COMPONENT_NAME_PROCESS_QUEUE));
     APSARA_TEST_TRUE(mQueue->mMetricsRecordRef.HasLabel(METRIC_LABEL_KEY_QUEUE_TYPE, "bounded"));
 
     auto item = GenerateItem();
@@ -144,12 +145,12 @@ void BoundedProcessQueueUnittest::TestMetric() {
 }
 
 void BoundedProcessQueueUnittest::TestSetPipeline() {
-    auto pipeline = make_shared<Pipeline>();
-    PipelineManager::GetInstance()->mPipelineNameEntityMap["test_config"] = pipeline;
+    auto pipeline = make_shared<CollectionPipeline>();
+    CollectionPipelineManager::GetInstance()->mPipelineNameEntityMap["test_config"] = pipeline;
 
     auto item1 = GenerateItem();
     auto p1 = item1.get();
-    auto pipelineTmp = make_shared<Pipeline>();
+    auto pipelineTmp = make_shared<CollectionPipeline>();
     item1->mPipeline = pipelineTmp;
 
     auto item2 = GenerateItem();
@@ -157,7 +158,7 @@ void BoundedProcessQueueUnittest::TestSetPipeline() {
 
     mQueue->Push(std::move(item1));
     mQueue->Push(std::move(item2));
-    auto p = PipelineManager::GetInstance()->FindConfigByName("test_config");
+    auto p = CollectionPipelineManager::GetInstance()->FindConfigByName("test_config");
     mQueue->SetPipelineForItems(p);
 
     APSARA_TEST_EQUAL(pipelineTmp, p1->mPipeline);

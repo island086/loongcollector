@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <json/json.h>
-
 #include <memory>
 #include <string>
 
+#include "json/json.h"
+
 #include "PluginRegistry.h"
 #include "app_config/AppConfig.h"
+#include "collection_pipeline/CollectionPipeline.h"
+#include "collection_pipeline/CollectionPipelineContext.h"
 #include "common/JsonUtil.h"
-#include "pipeline/Pipeline.h"
-#include "pipeline/PipelineContext.h"
 #include "plugin/input/InputPrometheus.h"
 #include "plugin/processor/inner/ProcessorPromParseMetricNative.h"
 #include "plugin/processor/inner/ProcessorPromRelabelMetricNative.h"
@@ -50,13 +50,11 @@ protected:
         ctx.SetConfigName("test_config");
         ctx.SetPipeline(p);
     }
-    static void TearDownTestCase() {
-        PluginRegistry::GetInstance()->UnloadPlugins();
-    }
+    static void TearDownTestCase() { PluginRegistry::GetInstance()->UnloadPlugins(); }
 
 private:
-    Pipeline p;
-    PipelineContext ctx;
+    CollectionPipeline p;
+    CollectionPipelineContext ctx;
 };
 
 void InputPrometheusUnittest::OnSuccessfulInit() {

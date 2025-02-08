@@ -18,24 +18,24 @@
 
 #include <string>
 
+#include "collection_pipeline/plugin/interface/Processor.h"
 #include "models/PipelineEventGroup.h"
 #include "models/PipelineEventPtr.h"
-#include "pipeline/plugin/interface/Processor.h"
 #include "prometheus/schedulers/ScrapeConfig.h"
 
 namespace logtail {
 
 namespace prom {
-    struct AutoMetric {
-        double mScrapeDurationSeconds;
-        uint64_t mScrapeResponseSizeBytes;
-        uint64_t mScrapeSamplesLimit;
-        // uint64_t mPostRelabel;
-        uint64_t mScrapeSamplesScraped;
-        uint64_t mScrapeTimeoutSeconds;
-        std::string mScrapeState;
-        bool mUp;
-    };
+struct AutoMetric {
+    double mScrapeDurationSeconds;
+    uint64_t mScrapeResponseSizeBytes;
+    uint64_t mScrapeSamplesLimit;
+    // uint64_t mPostRelabel;
+    uint64_t mScrapeSamplesScraped;
+    uint64_t mScrapeTimeoutSeconds;
+    std::string mScrapeState;
+    bool mUp;
+};
 } // namespace prom
 
 class ProcessorPromRelabelMetricNative : public Processor {

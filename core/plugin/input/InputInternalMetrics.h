@@ -16,8 +16,8 @@
 
 #pragma once
 
+#include "collection_pipeline/plugin/interface/Input.h"
 #include "monitor/SelfMonitorServer.h"
-#include "pipeline/plugin/interface/Input.h"
 
 namespace logtail {
 
@@ -30,6 +30,7 @@ public:
     bool Start() override;
     bool Stop(bool isPipelineRemoving) override;
     bool SupportAck() const override { return true; }
+
 private:
     SelfMonitorMetricRules mSelfMonitorMetricRules;
 #ifdef APSARA_UNIT_TEST_MAIN

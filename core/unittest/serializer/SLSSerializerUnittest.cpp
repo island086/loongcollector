@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "pipeline/serializer/SLSSerializer.h"
+#include "collection_pipeline/serializer/SLSSerializer.h"
 #include "plugin/flusher/sls/FlusherSLS.h"
 #include "unittest/Unittest.h"
 
@@ -45,17 +45,15 @@ private:
 
     static unique_ptr<FlusherSLS> sFlusher;
 
-    PipelineContext mCtx;
+    CollectionPipelineContext mCtx;
 };
 
 unique_ptr<FlusherSLS> SLSSerializerUnittest::sFlusher;
 
 void SLSSerializerUnittest::TestSerializeEventGroup() {
     SLSEventGroupSerializer serializer(sFlusher.get());
-    {
-        // log
-        {
-            // nano second disabled, and set
+    { // log
+        { // nano second disabled, and set
             string res, errorMsg;
             APSARA_TEST_TRUE(serializer.DoSerialize(CreateBatchedLogEvents(false, false), res, errorMsg));
             sls_logs::LogGroup logGroup;
@@ -100,11 +98,9 @@ void SLSSerializerUnittest::TestSerializeEventGroup() {
             string res, errorMsg;
             APSARA_TEST_FALSE(serializer.DoSerialize(CreateBatchedLogEvents(false, true), res, errorMsg));
         }
-    }
-    {
-        // metric
-        {
-            // only 1 tag
+    } // namespace logtail
+    { // metric
+        { // only 1 tag
             string res, errorMsg;
             APSARA_TEST_TRUE(serializer.DoSerialize(CreateBatchedMetricEvents(false, 0, false, true), res, errorMsg));
             sls_logs::LogGroup logGroup;
@@ -262,7 +258,7 @@ void SLSSerializerUnittest::TestSerializeEventGroup() {
         // APSARA_TEST_EQUAL(logGroup.logs(0).contents(7).value(), "");
         // links
         APSARA_TEST_EQUAL(logGroup.logs(0).contents(8).key(), "links");
-        
+
         auto linksStr = logGroup.logs(0).contents(8).value();
 
         std::istringstream ss(linksStr);
@@ -297,10 +293,8 @@ void SLSSerializerUnittest::TestSerializeEventGroup() {
         APSARA_TEST_EQUAL(logGroup.logs(0).contents(12).key(), "duration");
         APSARA_TEST_EQUAL(logGroup.logs(0).contents(12).value(), "1000");
     }
-    {
-        // raw
-        {
-            // nano second disabled, and set
+    { // raw
+        { // nano second disabled, and set
             string res, errorMsg;
             APSARA_TEST_TRUE(serializer.DoSerialize(CreateBatchedRawEvents(false, false), res, errorMsg));
             sls_logs::LogGroup logGroup;
@@ -477,11 +471,11 @@ BatchedEvents SLSSerializerUnittest::CreateBatchedSpanEvents() {
     group.SetTag(LOG_RESERVED_KEY_TOPIC, "topic");
     group.SetTag(LOG_RESERVED_KEY_SOURCE, "source");
     group.SetTag(LOG_RESERVED_KEY_MACHINE_UUID, "aaa");
-    group.SetTag(LOG_RESERVED_KEY_PACKAGE_ID, "bbb");   
+    group.SetTag(LOG_RESERVED_KEY_PACKAGE_ID, "bbb");
     auto now = std::chrono::system_clock::now();
     auto duration = now.time_since_epoch();
     auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration).count();
-    // auto nano = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count(); 
+    // auto nano = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count();
     StringBuffer b = group.GetSourceBuffer()->CopyString(string("pack_id"));
     group.SetMetadataNoCopy(EventGroupMetaKey::SOURCE_ID, StringView(b.data, b.size));
     group.SetExactlyOnceCheckpoint(RangeCheckpointPtr(new RangeCheckpoint));

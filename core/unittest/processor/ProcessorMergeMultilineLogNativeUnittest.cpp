@@ -13,9 +13,9 @@
 // limitations under the License.
 #include <cstdlib>
 
-#include "constants/Constants.h"
 #include "common/JsonUtil.h"
-#include "config/PipelineConfig.h"
+#include "config/CollectionConfig.h"
+#include "constants/Constants.h"
 #include "models/LogEvent.h"
 #include "plugin/processor/inner/ProcessorMergeMultilineLogNative.h"
 #include "plugin/processor/inner/ProcessorSplitLogStringNative.h"
@@ -36,7 +36,7 @@ public:
     void SetUp() override { mContext.SetConfigName("project##config_0"); }
     void TestInit();
     void TestProcess();
-    PipelineContext mContext;
+    CollectionPipelineContext mContext;
 };
 
 UNIT_TEST_CASE(ProcessorMergeMultilineLogNativeUnittest, TestInit);
@@ -44,8 +44,7 @@ UNIT_TEST_CASE(ProcessorMergeMultilineLogNativeUnittest, TestProcess);
 
 void ProcessorMergeMultilineLogNativeUnittest::TestInit() {
     // 测试合法的正则配置
-    {
-        // start init通过，IsMultiline为true
+    { // start init通过，IsMultiline为true
         {
             Json::Value config;
             config["StartPattern"] = "123123123.*";
@@ -103,10 +102,9 @@ void ProcessorMergeMultilineLogNativeUnittest::TestInit() {
             APSARA_TEST_TRUE(processor.Init(config));
             APSARA_TEST_TRUE(processor.mMultiline.IsMultiline());
         }
-    }
+    } // namespace logtail
     // 测试非法的正则配置
-    {
-        // start + continue + end init通过，IsMultiline为true
+    { // start + continue + end init通过，IsMultiline为true
         {
             Json::Value config;
             config["StartPattern"] = "123123123.*";
@@ -164,8 +162,7 @@ void ProcessorMergeMultilineLogNativeUnittest::TestInit() {
         }
     }
     // 测试mergetype
-    {
-        // regex init通过
+    { // regex init通过
         {
             Json::Value config;
             config["StartPattern"] = ".*";
@@ -304,8 +301,7 @@ void ProcessorMergeMultilineLogNativeUnittest::TestProcess() {
     }
 
     // 存在不支持的event类型
-    {
-        // 某个unmatch 后出现了一个不支持
+    { // 某个unmatch 后出现了一个不支持
         {
             auto sourceBuffer = std::make_shared<SourceBuffer>();
             PipelineEventGroup eventGroup(sourceBuffer);
@@ -864,7 +860,7 @@ public:
     void SetUp() override { mContext.SetConfigName("project##config_0"); }
     void TestProcessEventsWithPartLog();
     void TestProcess();
-    PipelineContext mContext;
+    CollectionPipelineContext mContext;
 };
 
 UNIT_TEST_CASE(ProcessEventsWithPartLogUnittest, TestProcessEventsWithPartLog);
@@ -1851,7 +1847,7 @@ public:
     void TestLogSplitWithBegin();
     void TestLogSplitWithContinueEnd();
     void TestLogSplitWithEnd();
-    PipelineContext mContext;
+    CollectionPipelineContext mContext;
 };
 
 UNIT_TEST_CASE(ProcessorMergeMultilineLogDisacardUnmatchUnittest, TestLogSplitWithBeginContinue);
@@ -2910,7 +2906,7 @@ public:
     void TestLogSplitWithBegin();
     void TestLogSplitWithContinueEnd();
     void TestLogSplitWithEnd();
-    PipelineContext mContext;
+    CollectionPipelineContext mContext;
 };
 
 UNIT_TEST_CASE(ProcessorMergeMultilineLogKeepUnmatchUnittest, TestLogSplitWithBeginContinue);

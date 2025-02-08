@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <json/json.h>
+#include "json/json.h"
 
 #include "app_config/AppConfig.h"
+#include "collection_pipeline/CollectionPipeline.h"
+#include "collection_pipeline/CollectionPipelineContext.h"
 #include "common/JsonUtil.h"
 #include "ebpf/Config.h"
 #include "ebpf/eBPFServer.h"
-#include "pipeline/Pipeline.h"
-#include "pipeline/PipelineContext.h"
 #include "plugin/input/InputNetworkSecurity.h"
 #include "unittest/Unittest.h"
 
@@ -46,8 +46,8 @@ protected:
     }
 
 private:
-    Pipeline p;
-    PipelineContext ctx;
+    CollectionPipeline p;
+    CollectionPipelineContext ctx;
 };
 
 void InputNetworkSecurityUnittest::TestName() {
@@ -207,7 +207,8 @@ void InputNetworkSecurityUnittest::OnSuccessfulStart() {
     input->SetMetricsRecordRef("test", "1");
     APSARA_TEST_TRUE(input->Init(configJson, optionalGoPipeline));
     APSARA_TEST_TRUE(input->Start());
-    string serverPipelineName = ebpf::eBPFServer::GetInstance()->CheckLoadedPipelineName(nami::PluginType::NETWORK_SECURITY);
+    string serverPipelineName
+        = ebpf::eBPFServer::GetInstance()->CheckLoadedPipelineName(nami::PluginType::NETWORK_SECURITY);
     string pipelineName = input->GetContext().GetConfigName();
     APSARA_TEST_TRUE(serverPipelineName.size() && serverPipelineName == pipelineName);
 }
@@ -237,7 +238,8 @@ void InputNetworkSecurityUnittest::OnSuccessfulStop() {
     input->SetMetricsRecordRef("test", "1");
     APSARA_TEST_TRUE(input->Init(configJson, optionalGoPipeline));
     APSARA_TEST_TRUE(input->Start());
-    string serverPipelineName = ebpf::eBPFServer::GetInstance()->CheckLoadedPipelineName(nami::PluginType::NETWORK_SECURITY);
+    string serverPipelineName
+        = ebpf::eBPFServer::GetInstance()->CheckLoadedPipelineName(nami::PluginType::NETWORK_SECURITY);
     string pipelineName = input->GetContext().GetConfigName();
     APSARA_TEST_TRUE(serverPipelineName.size() && serverPipelineName == pipelineName);
     APSARA_TEST_TRUE(input->Stop(false));

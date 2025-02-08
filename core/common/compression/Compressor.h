@@ -18,8 +18,8 @@
 
 #include <string>
 
-#include "monitor/MetricManager.h"
 #include "common/compression/CompressType.h"
+#include "monitor/MetricManager.h"
 
 namespace logtail {
 

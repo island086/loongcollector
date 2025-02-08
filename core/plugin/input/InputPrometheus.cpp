@@ -16,17 +16,17 @@
 
 #include "plugin/input/InputPrometheus.h"
 
-#include <json/json.h>
-#include <json/value.h>
-
 #include <memory>
 #include <string>
 
+#include "json/json.h"
+#include "json/value.h"
+
 #include "PluginRegistry.h"
+#include "collection_pipeline/CollectionPipeline.h"
+#include "collection_pipeline/CollectionPipelineContext.h"
+#include "collection_pipeline/plugin/instance/ProcessorInstance.h"
 #include "logger/Logger.h"
-#include "pipeline/Pipeline.h"
-#include "pipeline/PipelineContext.h"
-#include "pipeline/plugin/instance/ProcessorInstance.h"
 #include "plugin/processor/inner/ProcessorPromParseMetricNative.h"
 #include "plugin/processor/inner/ProcessorPromRelabelMetricNative.h"
 #include "prometheus/Constants.h"
@@ -70,7 +70,8 @@ bool InputPrometheus::Start() {
     mTargetSubscirber->mQueueKey = mContext->GetProcessQueueKey();
     auto defaultLabels = GetMetricsRecordRef()->GetLabels();
 
-    PrometheusInputRunner::GetInstance()->UpdateScrapeInput(std::move(mTargetSubscirber), *defaultLabels, mContext->GetProjectName());
+    PrometheusInputRunner::GetInstance()->UpdateScrapeInput(
+        std::move(mTargetSubscirber), *defaultLabels, mContext->GetProjectName());
     return true;
 }
 

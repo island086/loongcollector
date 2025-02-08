@@ -16,14 +16,14 @@
 
 #pragma once
 
-#include <json/json.h>
-
 #include <functional>
 #include <map>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
+#include "json/json.h"
 
 #include "InstanceConfig.h"
 #include "protobuf/sls/sls_logs.pb.h"
@@ -75,6 +75,7 @@ std::string GetAgentName();
 std::string GetMonitorInfoFileName();
 std::string GetSymLinkName();
 std::string GetAgentPrefix();
+std::string GetFileTagsDir();
 
 template <class T>
 class DoubleBuffer {
@@ -223,7 +224,6 @@ private:
     std::string mBindInterface;
 
 
-
     // /**
     //  * @brief Load ConfigServer, DataServer and network interface
     //  *
@@ -322,7 +322,7 @@ private:
 
 public:
     AppConfig();
-    ~AppConfig() {};
+    ~AppConfig() {}
 
     void LoadInstanceConfig(const std::map<std::string, std::shared_ptr<InstanceConfig>>&);
 
@@ -456,7 +456,9 @@ public:
     // 全局并发度
     int32_t GetSendRequestGlobalConcurrency() const { return mSendRequestGlobalConcurrency; }
 
-    double GetGlobalConcurrencyFreePercentageForOneRegion() const { return GLOBAL_CONCURRENCY_FREE_PERCENTAGE_FOR_ONE_REGION; }
+    double GetGlobalConcurrencyFreePercentageForOneRegion() const {
+        return GLOBAL_CONCURRENCY_FREE_PERCENTAGE_FOR_ONE_REGION;
+    }
 
     int32_t GetProcessThreadCount() const { return mProcessThreadCount; }
 
@@ -542,6 +544,7 @@ public:
     friend class EnterpriseSLSClientManagerUnittest;
     friend class FlusherRunnerUnittest;
     friend class PipelineUpdateUnittest;
+    friend class ProcessorTagNativeUnittest;
 #endif
 };
 

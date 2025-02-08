@@ -14,10 +14,10 @@
 
 #include <memory>
 
-#include "pipeline/plugin/PluginRegistry.h"
-#include "pipeline/plugin/creator/StaticFlusherCreator.h"
-#include "pipeline/plugin/creator/StaticInputCreator.h"
-#include "pipeline/plugin/creator/StaticProcessorCreator.h"
+#include "collection_pipeline/plugin/PluginRegistry.h"
+#include "collection_pipeline/plugin/creator/StaticFlusherCreator.h"
+#include "collection_pipeline/plugin/creator/StaticInputCreator.h"
+#include "collection_pipeline/plugin/creator/StaticProcessorCreator.h"
 #include "runner/FlusherRunner.h"
 #include "unittest/Unittest.h"
 #include "unittest/plugin/PluginMock.h"
@@ -46,7 +46,8 @@ void PluginRegistryUnittest::TestCreateInput() const {
 }
 
 void PluginRegistryUnittest::TestCreateProcessor() const {
-    unique_ptr<ProcessorInstance> processor = PluginRegistry::GetInstance()->CreateProcessor(ProcessorMock::sName, {"0"});
+    unique_ptr<ProcessorInstance> processor
+        = PluginRegistry::GetInstance()->CreateProcessor(ProcessorMock::sName, {"0"});
     APSARA_TEST_NOT_EQUAL_FATAL(nullptr, processor);
     APSARA_TEST_EQUAL_FATAL("0", processor->PluginID());
 }

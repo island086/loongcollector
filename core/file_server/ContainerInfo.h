@@ -16,15 +16,16 @@
 
 #pragma once
 
-#include <json/json.h>
-
 #include <cstdint>
+
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
-#include "container_manager/ConfigContainerInfoUpdateCmd.h"
-#include "protobuf/sls/sls_logs.pb.h"
+#include "json/json.h"
+
+#include "constants/TagConstants.h"
 
 namespace logtail {
 
@@ -44,8 +45,8 @@ struct ContainerInfo {
     std::string mLogPath;
     std::string mUpperDir;
     std::vector<Mount> mMounts; // mounts of this container
-    std::vector<sls_logs::LogTag> mTags; // ContainerNameTag
-    std::vector<sls_logs::LogTag> mMetadatas; // ExternalEnvTag and ExternalK8sLabelTag
+    std::vector<std::pair<std::string, std::string>> mTags; // ExternalEnvTag and ExternalK8sLabelTag.
+    std::vector<std::pair<TagKey, std::string>> mMetadatas; //  ContainerNameTag
     Json::Value mJson; // this obj's json, for saving to local file
 
     static bool ParseByJSONObj(const Json::Value&, ContainerInfo&, std::string&);
@@ -80,7 +81,7 @@ struct ContainerInfo {
         for (size_t idx = 0; idx < mMetadatas.size(); ++idx) {
             const auto& lhsTag = mMetadatas[idx];
             const auto& rhsTag = rhs.mMetadatas[idx];
-            if (lhsTag.key() != rhsTag.key() || lhsTag.value() != rhsTag.value()) {
+            if (lhsTag.first != rhsTag.first || lhsTag.second != rhsTag.second) {
                 return false;
             }
         }
@@ -90,13 +91,15 @@ struct ContainerInfo {
         for (size_t idx = 0; idx < mTags.size(); ++idx) {
             const auto& lhsTag = mTags[idx];
             const auto& rhsTag = rhs.mTags[idx];
-            if (lhsTag.key() != rhsTag.key() || lhsTag.value() != rhsTag.value()) {
+            if (lhsTag.first != rhsTag.first || lhsTag.second != rhsTag.second) {
                 return false;
             }
         }
         return true;
     }
     bool operator!=(const ContainerInfo& rhs) const { return !(*this == rhs); }
+
+    void AddMetadata(const std::string& key, const std::string& value);
 
 private:
 };

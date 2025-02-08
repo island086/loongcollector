@@ -16,14 +16,14 @@
 
 #pragma once
 
-#include "pipeline/plugin/interface/Flusher.h"
+#include "collection_pipeline/plugin/interface/Flusher.h"
 
 namespace logtail {
 
 class FlusherBlackHole : public Flusher {
 public:
     static const std::string sName;
-    
+
     const std::string& Name() const override { return sName; }
     bool Init(const Json::Value& config, Json::Value& optionalGoPipeline) override;
     bool Send(PipelineEventGroup&& g) override;

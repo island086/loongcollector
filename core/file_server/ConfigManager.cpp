@@ -14,18 +14,15 @@
 
 #include "ConfigManager.h"
 
-#include <curl/curl.h>
+#include <cctype>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
-#include <cctype>
 #if defined(__linux__)
 #include <fnmatch.h>
 #include <unistd.h>
 #endif
 #include <limits.h>
-#include <re2/re2.h>
 
 #include <fstream>
 #include <set>
@@ -35,6 +32,8 @@
 
 #include "app_config/AppConfig.h"
 #include "checkpoint/CheckPointManager.h"
+#include "collection_pipeline/CollectionPipeline.h"
+#include "collection_pipeline/CollectionPipelineManager.h"
 #include "common/CompressTools.h"
 #include "common/ErrorUtil.h"
 #include "common/ExceptionBase.h"
@@ -50,8 +49,6 @@
 #include "file_server/FileServer.h"
 #include "file_server/event_handler/EventHandler.h"
 #include "monitor/AlarmManager.h"
-#include "pipeline/Pipeline.h"
-#include "pipeline/PipelineManager.h"
 
 using namespace std;
 

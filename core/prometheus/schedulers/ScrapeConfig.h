@@ -1,11 +1,12 @@
 #pragma once
 
-#include <json/value.h>
-
 #include <cstdint>
+
 #include <map>
 #include <string>
 #include <vector>
+
+#include "json/value.h"
 
 #include "common/http/HttpRequest.h"
 #include "prometheus/labels/Relabel.h"
@@ -43,6 +44,8 @@ public:
 
     std::string mQueryString;
 
+    std::vector<std::pair<std::string, std::string>> mExternalLabels;
+
     ScrapeConfig();
     bool Init(const Json::Value& config);
     bool InitStaticConfig(const Json::Value& config);
@@ -53,6 +56,7 @@ private:
     bool InitScrapeProtocols(const Json::Value& scrapeProtocols);
     void InitEnableCompression(bool enableCompression);
     bool InitTLSConfig(const Json::Value& tlsConfig);
+    bool InitExternalLabels(const Json::Value& externalLabels);
 
 #ifdef APSARA_UNIT_TEST_MAIN
     friend class ScrapeConfigUnittest;

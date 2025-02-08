@@ -14,11 +14,11 @@
 
 #include "TimeUtil.h"
 
+#include <chrono>
+#include <cmath>
 #include <memory.h>
 
 #include <atomic>
-#include <chrono>
-#include <cmath>
 #include <limits>
 #if defined(__linux__)
 #include <sys/sysinfo.h>
@@ -29,7 +29,6 @@
 #include "common/StringTools.h"
 #include "common/Strptime.h"
 #include "logger/Logger.h"
-#include "pipeline/PipelineContext.h"
 
 namespace logtail {
 

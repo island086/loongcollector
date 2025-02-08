@@ -14,19 +14,19 @@
 
 #include "ProfileSender.h"
 
-#include <json/json.h>
-
 #include <unordered_set>
 
+#include "json/json.h"
+
+#include "app_config/AppConfig.h"
 #include "common/CompressTools.h"
 #include "common/Flags.h"
 #include "common/LogtailCommonFlags.h"
 #include "logger/Logger.h"
+#include "plugin/flusher/sls/SLSClientManager.h"
 #ifdef __ENTERPRISE__
 #include "EnterpriseProfileSender.h"
 #endif
-#include "app_config/AppConfig.h"
-#include "plugin/flusher/sls/SLSClientManager.h"
 // TODO: temporarily used
 #include "common/compression/CompressorFactory.h"
 
@@ -102,7 +102,7 @@ void ProfileSender::SetProfileProjectName(const string& region, const string& pr
     // logstore is given at send time
     // TODO: temporarily used
     flusher.mCompressor = CompressorFactory::GetInstance()->Create(
-        Json::Value(), PipelineContext(), "flusher_sls", "", CompressType::ZSTD);
+        Json::Value(), CollectionPipelineContext(), "flusher_sls", "", CompressType::ZSTD);
 }
 
 FlusherSLS* ProfileSender::GetFlusher(const string& region) {

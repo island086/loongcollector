@@ -19,7 +19,8 @@
 #include <map>
 #include <string>
 #include <vector>
-#include <json/json.h>
+
+#include "json/json.h"
 
 #include "common/memory/SourceBuffer.h"
 #include "models/PipelineEvent.h"

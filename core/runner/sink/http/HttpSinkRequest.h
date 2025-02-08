@@ -16,8 +16,8 @@
 
 #pragma once
 
+#include "collection_pipeline/queue/SenderQueueItem.h"
 #include "common/http/HttpRequest.h"
-#include "pipeline/queue/SenderQueueItem.h"
 
 namespace logtail {
 
@@ -34,9 +34,9 @@ struct HttpSinkRequest : public AsynHttpRequest {
                     const std::string& body,
                     SenderQueueItem* item,
                     uint32_t timeout = static_cast<uint32_t>(INT32_FLAG(default_http_request_timeout_sec)),
-                    uint32_t maxTryCnt = static_cast<uint32_t>(INT32_FLAG(default_http_request_max_try_cnt))
-                    )
-        : AsynHttpRequest(method, httpsFlag, host, port, url, query, header, body, HttpResponse(), timeout, maxTryCnt), mItem(item) {}
+                    uint32_t maxTryCnt = static_cast<uint32_t>(INT32_FLAG(default_http_request_max_try_cnt)))
+        : AsynHttpRequest(method, httpsFlag, host, port, url, query, header, body, HttpResponse(), timeout, maxTryCnt),
+          mItem(item) {}
 
     bool IsContextValid() const override { return true; }
     void OnSendDone(HttpResponse& response) override {}

@@ -15,11 +15,11 @@
 #include <memory>
 #include <string>
 
-#include <json/json.h>
+#include "json/json.h"
 
+#include "collection_pipeline/CollectionPipelineContext.h"
 #include "common/JsonUtil.h"
 #include "container_manager/ContainerDiscoveryOptions.h"
-#include "pipeline/PipelineContext.h"
 #include "unittest/Unittest.h"
 
 using namespace std;
@@ -32,7 +32,7 @@ public:
 
 private:
     const string pluginType = "test";
-    PipelineContext ctx;
+    CollectionPipelineContext ctx;
 };
 
 void ContainerDiscoveryOptionsUnittest::OnSuccessfulInit() const {

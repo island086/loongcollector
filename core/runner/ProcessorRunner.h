@@ -16,15 +16,16 @@
 
 #pragma once
 
-#include <atomic>
 #include <cstdint>
+
+#include <atomic>
 #include <future>
 #include <string>
 #include <vector>
 
+#include "collection_pipeline/queue/QueueKey.h"
 #include "models/PipelineEventGroup.h"
 #include "monitor/MetricManager.h"
-#include "pipeline/queue/QueueKey.h"
 
 namespace logtail {
 
