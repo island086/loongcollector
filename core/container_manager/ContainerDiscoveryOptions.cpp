@@ -14,9 +14,9 @@
 
 #include "container_manager/ContainerDiscoveryOptions.h"
 
+#include "collection_pipeline/CollectionPipeline.h"
 #include "common/LogtailCommonFlags.h"
 #include "common/ParamExtractor.h"
-#include "pipeline/Pipeline.h"
 
 using namespace std;
 
@@ -24,7 +24,7 @@ DEFINE_FLAG_INT32(default_plugin_log_queue_size, "", 10);
 
 namespace logtail {
 
-bool ContainerFilters::Init(const Json::Value& config, const PipelineContext& ctx, const string& pluginType) {
+bool ContainerFilters::Init(const Json::Value& config, const CollectionPipelineContext& ctx, const string& pluginType) {
     string errorMsg;
 
     // K8pluginNamespaceRegex
@@ -138,7 +138,9 @@ bool ContainerFilters::Init(const Json::Value& config, const PipelineContext& ct
     return true;
 }
 
-bool ContainerDiscoveryOptions::Init(const Json::Value& config, const PipelineContext& ctx, const string& pluginType) {
+bool ContainerDiscoveryOptions::Init(const Json::Value& config,
+                                     const CollectionPipelineContext& ctx,
+                                     const string& pluginType) {
     string errorMsg;
 
     const char* key = "ContainerFilters";
@@ -198,9 +200,8 @@ bool ContainerDiscoveryOptions::Init(const Json::Value& config, const PipelineCo
     return true;
 }
 
-void ContainerDiscoveryOptions::GenerateContainerMetaFetchingGoPipeline(Json::Value& res,
-                                                                        const FileDiscoveryOptions* fileDiscovery,
-                                                                        const PluginInstance::PluginMeta& pluginMeta) const {
+void ContainerDiscoveryOptions::GenerateContainerMetaFetchingGoPipeline(
+    Json::Value& res, const FileDiscoveryOptions* fileDiscovery, const PluginInstance::PluginMeta& pluginMeta) const {
     Json::Value plugin(Json::objectValue);
     Json::Value detail(Json::objectValue);
     Json::Value object(Json::objectValue);
@@ -250,14 +251,14 @@ void ContainerDiscoveryOptions::GenerateContainerMetaFetchingGoPipeline(Json::Va
     if (mCollectingContainersMeta) {
         detail["CollectingContainersMeta"] = Json::Value(true);
     }
-    plugin["type"] = Json::Value(Pipeline::GenPluginTypeWithID("metric_container_info", pluginMeta.mPluginID));
+    plugin["type"]
+        = Json::Value(CollectionPipeline::GenPluginTypeWithID("metric_container_info", pluginMeta.mPluginID));
     plugin["detail"] = detail;
 
     res["inputs"].append(plugin);
     // these param will be overriden if the same param appears in the global module of config, which will be parsed
     // later.
     res["global"]["DefaultLogQueueSize"] = Json::Value(INT32_FLAG(default_plugin_log_queue_size));
-    res["global"]["AlwaysOnline"] = Json::Value(true);
 }
 
 } // namespace logtail

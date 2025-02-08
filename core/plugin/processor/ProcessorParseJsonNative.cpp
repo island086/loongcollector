@@ -16,15 +16,42 @@
 
 #include "plugin/processor/ProcessorParseJsonNative.h"
 
-#include <rapidjson/stringbuffer.h>
-#include <rapidjson/writer.h>
+#include "rapidjson/document.h"
+#include "rapidjson/stringbuffer.h"
+#include "rapidjson/writer.h"
 
+#include "collection_pipeline/plugin/instance/ProcessorInstance.h"
 #include "common/ParamExtractor.h"
 #include "models/LogEvent.h"
 #include "monitor/metric_constants/MetricConstants.h"
-#include "pipeline/plugin/instance/ProcessorInstance.h"
 
 namespace logtail {
+
+static std::string RapidjsonValueToString(const rapidjson::Value& value) {
+    if (value.IsString())
+        return std::string(value.GetString(), value.GetStringLength());
+    else if (value.IsBool())
+        return ToString(value.GetBool());
+    else if (value.IsInt())
+        return ToString(value.GetInt());
+    else if (value.IsUint())
+        return ToString(value.GetUint());
+    else if (value.IsInt64())
+        return ToString(value.GetInt64());
+    else if (value.IsUint64())
+        return ToString(value.GetUint64());
+    else if (value.IsDouble())
+        return ToString(value.GetDouble());
+    else if (value.IsNull())
+        return "";
+    else // if (value.IsObject() || value.IsArray())
+    {
+        rapidjson::StringBuffer buffer;
+        rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+        value.Accept(writer);
+        return std::string(buffer.GetString(), buffer.GetLength());
+    }
+}
 
 const std::string ProcessorParseJsonNative::sName = "processor_parse_json_native";
 
@@ -65,7 +92,7 @@ void ProcessorParseJsonNative::Process(PipelineEventGroup& logGroup) {
 
     size_t wIdx = 0;
     for (size_t rIdx = 0; rIdx < events.size(); ++rIdx) {
-        if (ProcessEvent(logPath, events[rIdx])) {
+        if (ProcessEvent(logPath, events[rIdx], logGroup.GetAllMetadata())) {
             if (wIdx != rIdx) {
                 events[wIdx] = std::move(events[rIdx]);
             }
@@ -75,7 +102,9 @@ void ProcessorParseJsonNative::Process(PipelineEventGroup& logGroup) {
     events.resize(wIdx);
 }
 
-bool ProcessorParseJsonNative::ProcessEvent(const StringView& logPath, PipelineEventPtr& e) {
+bool ProcessorParseJsonNative::ProcessEvent(const StringView& logPath,
+                                            PipelineEventPtr& e,
+                                            const GroupMetadata& metadata) {
     if (!IsSupportedEvent(e)) {
         mOutFailedEventsTotal->Add(1);
         return true;
@@ -100,7 +129,7 @@ bool ProcessorParseJsonNative::ProcessEvent(const StringView& logPath, PipelineE
     if (mCommonParserOptions.ShouldAddLegacyUnmatchedRawLog(parseSuccess)) {
         AddLog(mCommonParserOptions.legacyUnmatchedRawLogKey, rawContent, sourceEvent, false);
     }
-    if (mCommonParserOptions.ShouldEraseEvent(parseSuccess, sourceEvent)) {
+    if (mCommonParserOptions.ShouldEraseEvent(parseSuccess, sourceEvent, metadata)) {
         mDiscardedEventsTotal->Add(1);
         return false;
     }
@@ -168,32 +197,6 @@ bool ProcessorParseJsonNative::JsonLogLineParser(LogEvent& sourceEvent,
                sourceEvent);
     }
     return true;
-}
-
-std::string ProcessorParseJsonNative::RapidjsonValueToString(const rapidjson::Value& value) {
-    if (value.IsString())
-        return std::string(value.GetString(), value.GetStringLength());
-    else if (value.IsBool())
-        return ToString(value.GetBool());
-    else if (value.IsInt())
-        return ToString(value.GetInt());
-    else if (value.IsUint())
-        return ToString(value.GetUint());
-    else if (value.IsInt64())
-        return ToString(value.GetInt64());
-    else if (value.IsUint64())
-        return ToString(value.GetUint64());
-    else if (value.IsDouble())
-        return ToString(value.GetDouble());
-    else if (value.IsNull())
-        return "";
-    else // if (value.IsObject() || value.IsArray())
-    {
-        rapidjson::StringBuffer buffer;
-        rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-        value.Accept(writer);
-        return std::string(buffer.GetString(), buffer.GetLength());
-    }
 }
 
 void ProcessorParseJsonNative::AddLog(const StringView& key,

@@ -16,13 +16,13 @@
 
 #pragma once
 
-#include <spdlog/spdlog.h>
-
 #include <vector>
 
-#include "pipeline/batch/Batcher.h"
-#include "pipeline/plugin/interface/Flusher.h"
-#include "pipeline/serializer/JsonSerializer.h"
+#include "spdlog/spdlog.h"
+
+#include "collection_pipeline/batch/Batcher.h"
+#include "collection_pipeline/plugin/interface/Flusher.h"
+#include "collection_pipeline/serializer/JsonSerializer.h"
 
 namespace logtail {
 

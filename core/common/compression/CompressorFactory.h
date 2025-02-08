@@ -16,12 +16,12 @@
 
 #pragma once
 
-#include <json/json.h>
-
 #include <memory>
 #include <string>
 
-#include "pipeline/PipelineContext.h"
+#include "json/json.h"
+
+#include "collection_pipeline/CollectionPipelineContext.h"
 #include "common/compression/CompressType.h"
 #include "common/compression/Compressor.h"
 
@@ -40,7 +40,7 @@ public:
     }
 
     std::unique_ptr<Compressor> Create(const Json::Value& config,
-                                       const PipelineContext& ctx,
+                                       const CollectionPipelineContext& ctx,
                                        const std::string& pluginType,
                                        const std::string& flusherId,
                                        CompressType defaultType);

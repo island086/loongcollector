@@ -66,7 +66,8 @@ public:
 
     std::unique_ptr<char[]> expectedContent;
     FileReaderOptions readerOpts;
-    PipelineContext ctx;
+    FileTagOptions tagOpts;
+    CollectionPipelineContext ctx;
     static std::string logPathDir;
     static std::string gbkFile;
     static std::string utf8File;
@@ -82,14 +83,17 @@ std::string LastMatchedContainerdTextLineUnittest::utf8File;
 void LastMatchedContainerdTextLineUnittest::TestLastContainerdTextLineSingleLine() {
     {
         MultilineOptions multilineOpts;
-        LogFileReader logFileReader(
-            logPathDir, utf8File, DevInode(), std::make_pair(&readerOpts, &ctx), std::make_pair(&multilineOpts, &ctx));
+        LogFileReader logFileReader(logPathDir,
+                                    utf8File,
+                                    DevInode(),
+                                    std::make_pair(&readerOpts, &ctx),
+                                    std::make_pair(&multilineOpts, &ctx),
+                                    std::make_pair(&tagOpts, &ctx));
         BaseLineParse* baseLineParsePtr = nullptr;
         baseLineParsePtr = logFileReader.GetParser<ContainerdTextParser>(LogFileReader::BUFFER_SIZE);
         logFileReader.mLineParsers.emplace_back(baseLineParsePtr);
         // 异常情况+有回车
-        {
-            // case: PartLogFlag存在，第三个空格存在但空格后无内容
+        { // case: PartLogFlag存在，第三个空格存在但空格后无内容
             {
                 std::string testLog = "2024-01-05T23:28:06.818486411+08:00 stdout P \n";
 
@@ -183,8 +187,7 @@ void LastMatchedContainerdTextLineUnittest::TestLastContainerdTextLineSingleLine
             }
         }
         // 异常情况+无回车
-        {
-            // case: PartLogFlag存在，第三个空格存在但空格后无内容
+        { // case: PartLogFlag存在，第三个空格存在但空格后无内容
             {
                 std::string testLog = "2024-01-05T23:28:06.818486411+08:00 stdout P ";
 
@@ -202,7 +205,7 @@ void LastMatchedContainerdTextLineUnittest::TestLastContainerdTextLineSingleLine
                 APSARA_TEST_EQUAL(0, line.rollbackLineFeedCount);
                 APSARA_TEST_EQUAL(1, line.forceRollbackLineFeedCount);
                 APSARA_TEST_EQUAL(false, line.fullLine);
-            }
+            } // namespace logtail
             // case: PartLogFlag存在，第三个空格不存在
             {
                 std::string testLog = "2024-01-05T23:28:06.818486411+08:00 stdout P";
@@ -519,8 +522,12 @@ void LastMatchedContainerdTextLineUnittest::TestLastContainerdTextLineSingleLine
 void LastMatchedContainerdTextLineUnittest::TestLastContainerdTextLineMerge() {
     {
         MultilineOptions multilineOpts;
-        LogFileReader logFileReader(
-            logPathDir, utf8File, DevInode(), std::make_pair(&readerOpts, &ctx), std::make_pair(&multilineOpts, &ctx));
+        LogFileReader logFileReader(logPathDir,
+                                    utf8File,
+                                    DevInode(),
+                                    std::make_pair(&readerOpts, &ctx),
+                                    std::make_pair(&multilineOpts, &ctx),
+                                    std::make_pair(&tagOpts, &ctx));
         BaseLineParse* baseLineParsePtr = nullptr;
         baseLineParsePtr = logFileReader.GetParser<ContainerdTextParser>(LogFileReader::BUFFER_SIZE);
         logFileReader.mLineParsers.emplace_back(baseLineParsePtr);
@@ -564,8 +571,7 @@ void LastMatchedContainerdTextLineUnittest::TestLastContainerdTextLineMerge() {
             }
         }
         // 异常情况+有回车
-        {
-            // case: PartLogFlag存在，第三个空格存在但空格后无内容
+        { // case: PartLogFlag存在，第三个空格存在但空格后无内容
             {
                 std::string testLog = "2024-01-05T23:28:06.818486411+08:00 stdout P \n";
 
@@ -659,8 +665,7 @@ void LastMatchedContainerdTextLineUnittest::TestLastContainerdTextLineMerge() {
             }
         }
         // 异常情况+无回车
-        {
-            // case: PartLogFlag存在，第三个空格存在但空格后无内容
+        { // case: PartLogFlag存在，第三个空格存在但空格后无内容
             {
                 std::string testLog = "2024-01-05T23:28:06.818486411+08:00 stdout P ";
 
@@ -1033,7 +1038,8 @@ public:
 
     std::unique_ptr<char[]> expectedContent;
     FileReaderOptions readerOpts;
-    PipelineContext ctx;
+    FileTagOptions tagOpts;
+    CollectionPipelineContext ctx;
     static std::string logPathDir;
     static std::string gbkFile;
     static std::string utf8File;
@@ -1048,15 +1054,18 @@ std::string LastMatchedDockerJsonFileUnittest::utf8File;
 void LastMatchedDockerJsonFileUnittest::TestLastDockerJsonFile() {
     {
         MultilineOptions multilineOpts;
-        LogFileReader logFileReader(
-            logPathDir, utf8File, DevInode(), std::make_pair(&readerOpts, &ctx), std::make_pair(&multilineOpts, &ctx));
+        LogFileReader logFileReader(logPathDir,
+                                    utf8File,
+                                    DevInode(),
+                                    std::make_pair(&readerOpts, &ctx),
+                                    std::make_pair(&multilineOpts, &ctx),
+                                    std::make_pair(&tagOpts, &ctx));
         BaseLineParse* baseLineParsePtr = nullptr;
         baseLineParsePtr = logFileReader.GetParser<DockerJsonFileParser>(0);
         logFileReader.mLineParsers.emplace_back(baseLineParsePtr);
         // 不带回车
         // 不带回车
-        {
-            // 合法
+        { // 合法
             {
                 std::string testLog
                     = R"({"log":"Exception in thread  \"main\" java.lang.NullPoinntterException\n","stream":"stdout","time":"2024-02-19T03:49:37.793533014Z"})";
@@ -1296,7 +1305,8 @@ public:
 
     std::unique_ptr<char[]> expectedContent;
     FileReaderOptions readerOpts;
-    PipelineContext ctx;
+    FileTagOptions tagOpts;
+    CollectionPipelineContext ctx;
     static std::string logPathDir;
     static std::string gbkFile;
     static std::string utf8File;
@@ -1311,8 +1321,12 @@ std::string LastMatchedContainerdTextWithDockerJsonUnittest::utf8File;
 
 void LastMatchedContainerdTextWithDockerJsonUnittest::TestContainerdTextWithDockerJson() {
     MultilineOptions multilineOpts;
-    LogFileReader logFileReader(
-        logPathDir, utf8File, DevInode(), std::make_pair(&readerOpts, &ctx), std::make_pair(&multilineOpts, &ctx));
+    LogFileReader logFileReader(logPathDir,
+                                utf8File,
+                                DevInode(),
+                                std::make_pair(&readerOpts, &ctx),
+                                std::make_pair(&multilineOpts, &ctx),
+                                std::make_pair(&tagOpts, &ctx));
     BaseLineParse* baseLineParsePtr = nullptr;
     baseLineParsePtr = logFileReader.GetParser<DockerJsonFileParser>(0);
     logFileReader.mLineParsers.emplace_back(baseLineParsePtr);
@@ -1367,8 +1381,12 @@ void LastMatchedContainerdTextWithDockerJsonUnittest::TestContainerdTextWithDock
 
 void LastMatchedContainerdTextWithDockerJsonUnittest::TestDockerJsonWithContainerdText() {
     MultilineOptions multilineOpts;
-    LogFileReader logFileReader(
-        logPathDir, utf8File, DevInode(), std::make_pair(&readerOpts, &ctx), std::make_pair(&multilineOpts, &ctx));
+    LogFileReader logFileReader(logPathDir,
+                                utf8File,
+                                DevInode(),
+                                std::make_pair(&readerOpts, &ctx),
+                                std::make_pair(&multilineOpts, &ctx),
+                                std::make_pair(&tagOpts, &ctx));
     BaseLineParse* baseLineParsePtr = nullptr;
     baseLineParsePtr = logFileReader.GetParser<ContainerdTextParser>(LogFileReader::BUFFER_SIZE);
     logFileReader.mLineParsers.emplace_back(baseLineParsePtr);

@@ -11,9 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include "collection_pipeline/plugin/instance/ProcessorInstance.h"
 #include "common/ExceptionBase.h"
 #include "common/JsonUtil.h"
-#include "pipeline/plugin/instance/ProcessorInstance.h"
 #include "plugin/processor/ProcessorFilterNative.h"
 #include "unittest/Unittest.h"
 
@@ -32,7 +32,7 @@ public:
     void TestBaseFilter();
     void TestFilterNoneUtf8();
 
-    PipelineContext mContext;
+    CollectionPipelineContext mContext;
 };
 
 UNIT_TEST_CASE(ProcessorFilterNativeUnittest, OnSuccessfulInit)
@@ -41,7 +41,7 @@ UNIT_TEST_CASE(ProcessorFilterNativeUnittest, TestLogFilterRule)
 UNIT_TEST_CASE(ProcessorFilterNativeUnittest, TestBaseFilter)
 UNIT_TEST_CASE(ProcessorFilterNativeUnittest, TestFilterNoneUtf8)
 
-PluginInstance::PluginMeta getPluginMeta(){
+PluginInstance::PluginMeta getPluginMeta() {
     PluginInstance::PluginMeta pluginMeta{"1"};
     return pluginMeta;
 }
@@ -449,7 +449,8 @@ void ProcessorFilterNativeUnittest::TestBaseFilter() {
         })";
         APSARA_TEST_STREQ_FATAL(CompactJson(expectJson).c_str(), CompactJson(outJson).c_str());
 
-        APSARA_TEST_EQUAL_FATAL(2, processorInstance.mInEventsTotal->GetValue() -  processorInstance.mOutEventsTotal->GetValue());
+        APSARA_TEST_EQUAL_FATAL(
+            2, processorInstance.mInEventsTotal->GetValue() - processorInstance.mOutEventsTotal->GetValue());
     }
     {
         const char* jsonStr = "{\n"

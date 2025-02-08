@@ -16,15 +16,15 @@
 
 #include "app_config/AppConfig.h"
 #include "application/Application.h"
+#include "collection_pipeline/plugin/interface/HttpFlusher.h"
+#include "collection_pipeline/queue/QueueKeyManager.h"
+#include "collection_pipeline/queue/SenderQueueItem.h"
+#include "collection_pipeline/queue/SenderQueueManager.h"
 #include "common/LogtailCommonFlags.h"
 #include "common/StringTools.h"
 #include "common/http/HttpRequest.h"
 #include "logger/Logger.h"
 #include "monitor/AlarmManager.h"
-#include "pipeline/plugin/interface/HttpFlusher.h"
-#include "pipeline/queue/QueueKeyManager.h"
-#include "pipeline/queue/SenderQueueItem.h"
-#include "pipeline/queue/SenderQueueManager.h"
 #include "plugin/flusher/sls/DiskBufferWriter.h"
 #include "runner/sink/http/HttpSink.h"
 
@@ -154,8 +154,9 @@ void FlusherRunner::Run() {
         mLastRunTime->Set(chrono::duration_cast<chrono::seconds>(curTime.time_since_epoch()).count());
 
         vector<SenderQueueItem*> items;
-        int32_t limit
-            = Application::GetInstance()->IsExiting() ? -1 : AppConfig::GetInstance()->GetSendRequestGlobalConcurrency();
+        int32_t limit = Application::GetInstance()->IsExiting()
+            ? -1
+            : AppConfig::GetInstance()->GetSendRequestGlobalConcurrency();
         SenderQueueManager::GetInstance()->GetAvailableItems(items, limit);
         if (items.empty()) {
             SenderQueueManager::GetInstance()->Wait(1000);

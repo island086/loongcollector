@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "pipeline/plugin/creator/StaticInputCreator.h"
-#include "pipeline/plugin/instance/PluginInstance.h"
-#include "unittest/plugin/PluginMock.h"
+#include "collection_pipeline/plugin/creator/StaticInputCreator.h"
+#include "collection_pipeline/plugin/instance/PluginInstance.h"
 #include "unittest/Unittest.h"
+#include "unittest/plugin/PluginMock.h"
 
 using namespace std;
 

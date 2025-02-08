@@ -15,9 +15,9 @@
  */
 #include "plugin/processor/inner/ProcessorPromRelabelMetricNative.h"
 
-#include <json/json.h>
-
 #include <cstddef>
+
+#include "json/json.h"
 
 #include "common/Flags.h"
 #include "common/StringTools.h"
@@ -124,6 +124,21 @@ bool ProcessorPromRelabelMetricNative::ProcessEvent(PipelineEventPtr& e,
     }
     for (const auto& k : toDeleteInRelabel) {
         sourceEvent.DelTag(k);
+    }
+
+    for (const auto& [k, v] : mScrapeConfigPtr->mExternalLabels) {
+        if (sourceEvent.HasTag(k)) {
+            if (!mScrapeConfigPtr->mHonorLabels) {
+                // metric event labels is secondary
+                // if confiliction, then rename it exported_<label_name>
+                auto key = prometheus::EXPORTED_PREFIX + k;
+                auto b = sourceEvent.GetSourceBuffer()->CopyString(key);
+                sourceEvent.SetTagNoCopy(StringView(b.data, b.size), sourceEvent.GetTag(k));
+                sourceEvent.SetTagNoCopy(k, v);
+            }
+        } else {
+            sourceEvent.SetTagNoCopy(k, v);
+        }
     }
 
     // set metricEvent name

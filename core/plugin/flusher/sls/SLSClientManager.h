@@ -17,11 +17,12 @@
 #pragma once
 
 #include <cstdint>
+
 #include <map>
 #include <optional>
 #include <string>
 
-#include "pipeline/queue/SenderQueueItem.h"
+#include "collection_pipeline/queue/SenderQueueItem.h"
 #include "plugin/flusher/sls/SLSResponse.h"
 
 namespace logtail {
@@ -90,6 +91,20 @@ void PreparePostMetricStoreLogsRequest(const std::string& accessKeyId,
                                        size_t rawSize,
                                        std::string& path,
                                        std::map<std::string, std::string>& header);
+void PreparePostAPMBackendRequest(const std::string& accessKeyId,
+                                  const std::string& accessKeySecret,
+                                  SLSClientManager::AuthType type,
+                                  const std::string& host,
+                                  bool isHostIp,
+                                  const std::string& project,
+                                  const std::string& logstore,
+                                  const std::string& compressType,
+                                  RawDataType dataType,
+                                  const std::string& body,
+                                  size_t rawSize,
+                                  const std::string& path,
+                                  std::string& query,
+                                  std::map<std::string, std::string>& header);
 SLSResponse PostLogStoreLogs(const std::string& accessKeyId,
                              const std::string& accessKeySecret,
                              SLSClientManager::AuthType type,
@@ -112,6 +127,18 @@ SLSResponse PostMetricStoreLogs(const std::string& accessKeyId,
                                 const std::string& compressType,
                                 const std::string& body,
                                 size_t rawSize);
+SLSResponse PostAPMBackendLogs(const std::string& accessKeyId,
+                               const std::string& accessKeySecret,
+                               SLSClientManager::AuthType type,
+                               const std::string& host,
+                               bool httpsFlag,
+                               const std::string& project,
+                               const std::string& logstore,
+                               const std::string& compressType,
+                               RawDataType dataType,
+                               const std::string& body,
+                               size_t rawSize,
+                               const std::string& subpath);
 SLSResponse PutWebTracking(const std::string& host,
                            bool httpsFlag,
                            const std::string& logstore,

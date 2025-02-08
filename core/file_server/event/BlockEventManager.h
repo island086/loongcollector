@@ -17,14 +17,15 @@
 #pragma once
 
 #include <cstdint>
+
 #include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+#include "collection_pipeline/queue/QueueKey.h"
 #include "common/FeedbackInterface.h"
 #include "file_server/event/Event.h"
-#include "pipeline/queue/QueueKey.h"
 
 namespace logtail {
 

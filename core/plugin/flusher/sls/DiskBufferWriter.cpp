@@ -16,6 +16,9 @@
 
 #include "app_config/AppConfig.h"
 #include "application/Application.h"
+#include "collection_pipeline/limiter/RateLimiter.h"
+#include "collection_pipeline/queue/QueueKeyManager.h"
+#include "collection_pipeline/queue/SLSSenderQueueItem.h"
 #include "common/CompressTools.h"
 #include "common/ErrorUtil.h"
 #include "common/FileEncryption.h"
@@ -24,18 +27,15 @@
 #include "common/StringTools.h"
 #include "logger/Logger.h"
 #include "monitor/AlarmManager.h"
-#include "pipeline/limiter/RateLimiter.h"
-#include "pipeline/queue/QueueKeyManager.h"
-#include "pipeline/queue/SLSSenderQueueItem.h"
 #include "plugin/flusher/sls/FlusherSLS.h"
-#ifdef __ENTERPRISE__
-#include "plugin/flusher/sls/EnterpriseSLSClientManager.h"
-#endif
 #include "plugin/flusher/sls/SLSClientManager.h"
 #include "plugin/flusher/sls/SLSConstant.h"
 #include "plugin/flusher/sls/SendResult.h"
 #include "protobuf/sls/sls_logs.pb.h"
 #include "provider/Provider.h"
+#ifdef __ENTERPRISE__
+#include "plugin/flusher/sls/EnterpriseSLSClientManager.h"
+#endif
 
 DEFINE_FLAG_INT32(write_secondary_wait_timeout, "interval of dump seconary buffer from memory to file, seconds", 2);
 DEFINE_FLAG_INT32(buffer_file_alive_interval, "the max alive time of a bufferfile, 5 minutes", 300);
@@ -586,8 +586,7 @@ void DiskBufferWriter::SendEncryptionBuffer(const std::string& filename, int32_t
                         }
 #ifdef __ENTERPRISE__
                         if (sendRes != SEND_NETWORK_ERROR && sendRes != SEND_SERVER_ERROR) {
-                            bool hasAuthError
-                                = sendRes == SEND_UNAUTHORIZED && response.mErrorMsg != kAKErrorMsg;
+                            bool hasAuthError = sendRes == SEND_UNAUTHORIZED && response.mErrorMsg != kAKErrorMsg;
                             EnterpriseSLSClientManager::GetInstance()->UpdateAccessKeyStatus(bufferMeta.aliuid(),
                                                                                              !hasAuthError);
                             EnterpriseSLSClientManager::GetInstance()->UpdateProjectAnonymousWriteStatus(
@@ -771,6 +770,7 @@ bool DiskBufferWriter::SendToBufferFile(SenderQueueItem* dataPtr) {
     bufferMeta.set_shardhashkey(data->mShardHashKey);
     bufferMeta.set_compresstype(ConvertCompressType(flusher->GetCompressType()));
     bufferMeta.set_telemetrytype(flusher->mTelemetryType);
+    bufferMeta.set_subpath(flusher->GetSubpath());
 #ifdef __ENTERPRISE__
     bufferMeta.set_endpointmode(GetEndpointMode(flusher->mEndpointMode));
 #endif
@@ -867,30 +867,57 @@ SLSResponse DiskBufferWriter::SendBufferFileData(const sls_logs::LogtailBufferMe
     } else {
         dataType = RawDataType::EVENT_GROUP;
     }
-    if (bufferMeta.has_telemetrytype() && bufferMeta.telemetrytype() == sls_logs::SLS_TELEMETRY_TYPE_METRICS) {
-        return PostMetricStoreLogs(accessKeyId,
-                                   accessKeySecret,
-                                   type,
-                                   host,
-                                   httpsFlag,
-                                   bufferMeta.project(),
-                                   bufferMeta.logstore(),
-                                   GetSLSCompressTypeString(bufferMeta.compresstype()),
-                                   logData,
-                                   bufferMeta.rawsize());
-    } else {
-        return PostLogStoreLogs(accessKeyId,
-                                accessKeySecret,
-                                type,
-                                host,
-                                httpsFlag,
-                                bufferMeta.project(),
-                                bufferMeta.logstore(),
-                                GetSLSCompressTypeString(bufferMeta.compresstype()),
-                                dataType,
-                                logData,
-                                bufferMeta.rawsize(),
-                                bufferMeta.has_shardhashkey() ? bufferMeta.shardhashkey() : "");
+
+    auto telemetryType
+        = bufferMeta.has_telemetrytype() ? bufferMeta.telemetrytype() : sls_logs::SLS_TELEMETRY_TYPE_LOGS;
+    switch (telemetryType) {
+        case sls_logs::SLS_TELEMETRY_TYPE_LOGS:
+            return PostLogStoreLogs(accessKeyId,
+                                    accessKeySecret,
+                                    type,
+                                    host,
+                                    httpsFlag,
+                                    bufferMeta.project(),
+                                    bufferMeta.logstore(),
+                                    GetSLSCompressTypeString(bufferMeta.compresstype()),
+                                    dataType,
+                                    logData,
+                                    bufferMeta.rawsize(),
+                                    bufferMeta.has_shardhashkey() ? bufferMeta.shardhashkey() : "");
+        case sls_logs::SLS_TELEMETRY_TYPE_METRICS:
+            return PostMetricStoreLogs(accessKeyId,
+                                       accessKeySecret,
+                                       type,
+                                       host,
+                                       httpsFlag,
+                                       bufferMeta.project(),
+                                       bufferMeta.logstore(),
+                                       GetSLSCompressTypeString(bufferMeta.compresstype()),
+                                       logData,
+                                       bufferMeta.rawsize());
+        case sls_logs::SLS_TELEMETRY_TYPE_APM_METRICS:
+        case sls_logs::SLS_TELEMETRY_TYPE_APM_TRACES:
+        case sls_logs::SLS_TELEMETRY_TYPE_APM_AGENTINFOS:
+            return PostAPMBackendLogs(accessKeyId,
+                                      accessKeySecret,
+                                      type,
+                                      host,
+                                      httpsFlag,
+                                      bufferMeta.project(),
+                                      bufferMeta.logstore(),
+                                      GetSLSCompressTypeString(bufferMeta.compresstype()),
+                                      dataType,
+                                      logData,
+                                      bufferMeta.rawsize(),
+                                      bufferMeta.subpath());
+        default: {
+            // should not happen
+            LOG_ERROR(sLogger, ("Unhandled telemetry type", " should not happen"));
+            SLSResponse response;
+            response.mErrorCode = LOGE_REQUEST_ERROR;
+            response.mErrorMsg = "Unhandled telemetry type";
+            return response;
+        }
     }
 }
 

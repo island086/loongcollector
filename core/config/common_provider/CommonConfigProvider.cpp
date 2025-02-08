@@ -14,11 +14,11 @@
 
 #include "CommonConfigProvider.h"
 
-#include <json/json.h>
-
 #include <filesystem>
 #include <iostream>
 #include <random>
+
+#include "json/json.h"
 
 #include "app_config/AppConfig.h"
 #include "application/Application.h"
@@ -29,8 +29,8 @@
 #include "common/http/Constant.h"
 #include "common/http/Curl.h"
 #include "common/version.h"
+#include "config/CollectionConfig.h"
 #include "config/ConfigUtil.h"
-#include "config/PipelineConfig.h"
 #include "config/feedbacker/ConfigFeedbackReceiver.h"
 #include "constants/Constants.h"
 #include "logger/Logger.h"

@@ -14,11 +14,11 @@
 
 #include "plugin/flusher/file/FlusherFile.h"
 
-#include <spdlog/async.h>
-#include <spdlog/sinks/rotating_file_sink.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
+#include "spdlog/async.h"
+#include "spdlog/sinks/rotating_file_sink.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
 
-#include "pipeline/queue/SenderQueueManager.h"
+#include "collection_pipeline/queue/SenderQueueManager.h"
 
 using namespace std;
 

@@ -18,6 +18,7 @@
 
 #include <cstdint>
 #include <ctime>
+
 #include <map>
 #include <memory>
 #include <optional>
@@ -27,7 +28,7 @@
 #include "models/StringView.h"
 
 #ifdef APSARA_UNIT_TEST_MAIN
-#include <json/json.h>
+#include "json/json.h"
 #endif
 
 namespace logtail {

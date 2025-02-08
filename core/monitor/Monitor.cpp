@@ -24,6 +24,7 @@
 
 #include "app_config/AppConfig.h"
 #include "application/Application.h"
+#include "collection_pipeline/CollectionPipelineManager.h"
 #include "common/DevInode.h"
 #include "common/ExceptionBase.h"
 #include "common/LogtailCommonFlags.h"
@@ -40,12 +41,11 @@
 #include "monitor/SelfMonitorServer.h"
 #include "plugin/flusher/sls/FlusherSLS.h"
 #include "protobuf/sls/sls_logs.pb.h"
+#include "provider/Provider.h"
 #include "runner/FlusherRunner.h"
 #ifdef __ENTERPRISE__
 #include "config/provider/EnterpriseConfigProvider.h"
 #endif
-#include "pipeline/PipelineManager.h"
-#include "provider/Provider.h"
 
 using namespace std;
 using namespace sls_logs;

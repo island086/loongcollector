@@ -16,13 +16,14 @@
 
 #pragma once
 
-#include <json/json.h>
-
 #include <cstdint>
+
 #include <string>
 #include <utility>
 
-#include "pipeline/PipelineContext.h"
+#include "json/json.h"
+
+#include "collection_pipeline/CollectionPipelineContext.h"
 
 namespace logtail {
 struct FileReaderOptions {
@@ -38,16 +39,12 @@ struct FileReaderOptions {
     uint32_t mReadDelayAlertThresholdBytes;
     uint32_t mCloseUnusedReaderIntervalSec;
     uint32_t mRotatorQueueSize;
-    // This param is compound since it controls both reader option and parser option. For simplicity, we put it in
-    // reader option. If option controlling parser is separated from this, the separated option should be placed in
-    // input.
-    bool mAppendingLogPositionMeta = false;
 
     FileReaderOptions();
 
-    bool Init(const Json::Value& config, const PipelineContext& ctx, const std::string& pluginType);
+    bool Init(const Json::Value& config, const CollectionPipelineContext& ctx, const std::string& pluginType);
 };
 
-using FileReaderConfig = std::pair<const FileReaderOptions*, const PipelineContext*>;
+using FileReaderConfig = std::pair<const FileReaderOptions*, const CollectionPipelineContext*>;
 
 } // namespace logtail

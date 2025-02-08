@@ -16,8 +16,8 @@
 
 #pragma once
 
+#include "collection_pipeline/plugin/interface/Processor.h"
 #include "common/TimeUtil.h"
-#include "pipeline/plugin/interface/Processor.h"
 
 namespace logtail {
 class ProcessorParseTimestampNative : public Processor {
@@ -58,7 +58,7 @@ private:
     CounterPtr mOutKeyNotFoundEventsTotal;
     CounterPtr mOutSuccessfulEventsTotal;
     CounterPtr mHistoryFailureTotal;
-    
+
 #ifdef APSARA_UNIT_TEST_MAIN
     friend class ProcessorParseTimestampNativeUnittest;
     friend class ProcessorParseLogTimeUnittest;

@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <json/json.h>
-
 #include <memory>
 #include <string>
 
+#include "json/json.h"
+
 #include "common/JsonUtil.h"
-#ifdef __ENTERPRISE__
-#include "config/provider/EnterpriseConfigProvider.h"
-#endif
 #include "config/watcher/PipelineConfigWatcher.h"
 #include "plugin/PluginRegistry.h"
 #include "unittest/Unittest.h"
 #include "unittest/config/PipelineManagerMock.h"
+#ifdef __ENTERPRISE__
+#include "config/provider/EnterpriseConfigProvider.h"
+#endif
 
 using namespace std;
 
@@ -225,11 +225,13 @@ void PipelineConfigWatcherUnittest::TestLoadAddedSingletonConfig() {
         APSARA_TEST_EQUAL_FATAL("test2", allConfigNames[builtinPipelineCnt + 1]);
         ClearConfig();
     }
-    { // case: added -> added, first > second -> first < second
-      // should not happen
+    {
+        // case: added -> added, first > second -> first < second
+        // should not happen
     }
-    { // case: added -> added, first < second -> first > second
-      // should not happen
+    {
+        // case: added -> added, first < second -> first > second
+        // should not happen
     }
     { // case: added -> modified, first > second
         PrepareConfig();
@@ -303,11 +305,13 @@ void PipelineConfigWatcherUnittest::TestLoadAddedSingletonConfig() {
         APSARA_TEST_EQUAL_FATAL("test2", allConfigNames[builtinPipelineCnt + 1]);
         ClearConfig();
     }
-    { // case: added -> modified, first > second -> first < second
-      // should not happen
+    {
+        // case: added -> modified, first > second -> first < second
+        // should not happen
     }
-    { // case: added -> modified, first < second -> first > second
-      // should not happen
+    {
+        // case: added -> modified, first < second -> first > second
+        // should not happen
     }
     { // case: added -> removed, first > second
         PrepareConfig();
@@ -367,11 +371,13 @@ void PipelineConfigWatcherUnittest::TestLoadAddedSingletonConfig() {
         APSARA_TEST_EQUAL_FATAL("test1", allConfigNames[0]);
         ClearConfig();
     }
-    { // case: added -> removed, first > second -> first < second
-      // should not happen
+    {
+        // case: added -> removed, first > second -> first < second
+        // should not happen
     }
-    { // case: added -> removed, first < second -> first > second
-      // should not happen
+    {
+        // case: added -> removed, first < second -> first > second
+        // should not happen
     }
     { // case: added -> unchanged, first > second
         PrepareConfig();
@@ -431,8 +437,9 @@ void PipelineConfigWatcherUnittest::TestLoadAddedSingletonConfig() {
         APSARA_TEST_EQUAL_FATAL("test2", allConfigNames[builtinPipelineCnt + 1]);
         ClearConfig();
     }
-    { // case: added -> unchanged, first > second -> first < second
-      // should not happen
+    {
+        // case: added -> unchanged, first > second -> first < second
+        // should not happen
     }
     { // case: added -> unchanged, first < second -> first > second
       // should not happen
@@ -506,11 +513,13 @@ void PipelineConfigWatcherUnittest::TestLoadModifiedSingletonConfig() {
         APSARA_TEST_EQUAL_FATAL("test2", allConfigNames[builtinPipelineCnt + 1]);
         ClearConfig();
     }
-    { // case: modified -> added, first > second -> first < second
-      // should not happen
+    {
+        // case: modified -> added, first > second -> first < second
+        // should not happen
     }
-    { // case: modified -> added, first < second -> first > second
-      // should not happen
+    {
+        // case: modified -> added, first < second -> first > second
+        // should not happen
     }
     { // case: modified -> modified, first > second
         PrepareConfig();
@@ -734,11 +743,13 @@ void PipelineConfigWatcherUnittest::TestLoadModifiedSingletonConfig() {
         APSARA_TEST_EQUAL_FATAL("test1", allConfigNames[0]);
         ClearConfig();
     }
-    { // case: modified -> removed, first > second -> first < second
-      // should not happen
+    {
+        // case: modified -> removed, first > second -> first < second
+        // should not happen
     }
-    { // case: modified -> removed, first < second -> first > second
-      // should not happen
+    {
+        // case: modified -> removed, first < second -> first > second
+        // should not happen
     }
     { // case: modified -> unchanged, first > second
         PrepareConfig();
@@ -940,11 +951,13 @@ void PipelineConfigWatcherUnittest::TestLoadRemovedSingletonConfig() {
         APSARA_TEST_EQUAL_FATAL("test2", allConfigNames[builtinPipelineCnt + 1]);
         ClearConfig();
     }
-    { // case: removed -> added, first > second -> first < second
-      // should not happen
+    {
+        // case: removed -> added, first > second -> first < second
+        // should not happen
     }
-    { // case: removed -> added, first < second -> first > second
-      // should not happen
+    {
+        // case: removed -> added, first < second -> first > second
+        // should not happen
     }
     { // case: removed -> modified, first > second
         PrepareConfig();
@@ -1020,11 +1033,13 @@ void PipelineConfigWatcherUnittest::TestLoadRemovedSingletonConfig() {
         APSARA_TEST_EQUAL_FATAL("test2", allConfigNames[builtinPipelineCnt + 1]);
         ClearConfig();
     }
-    { // case: removed -> modified, first > second -> first < second
-      // should not happen
+    {
+        // case: removed -> modified, first > second -> first < second
+        // should not happen
     }
-    { // case: removed -> modified, first < second -> first > second
-      // should not happen
+    {
+        // case: removed -> modified, first < second -> first > second
+        // should not happen
     }
     { // case: removed -> removed, first > second
         PrepareConfig();
@@ -1084,11 +1099,13 @@ void PipelineConfigWatcherUnittest::TestLoadRemovedSingletonConfig() {
                                 PipelineManagerMock::GetInstance()->GetAllConfigNames().size());
         ClearConfig();
     }
-    { // case: removed -> removed, first > second -> first < second
-      // should not happen
+    {
+        // case: removed -> removed, first > second -> first < second
+        // should not happen
     }
-    { // case: removed -> removed, first < second -> first > second
-      // should not happen
+    {
+        // case: removed -> removed, first < second -> first > second
+        // should not happen
     }
     { // case: removed -> unchanged, first > second
         PrepareConfig();
@@ -1150,8 +1167,9 @@ void PipelineConfigWatcherUnittest::TestLoadRemovedSingletonConfig() {
         APSARA_TEST_EQUAL_FATAL("test2", allConfigNames[builtinPipelineCnt + 1]);
         ClearConfig();
     }
-    { // case: removed -> unchanged, first > second -> first < second
-      // should not happen
+    {
+        // case: removed -> unchanged, first > second -> first < second
+        // should not happen
     }
     { // case: removed -> unchanged, first < second -> first > second
       // should not happen
@@ -1221,11 +1239,13 @@ void PipelineConfigWatcherUnittest::TestLoadUnchangedSingletonConfig() {
         APSARA_TEST_EQUAL_FATAL("test2", allConfigNames[builtinPipelineCnt + 1]);
         ClearConfig();
     }
-    { // case: unchanged -> added, first > second -> first < second
-      // should not happen
+    {
+        // case: unchanged -> added, first > second -> first < second
+        // should not happen
     }
-    { // case: unchanged -> added, first < second -> first > second
-      // should not happen
+    {
+        // case: unchanged -> added, first < second -> first > second
+        // should not happen
     }
     { // case: unchanged -> modified, first > second
         PrepareConfig();
@@ -1425,11 +1445,13 @@ void PipelineConfigWatcherUnittest::TestLoadUnchangedSingletonConfig() {
         APSARA_TEST_EQUAL_FATAL("test1", allConfigNames[0]);
         ClearConfig();
     }
-    { // case: unchanged -> removed, first > second -> first < second
-      // should not happen
+    {
+        // case: unchanged -> removed, first > second -> first < second
+        // should not happen
     }
-    { // case: unchanged -> removed, first < second -> first > second
-      // should not happen
+    {
+        // case: unchanged -> removed, first < second -> first > second
+        // should not happen
     }
     { // case: unchanged -> unchanged, first > second
         PrepareConfig();
@@ -1489,8 +1511,9 @@ void PipelineConfigWatcherUnittest::TestLoadUnchangedSingletonConfig() {
         APSARA_TEST_EQUAL_FATAL("test2", allConfigNames[builtinPipelineCnt + 1]);
         ClearConfig();
     }
-    { // case: unchanged -> unchanged, first > second -> first < second
-      // should not happen
+    {
+        // case: unchanged -> unchanged, first > second -> first < second
+        // should not happen
     }
     { // case: unchanged -> unchanged, first < second -> first > second
       // should not happen

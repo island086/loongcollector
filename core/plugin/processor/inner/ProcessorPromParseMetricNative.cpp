@@ -1,6 +1,6 @@
 #include "plugin/processor/inner/ProcessorPromParseMetricNative.h"
 
-#include <json/json.h>
+#include "json/json.h"
 
 #include "common/StringTools.h"
 #include "models/MetricEvent.h"
@@ -39,7 +39,6 @@ void ProcessorPromParseMetricNative::Process(PipelineEventGroup& eGroup) {
         ProcessEvent(e, newEvents, eGroup, parser);
     }
     events.swap(newEvents);
-    eGroup.SetMetadata(EventGroupMetaKey::PROMETHEUS_SAMPLES_SCRAPED, ToString(events.size()));
 }
 
 bool ProcessorPromParseMetricNative::IsSupportedEvent(const PipelineEventPtr& e) const {

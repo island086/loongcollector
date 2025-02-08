@@ -15,13 +15,17 @@
 #include "application/Application.h"
 
 #ifndef LOGTAIL_NO_TC_MALLOC
-#include <gperftools/malloc_extension.h>
+#include "gperftools/malloc_extension.h"
 #endif
 
 #include <thread>
 
 #include "app_config/AppConfig.h"
 #include "checkpoint/CheckPointManager.h"
+#include "collection_pipeline/CollectionPipelineManager.h"
+#include "collection_pipeline/plugin/PluginRegistry.h"
+#include "collection_pipeline/queue/ExactlyOnceQueueManager.h"
+#include "collection_pipeline/queue/SenderQueueManager.h"
 #include "common/CrashBackTraceUtil.h"
 #include "common/Flags.h"
 #include "common/MachineInfoUtil.h"
@@ -41,10 +45,6 @@
 #include "go_pipeline/LogtailPlugin.h"
 #include "logger/Logger.h"
 #include "monitor/Monitor.h"
-#include "pipeline/PipelineManager.h"
-#include "pipeline/plugin/PluginRegistry.h"
-#include "pipeline/queue/ExactlyOnceQueueManager.h"
-#include "pipeline/queue/SenderQueueManager.h"
 #include "plugin/flusher/sls/DiskBufferWriter.h"
 #include "plugin/flusher/sls/FlusherSLS.h"
 #include "plugin/input/InputFeedbackInterfaceRegistry.h"
@@ -65,7 +65,7 @@
 #endif
 
 DEFINE_FLAG_BOOL(ilogtail_disable_core, "disable core in worker process", true);
-DEFINE_FLAG_INT32(file_tags_update_interval, "second", 1);
+DEFINE_FLAG_INT32(file_tags_update_interval, "second", 60);
 DEFINE_FLAG_INT32(config_scan_interval, "seconds", 10);
 DEFINE_FLAG_INT32(tcmalloc_release_memory_interval, "force release memory held by tcmalloc, seconds", 300);
 DEFINE_FLAG_INT32(exit_flushout_duration, "exit process flushout duration", 20 * 1000);
@@ -109,8 +109,8 @@ void Application::Init() {
 #ifdef __ENTERPRISE__
     if (!InstanceIdentity::Instance()->InitFromFile()) {
         InstanceIdentity::Instance()->InitFromNetwork();
-        InstanceIdentity::Instance()->DumpInstanceIdentity();
     }
+    InstanceIdentity::Instance()->DumpInstanceIdentity();
 #endif
     // Initialize basic information: IP, hostname, etc.
     LoongCollectorMonitor::GetInstance();
@@ -268,9 +268,6 @@ void Application::Start() { // GCOVR_EXCL_START
         LogtailPlugin::GetInstance()->LoadPluginBase();
     }
 
-    // TODO: this should be refactored to internal pipeline
-    AlarmManager::GetInstance()->Init();
-
     time_t curTime = 0, lastConfigCheckTime = 0, lastUpdateMetricTime = 0, lastCheckTagsTime = 0, lastQueueGCTime = 0;
 #ifndef LOGTAIL_NO_TC_MALLOC
     time_t lastTcmallocReleaseMemTime = 0;
@@ -284,7 +281,7 @@ void Application::Start() { // GCOVR_EXCL_START
         if (curTime - lastConfigCheckTime >= INT32_FLAG(config_scan_interval)) {
             auto configDiff = PipelineConfigWatcher::GetInstance()->CheckConfigDiff();
             if (!configDiff.first.IsEmpty()) {
-                PipelineManager::GetInstance()->UpdatePipelines(configDiff.first);
+                CollectionPipelineManager::GetInstance()->UpdatePipelines(configDiff.first);
             }
             if (!configDiff.second.IsEmpty()) {
                 TaskPipelineManager::GetInstance()->UpdatePipelines(configDiff.second);
@@ -357,7 +354,7 @@ void Application::Exit() {
     }
 #endif
 
-    PipelineManager::GetInstance()->StopAllPipelines();
+    CollectionPipelineManager::GetInstance()->StopAllPipelines();
 
     PluginRegistry::GetInstance()->UnloadPlugins();
 
@@ -373,7 +370,6 @@ void Application::Exit() {
 
     LogtailMonitor::GetInstance()->Stop();
     LoongCollectorMonitor::GetInstance()->Stop();
-    AlarmManager::GetInstance()->Stop();
     LogtailPlugin::GetInstance()->StopBuiltInModules();
     // from now on, alarm should not be used.
 

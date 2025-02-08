@@ -16,27 +16,28 @@
 
 #pragma once
 
-#include <json/json.h>
-
 #include <cstdint>
+
 #include <memory>
 #include <string>
 #include <unordered_set>
 #include <vector>
 
+#include "json/json.h"
+
+#include "collection_pipeline/batch/BatchStatus.h"
+#include "collection_pipeline/batch/Batcher.h"
+#include "collection_pipeline/limiter/ConcurrencyLimiter.h"
+#include "collection_pipeline/plugin/interface/HttpFlusher.h"
+#include "collection_pipeline/queue/SLSSenderQueueItem.h"
+#include "collection_pipeline/serializer/SLSSerializer.h"
 #include "common/compression/Compressor.h"
 #include "models/PipelineEventGroup.h"
-#include "pipeline/batch/BatchStatus.h"
-#include "pipeline/batch/Batcher.h"
-#include "pipeline/limiter/ConcurrencyLimiter.h"
-#include "pipeline/plugin/interface/HttpFlusher.h"
-#include "pipeline/queue/SLSSenderQueueItem.h"
-#include "pipeline/serializer/SLSSerializer.h"
+#include "plugin/flusher/sls/SLSClientManager.h"
+#include "protobuf/sls/sls_logs.pb.h"
 #ifdef __ENTERPRISE__
 #include "plugin/flusher/sls/EnterpriseSLSClientManager.h"
 #endif
-#include "plugin/flusher/sls/SLSClientManager.h"
-#include "protobuf/sls/sls_logs.pb.h"
 
 namespace logtail {
 
@@ -67,13 +68,18 @@ public:
     bool Send(PipelineEventGroup&& g) override;
     bool Flush(size_t key) override;
     bool FlushAll() override;
-    bool BuildRequest(SenderQueueItem* item, std::unique_ptr<HttpSinkRequest>& req, bool* keepItem, std::string* errMsg) override;
+    bool BuildRequest(SenderQueueItem* item,
+                      std::unique_ptr<HttpSinkRequest>& req,
+                      bool* keepItem,
+                      std::string* errMsg) override;
     void OnSendDone(const HttpResponse& response, SenderQueueItem* item) override;
 
     CompressType GetCompressType() const { return mCompressor ? mCompressor->GetCompressType() : CompressType::NONE; }
 
     // for use of Go pipeline and shennong
     bool Send(std::string&& data, const std::string& shardHashKey, const std::string& logstore = "");
+
+    std::string GetSubpath() const { return mSubpath; }
 
     std::string mProject;
     std::string mLogstore;
@@ -126,6 +132,13 @@ private:
                                                                       const std::string& accessKeySecret,
                                                                       SLSClientManager::AuthType type,
                                                                       SLSSenderQueueItem* item) const;
+    std::unique_ptr<HttpSinkRequest> CreatePostAPMBackendRequest(const std::string& accessKeyId,
+                                                                 const std::string& accessKeySecret,
+                                                                 SLSClientManager::AuthType type,
+                                                                 SLSSenderQueueItem* item,
+                                                                 const std::string& subPath) const;
+
+    std::string mSubpath;
 
     Batcher<SLSEventBatchStatus> mBatcher;
     std::unique_ptr<EventGroupSerializer> mGroupSerializer;

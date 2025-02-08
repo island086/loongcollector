@@ -16,14 +16,14 @@
 
 #pragma once
 
-#include <json/json.h>
-
 #include <filesystem>
 #include <string>
 
+#include "json/json.h"
+
 namespace logtail {
 
-enum class ConfigType { Pipeline, Task };
+enum class ConfigType { Collection, Task };
 
 bool LoadConfigDetailFromFile(const std::filesystem::path& filepath, Json::Value& detail);
 bool ParseConfigDetail(const std::string& content,

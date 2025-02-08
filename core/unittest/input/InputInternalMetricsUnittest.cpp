@@ -12,18 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <json/json.h>
-
 #include <filesystem>
 #include <memory>
 #include <string>
 
+#include "json/json.h"
+
 #include "app_config/AppConfig.h"
+#include "collection_pipeline/CollectionPipeline.h"
+#include "collection_pipeline/CollectionPipelineContext.h"
+#include "collection_pipeline/plugin/PluginRegistry.h"
 #include "common/JsonUtil.h"
 #include "monitor/Monitor.h"
-#include "pipeline/Pipeline.h"
-#include "pipeline/PipelineContext.h"
-#include "pipeline/plugin/PluginRegistry.h"
 #include "plugin/input/InputInternalMetrics.h"
 #include "unittest/Unittest.h"
 
@@ -44,7 +44,7 @@ protected:
         PluginRegistry::GetInstance()->LoadPlugins();
     }
 
-    static void TearDownTestCase() { 
+    static void TearDownTestCase() {
         PluginRegistry::GetInstance()->UnloadPlugins();
         LoongCollectorMonitor::GetInstance()->Stop();
     }
@@ -57,8 +57,8 @@ protected:
     }
 
 private:
-    Pipeline p;
-    PipelineContext ctx;
+    CollectionPipeline p;
+    CollectionPipelineContext ctx;
 };
 
 void InputInternalMetricsUnittest::OnInit() {
@@ -166,8 +166,10 @@ void InputInternalMetricsUnittest::OnPipelineUpdate() {
     APSARA_TEST_EQUAL(SelfMonitorServer::GetInstance()->mSelfMonitorMetricRules->mPipelineMetricsRule.mInterval, 9);
     APSARA_TEST_EQUAL(SelfMonitorServer::GetInstance()->mSelfMonitorMetricRules->mPluginMetricsRule.mEnable, false);
     APSARA_TEST_EQUAL(SelfMonitorServer::GetInstance()->mSelfMonitorMetricRules->mPluginMetricsRule.mInterval, 11);
-    APSARA_TEST_EQUAL(SelfMonitorServer::GetInstance()->mSelfMonitorMetricRules->mPluginSourceMetricsRule.mEnable, false);
-    APSARA_TEST_EQUAL(SelfMonitorServer::GetInstance()->mSelfMonitorMetricRules->mPluginSourceMetricsRule.mInterval, 10);
+    APSARA_TEST_EQUAL(SelfMonitorServer::GetInstance()->mSelfMonitorMetricRules->mPluginSourceMetricsRule.mEnable,
+                      false);
+    APSARA_TEST_EQUAL(SelfMonitorServer::GetInstance()->mSelfMonitorMetricRules->mPluginSourceMetricsRule.mInterval,
+                      10);
     APSARA_TEST_EQUAL(SelfMonitorServer::GetInstance()->mSelfMonitorMetricRules->mRunnerMetricsRule.mEnable, true);
     APSARA_TEST_EQUAL(SelfMonitorServer::GetInstance()->mSelfMonitorMetricRules->mRunnerMetricsRule.mInterval, 8);
 

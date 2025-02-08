@@ -16,9 +16,9 @@
 
 #pragma once
 
-#include <re2/re2.h>
+#include "re2/re2.h"
 
-#include "pipeline/plugin/interface/Processor.h"
+#include "collection_pipeline/plugin/interface/Processor.h"
 
 namespace logtail {
 
