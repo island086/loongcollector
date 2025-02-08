@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1738982682909,
+  "lastUpdate": 1739002916492,
   "repoUrl": "https://github.com/alibaba/loongcollector",
   "entries": {
     "benchmark": [
@@ -959,6 +959,46 @@ window.BENCHMARK_DATA = {
           {
             "name": "Memory_Usage_Avg - performance_file_to_blackhole_ilogtail",
             "value": 41.872662168560616,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "alibaba",
+            "username": "alibaba"
+          },
+          "committer": {
+            "name": "alibaba",
+            "username": "alibaba"
+          },
+          "id": "3206a88bf57c557bceada274ca331cb8cb20b40e",
+          "message": "reject metric event with invalid timestamp for sls serializer && fix serialization error with empty event",
+          "timestamp": "2025-02-08T07:36:23Z",
+          "url": "https://github.com/alibaba/loongcollector/pull/2066/commits/3206a88bf57c557bceada274ca331cb8cb20b40e"
+        },
+        "date": 1739002915963,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CPU_Usage_Max - performance_file_to_blackhole_ilogtail",
+            "value": 41.00185876336291,
+            "unit": "%"
+          },
+          {
+            "name": "CPU_Usage_Avg - performance_file_to_blackhole_ilogtail",
+            "value": 36.643413857944125,
+            "unit": "%"
+          },
+          {
+            "name": "Memory_Usage_Max - performance_file_to_blackhole_ilogtail",
+            "value": 44.64453125,
+            "unit": "MB"
+          },
+          {
+            "name": "Memory_Usage_Avg - performance_file_to_blackhole_ilogtail",
+            "value": 39.88956766917296,
             "unit": "MB"
           }
         ]
