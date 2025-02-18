@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1739435638838,
+  "lastUpdate": 1739869198716,
   "repoUrl": "https://github.com/alibaba/loongcollector",
   "entries": {
     "benchmark": [
@@ -1079,6 +1079,46 @@ window.BENCHMARK_DATA = {
           {
             "name": "Memory_Usage_Avg - performance_file_to_blackhole_ilogtail",
             "value": 39.99645157442749,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "alibaba",
+            "username": "alibaba"
+          },
+          "committer": {
+            "name": "alibaba",
+            "username": "alibaba"
+          },
+          "id": "70066ff8447a13c673166d72813c1e45c3d8dcc7",
+          "message": "fix: collect files in PV when another container restart or stop",
+          "timestamp": "2025-02-17T06:51:14Z",
+          "url": "https://github.com/alibaba/loongcollector/pull/2010/commits/70066ff8447a13c673166d72813c1e45c3d8dcc7"
+        },
+        "date": 1739869197559,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CPU_Usage_Max - performance_file_to_blackhole_ilogtail",
+            "value": 43.6465939684777,
+            "unit": "%"
+          },
+          {
+            "name": "CPU_Usage_Avg - performance_file_to_blackhole_ilogtail",
+            "value": 38.765101678294755,
+            "unit": "%"
+          },
+          {
+            "name": "Memory_Usage_Max - performance_file_to_blackhole_ilogtail",
+            "value": 44.41796875,
+            "unit": "MB"
+          },
+          {
+            "name": "Memory_Usage_Avg - performance_file_to_blackhole_ilogtail",
+            "value": 39.91015625000002,
             "unit": "MB"
           }
         ]
