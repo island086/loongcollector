@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1739958671031,
+  "lastUpdate": 1740026343323,
   "repoUrl": "https://github.com/alibaba/loongcollector",
   "entries": {
     "benchmark": [
@@ -1159,6 +1159,46 @@ window.BENCHMARK_DATA = {
           {
             "name": "Memory_Usage_Avg - performance_file_to_blackhole_ilogtail",
             "value": 41.50102796052633,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "alibaba",
+            "username": "alibaba"
+          },
+          "committer": {
+            "name": "alibaba",
+            "username": "alibaba"
+          },
+          "id": "bc1d797f54dd964e825a8a90e5cc56d30c0d8870",
+          "message": "Fixed the issue in golang code where the logstoreconfig object would not be recycled by GC due to circular references.",
+          "timestamp": "2025-02-20T03:37:11Z",
+          "url": "https://github.com/alibaba/loongcollector/pull/2102/commits/bc1d797f54dd964e825a8a90e5cc56d30c0d8870"
+        },
+        "date": 1740026342903,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CPU_Usage_Max - performance_file_to_blackhole_ilogtail",
+            "value": 41.57137491502408,
+            "unit": "%"
+          },
+          {
+            "name": "CPU_Usage_Avg - performance_file_to_blackhole_ilogtail",
+            "value": 37.73279277186723,
+            "unit": "%"
+          },
+          {
+            "name": "Memory_Usage_Max - performance_file_to_blackhole_ilogtail",
+            "value": 46.6484375,
+            "unit": "MB"
+          },
+          {
+            "name": "Memory_Usage_Avg - performance_file_to_blackhole_ilogtail",
+            "value": 42.59897748161767,
             "unit": "MB"
           }
         ]
