@@ -26,7 +26,7 @@
 #include "pipeline/PipelineManager.h"
 #include "sender/Sender.h"
 
-DEFINE_FLAG_BOOL(enable_sls_metrics_format, "if enable format metrics in SLS metricstore log pattern", false);
+DEFINE_FLAG_BOOL(enable_sls_metrics_format, "if enable format metrics in SLS metricstore log pattern", true);
 DEFINE_FLAG_BOOL(enable_containerd_upper_dir_detect,
                  "if enable containerd upper dir detect when locating rootfs",
                  false);
