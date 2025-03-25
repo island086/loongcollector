@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1742546327501,
+  "lastUpdate": 1742894820829,
   "repoUrl": "https://github.com/alibaba/loongcollector",
   "entries": {
     "benchmark": [
@@ -1519,6 +1519,46 @@ window.BENCHMARK_DATA = {
           {
             "name": "Memory_Usage_Avg - performance_file_to_blackhole_ilogtail",
             "value": 43.77027107007576,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "alibaba",
+            "username": "alibaba"
+          },
+          "committer": {
+            "name": "alibaba",
+            "username": "alibaba"
+          },
+          "id": "4773d438ecfbcd8e5348e99ff8d7aa49fa1a6a2a",
+          "message": "fix deadlock in TimeoutFlush",
+          "timestamp": "2025-03-25T08:21:53Z",
+          "url": "https://github.com/alibaba/loongcollector/pull/2158/commits/4773d438ecfbcd8e5348e99ff8d7aa49fa1a6a2a"
+        },
+        "date": 1742894820248,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CPU_Usage_Max - performance_file_to_blackhole_ilogtail",
+            "value": 41.252268165553126,
+            "unit": "%"
+          },
+          {
+            "name": "CPU_Usage_Avg - performance_file_to_blackhole_ilogtail",
+            "value": 37.42367151373584,
+            "unit": "%"
+          },
+          {
+            "name": "Memory_Usage_Max - performance_file_to_blackhole_ilogtail",
+            "value": 49.4140625,
+            "unit": "MB"
+          },
+          {
+            "name": "Memory_Usage_Avg - performance_file_to_blackhole_ilogtail",
+            "value": 45.314619670542676,
             "unit": "MB"
           }
         ]
