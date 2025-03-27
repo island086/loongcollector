@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1742894820829,
+  "lastUpdate": 1743061520103,
   "repoUrl": "https://github.com/alibaba/loongcollector",
   "entries": {
     "benchmark": [
@@ -1559,6 +1559,46 @@ window.BENCHMARK_DATA = {
           {
             "name": "Memory_Usage_Avg - performance_file_to_blackhole_ilogtail",
             "value": 45.314619670542676,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "alibaba",
+            "username": "alibaba"
+          },
+          "committer": {
+            "name": "alibaba",
+            "username": "alibaba"
+          },
+          "id": "7a45e8425f59618b08ba7a914e8523e8e4135b0a",
+          "message": "Fixed the problem of pathjoin function splicing paths when basepath is the root directory.",
+          "timestamp": "2025-03-27T03:25:50Z",
+          "url": "https://github.com/alibaba/loongcollector/pull/2118/commits/7a45e8425f59618b08ba7a914e8523e8e4135b0a"
+        },
+        "date": 1743061519510,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CPU_Usage_Max - performance_file_to_blackhole_ilogtail",
+            "value": 41.42099341372303,
+            "unit": "%"
+          },
+          {
+            "name": "CPU_Usage_Avg - performance_file_to_blackhole_ilogtail",
+            "value": 38.42530008476426,
+            "unit": "%"
+          },
+          {
+            "name": "Memory_Usage_Max - performance_file_to_blackhole_ilogtail",
+            "value": 51.87109375,
+            "unit": "MB"
+          },
+          {
+            "name": "Memory_Usage_Avg - performance_file_to_blackhole_ilogtail",
+            "value": 47.841245229007654,
             "unit": "MB"
           }
         ]
