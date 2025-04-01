@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1743503509447,
+  "lastUpdate": 1743504565541,
   "repoUrl": "https://github.com/alibaba/loongcollector",
   "entries": {
     "benchmark": [
@@ -1639,6 +1639,46 @@ window.BENCHMARK_DATA = {
           {
             "name": "Memory_Usage_Avg - performance_file_to_blackhole_ilogtail",
             "value": 44.70917819656489,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "alibaba",
+            "username": "alibaba"
+          },
+          "committer": {
+            "name": "alibaba",
+            "username": "alibaba"
+          },
+          "id": "550c34591442855f283e64e1d8a3e09667a3a760",
+          "message": "Fixed the issue where the Crash Stace Trace of the C++ part was overwritten by the Golang stack when starting the Golang module.",
+          "timestamp": "2025-04-01T09:56:31Z",
+          "url": "https://github.com/alibaba/loongcollector/pull/2171/commits/550c34591442855f283e64e1d8a3e09667a3a760"
+        },
+        "date": 1743504564925,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CPU_Usage_Max - performance_file_to_blackhole_ilogtail",
+            "value": 42.486769948429725,
+            "unit": "%"
+          },
+          {
+            "name": "CPU_Usage_Avg - performance_file_to_blackhole_ilogtail",
+            "value": 37.815644365207575,
+            "unit": "%"
+          },
+          {
+            "name": "Memory_Usage_Max - performance_file_to_blackhole_ilogtail",
+            "value": 46.77734375,
+            "unit": "MB"
+          },
+          {
+            "name": "Memory_Usage_Avg - performance_file_to_blackhole_ilogtail",
+            "value": 42.61950775375944,
             "unit": "MB"
           }
         ]
