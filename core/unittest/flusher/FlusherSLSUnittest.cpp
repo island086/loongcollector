@@ -27,6 +27,8 @@
 #include "pipeline/PipelineContext.h"
 #include "sender/Sender.h"
 #include "unittest/Unittest.h"
+#include "log_pb/sls_logs.pb.h"
+
 
 using namespace std;
 
@@ -72,7 +74,7 @@ void FlusherSLSUnittest::OnSuccessfulInit() {
     APSARA_TEST_EQUAL("cn-hangzhou.log.aliyuncs.com", flusher->mEndpoint);
     APSARA_TEST_EQUAL("", flusher->mAliuid);
     APSARA_TEST_EQUAL(FlusherSLS::CompressType::LZ4, flusher->mCompressType);
-    APSARA_TEST_EQUAL(FlusherSLS::TelemetryType::LOG, flusher->mTelemetryType);
+    APSARA_TEST_EQUAL(sls_logs::SlsTelemetryType::SLS_TELEMETRY_TYPE_LOGS, flusher->mTelemetryType);
     APSARA_TEST_EQUAL(0, flusher->mFlowControlExpireTime);
     APSARA_TEST_EQUAL(-1, flusher->mMaxSendRate);
     APSARA_TEST_EQUAL(FlusherSLS::Batch::MergeType::TOPIC, flusher->mBatch.mMergeType);
@@ -113,7 +115,7 @@ void FlusherSLSUnittest::OnSuccessfulInit() {
     APSARA_TEST_EQUAL("", flusher->mAliuid);
 #endif
     APSARA_TEST_EQUAL(FlusherSLS::CompressType::ZSTD, flusher->mCompressType);
-    APSARA_TEST_EQUAL(FlusherSLS::TelemetryType::METRIC, flusher->mTelemetryType);
+    APSARA_TEST_EQUAL(sls_logs::SlsTelemetryType::SLS_TELEMETRY_TYPE_METRICS, flusher->mTelemetryType);
     APSARA_TEST_EQUAL(123456789, flusher->mFlowControlExpireTime);
     APSARA_TEST_EQUAL(5, flusher->mMaxSendRate);
     APSARA_TEST_EQUAL(FlusherSLS::Batch::MergeType::LOGSTORE, flusher->mBatch.mMergeType);
@@ -148,7 +150,7 @@ void FlusherSLSUnittest::OnSuccessfulInit() {
     APSARA_TEST_EQUAL(STRING_FLAG(default_region_name), flusher->mRegion);
     APSARA_TEST_EQUAL("", flusher->mAliuid);
     APSARA_TEST_EQUAL(FlusherSLS::CompressType::LZ4, flusher->mCompressType);
-    APSARA_TEST_EQUAL(FlusherSLS::TelemetryType::LOG, flusher->mTelemetryType);
+    APSARA_TEST_EQUAL(sls_logs::SlsTelemetryType::SLS_TELEMETRY_TYPE_LOGS, flusher->mTelemetryType);
     APSARA_TEST_EQUAL(0, flusher->mFlowControlExpireTime);
     APSARA_TEST_EQUAL(-1, flusher->mMaxSendRate);
     APSARA_TEST_EQUAL(FlusherSLS::Batch::MergeType::TOPIC, flusher->mBatch.mMergeType);
@@ -265,7 +267,7 @@ void FlusherSLSUnittest::OnSuccessfulInit() {
     flusher->SetContext(ctx);
     flusher->SetMetricsRecordRef(FlusherSLS::sName, "1");
     APSARA_TEST_TRUE(flusher->Init(configJson, optionalGoPipeline));
-    APSARA_TEST_EQUAL(FlusherSLS::TelemetryType::LOG, flusher->mTelemetryType);
+    APSARA_TEST_EQUAL(sls_logs::SlsTelemetryType::SLS_TELEMETRY_TYPE_LOGS, flusher->mTelemetryType);
 
     configStr = R"(
         {
@@ -282,7 +284,7 @@ void FlusherSLSUnittest::OnSuccessfulInit() {
     flusher->SetContext(ctx);
     flusher->SetMetricsRecordRef(FlusherSLS::sName, "1");
     APSARA_TEST_TRUE(flusher->Init(configJson, optionalGoPipeline));
-    APSARA_TEST_EQUAL(FlusherSLS::TelemetryType::LOG, flusher->mTelemetryType);
+    APSARA_TEST_EQUAL(sls_logs::SlsTelemetryType::SLS_TELEMETRY_TYPE_LOGS, flusher->mTelemetryType);
 
     // Batch.MergeType
     configStr = R"(
