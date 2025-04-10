@@ -17,8 +17,12 @@
 #include "plugin/processor/ProcessorParseJsonNative.h"
 
 #include "rapidjson/document.h"
+#if defined(__EXCLUDE_SSE4_2__)
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
+#else
+#include <plugin/processor/simdjson.h>
+#endif
 
 #include "collection_pipeline/plugin/instance/ProcessorInstance.h"
 #include "common/ParamExtractor.h"
@@ -27,6 +31,7 @@
 
 namespace logtail {
 
+#if defined(__EXCLUDE_SSE4_2__)
 static std::string RapidjsonValueToString(const rapidjson::Value& value) {
     if (value.IsString())
         return std::string(value.GetString(), value.GetStringLength());
@@ -52,6 +57,7 @@ static std::string RapidjsonValueToString(const rapidjson::Value& value) {
         return std::string(buffer.GetString(), buffer.GetLength());
     }
 }
+#endif
 
 const std::string ProcessorParseJsonNative::sName = "processor_parse_json_native";
 
@@ -74,6 +80,15 @@ bool ProcessorParseJsonNative::Init(const Json::Value& config) {
         return false;
     }
 
+#if !defined(__EXCLUDE_SSE4_2__)
+    auto my_implementation = simdjson::get_available_implementations()["westmere"];
+    if (! my_implementation) { exit(1); }
+    if (! my_implementation->supported_by_runtime_system()) { exit(1); }
+    simdjson::get_active_implementation() = my_implementation;
+
+    std::cout <<  "active : " << simdjson::get_active_implementation()->name() << std::endl;
+#endif
+
     mDiscardedEventsTotal = GetMetricsRecordRef().CreateCounter(METRIC_PLUGIN_DISCARDED_EVENTS_TOTAL);
     mOutFailedEventsTotal = GetMetricsRecordRef().CreateCounter(METRIC_PLUGIN_OUT_FAILED_EVENTS_TOTAL);
     mOutKeyNotFoundEventsTotal = GetMetricsRecordRef().CreateCounter(METRIC_PLUGIN_OUT_KEY_NOT_FOUND_EVENTS_TOTAL);
@@ -81,6 +96,8 @@ bool ProcessorParseJsonNative::Init(const Json::Value& config) {
 
     return true;
 }
+
+#if defined(__EXCLUDE_SSE4_2__)
 
 void ProcessorParseJsonNative::Process(PipelineEventGroup& logGroup) {
     if (logGroup.GetEvents().empty()) {
@@ -200,6 +217,199 @@ bool ProcessorParseJsonNative::JsonLogLineParser(LogEvent& sourceEvent,
     }
     return true;
 }
+#else
+
+
+void ProcessorParseJsonNative::Process(PipelineEventGroup& logGroup) {
+    if (logGroup.GetEvents().empty()) {
+        return;
+    }
+
+    const StringView& logPath = logGroup.GetMetadata(EventGroupMetaKey::LOG_FILE_PATH_RESOLVED);
+    EventsContainer& events = logGroup.MutableEvents();
+
+    size_t wIdx = 0;
+    for (size_t rIdx = 0; rIdx < events.size(); ++rIdx) {
+        if (ProcessEvent(logPath, events[rIdx], logGroup.GetAllMetadata())) {
+            if (wIdx != rIdx) {
+                events[wIdx] = std::move(events[rIdx]);
+            }
+            ++wIdx;
+        }
+    }
+    events.resize(wIdx);
+}
+
+bool ProcessorParseJsonNative::ProcessEvent(const StringView& logPath,
+                                            PipelineEventPtr& e,
+                                            const GroupMetadata& metadata) {
+    if (!IsSupportedEvent(e)) {
+        mOutFailedEventsTotal->Add(1);
+        return true;
+    }
+    auto& sourceEvent = e.Cast<LogEvent>();
+    if (!sourceEvent.HasContent(mSourceKey)) {
+        mOutKeyNotFoundEventsTotal->Add(1);
+        return true;
+    }
+
+    auto rawContent = sourceEvent.GetContent(mSourceKey);
+
+    bool sourceKeyOverwritten = false;
+    bool parseSuccess = JsonLogLineParser(sourceEvent, logPath, e, sourceKeyOverwritten);
+
+    if (!parseSuccess || !sourceKeyOverwritten) {
+        sourceEvent.DelContent(mSourceKey);
+    }
+    if (mCommonParserOptions.ShouldAddSourceContent(parseSuccess)) {
+        AddLog(mCommonParserOptions.mRenamedSourceKey, rawContent, sourceEvent, false);
+    }
+    if (mCommonParserOptions.ShouldAddLegacyUnmatchedRawLog(parseSuccess)) {
+        AddLog(mCommonParserOptions.legacyUnmatchedRawLogKey, rawContent, sourceEvent, false);
+    }
+    if (mCommonParserOptions.ShouldEraseEvent(parseSuccess, sourceEvent, metadata)) {
+        mDiscardedEventsTotal->Add(1);
+        return false;
+    }
+    mOutSuccessfulEventsTotal->Add(1);
+    return true;
+}
+
+bool ProcessorParseJsonNative::JsonLogLineParser(LogEvent& sourceEvent,
+                                                 const StringView& logPath,
+                                                 PipelineEventPtr& e,
+                                                 bool& sourceKeyOverwritten) {
+    StringView buffer = sourceEvent.GetContent(mSourceKey);
+
+    if (buffer.empty())
+        return false;
+
+    simdjson::ondemand::parser parser;
+
+    simdjson::padded_string bufStr(buffer.data(), buffer.size());
+
+    
+    simdjson::ondemand::document doc;
+    
+    //auto doc = parser.iterate(bufStr);
+
+    auto error = parser.iterate(bufStr).get(doc);
+
+    if (error) {
+        ADD_COUNTER(mOutFailedEventsTotal, 1);
+        return false;
+    }
+    simdjson::ondemand::object object;
+
+    try {
+        object = doc.get_object();
+    } catch (simdjson::simdjson_error &error) {
+            
+    std::cerr << "JSON error: " << error.what() << " near "
+              << doc.current_location() << std::endl;
+              ADD_COUNTER(mOutFailedEventsTotal, 1);
+              return false;
+              
+    }
+    bool parseSuccess = true;
+
+    for(auto field : object) {
+        try {
+        // parses and writes out the key, after unescaping it,
+        // to a string buffer. It causes a performance penalty.
+        std::string_view keyv = field.unescaped_key();
+        StringBuffer contentKeyBuffer = sourceEvent.GetSourceBuffer()->CopyString(keyv.data(), keyv.size());
+
+        simdjson::ondemand::value value = field.value();
+        std::string value_str;
+        {
+            // 将 value 转成字符串
+            switch (value.type()) {
+                case simdjson::fallback::ondemand::json_type::null: {
+                    value_str = "null";
+                    break;
+                }
+                case simdjson::fallback::ondemand::json_type::number: {
+                    simdjson::ondemand::number num = value.get_number();
+                    simdjson::ondemand::number_type t = num.get_number_type();
+                    switch(t) {
+                        case simdjson::ondemand::number_type::signed_integer:
+                            value_str = std::to_string(num.get_int64());
+
+                            break;
+                        case simdjson::ondemand::number_type::unsigned_integer:
+                            value_str = std::to_string(num.get_uint64());
+
+                            break;
+                        case simdjson::ondemand::number_type::floating_point_number:
+                            value_str = std::to_string(num.get_double());
+
+                            break;
+                        case simdjson::ondemand::number_type::big_integer:
+                            std::string_view tmp = value.get_string();
+                            value_str = {tmp.data(), tmp.size()};
+                            break;
+                    }
+                    break;
+                }
+                case simdjson::fallback::ondemand::json_type::string: {
+                    std::string_view tmp = value.get_string();
+                    value_str = {tmp.data(), tmp.size()};
+                    break;
+                }
+                case simdjson::fallback::ondemand::json_type::boolean: {
+                    value_str = value.get_bool() ? "true" : "false";
+                    break;
+                }
+                case simdjson::fallback::ondemand::json_type::object: {
+                    std::string_view tmp = simdjson::to_json_string(value);
+                    value_str = {tmp.data(), tmp.size()};
+                    break;
+                }
+                case simdjson::fallback::ondemand::json_type::array: {
+                    std::string_view tmp = simdjson::to_json_string(value);
+                    value_str = {tmp.data(), tmp.size()};
+                    break;
+                }
+                default: {
+                    value_str = "unknown type";
+                    break;
+                }
+            }
+        }
+
+        
+        StringBuffer contentValueBuffer = sourceEvent.GetSourceBuffer()->CopyString(value_str);
+
+        //std::string_view valuev = field.value().raw_json();
+        //StringBuffer contentValueBuffer = sourceEvent.GetSourceBuffer()->CopyString(valuev.data(), valuev.size());   
+
+        if (keyv == mSourceKey) {
+            sourceKeyOverwritten = true;
+        }
+
+        AddLog(StringView(contentKeyBuffer.data, contentKeyBuffer.size),
+               StringView(contentValueBuffer.data, contentValueBuffer.size),
+               sourceEvent);
+        } catch (simdjson::simdjson_error &error) {
+            
+    std::cerr << "JSON error: " << error.what() << " near "
+              << doc.current_location() << std::endl;
+              parseSuccess = false;
+              
+        }
+
+    }
+    if (!parseSuccess) {
+        ADD_COUNTER(mOutFailedEventsTotal, 1);
+              return false;
+    }
+    
+    return true;
+}
+#endif
+
+
 
 void ProcessorParseJsonNative::AddLog(const StringView& key,
                                       const StringView& value,

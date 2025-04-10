@@ -57,6 +57,9 @@ endif ()
 
 if (NOT WITHSPL)
     add_definitions(-D__EXCLUDE_SPL__)
+    add_definitions(-D__EXCLUDE_SSE4_2__)
+else ()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse4.2")
 endif()
 
 add_definitions(-DXXH_DISPATCH_AVX2=0)
