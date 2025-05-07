@@ -213,6 +213,7 @@ private:
 
 #ifdef APSARA_UNIT_TEST_MAIN
     friend class SpanEventUnittest;
+    friend class LogGroupArrowUnittest;
 #endif
 };
 

@@ -18,5 +18,9 @@ project(log_pb_unittest)
 add_executable(log_group_serializer_unittest LogGroupSerializerUnittest.cpp)
 target_link_libraries(log_group_serializer_unittest ${UT_BASE_TARGET})
 
+add_executable(log_group_arrow_unittest LogGroupArrowUnittest.cpp)
+target_link_libraries(log_group_arrow_unittest ${UT_BASE_TARGET})
+
 include(GoogleTest)
 gtest_discover_tests(log_group_serializer_unittest)
+gtest_discover_tests(log_group_arrow_unittest)
