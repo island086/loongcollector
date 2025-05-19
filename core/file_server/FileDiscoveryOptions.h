@@ -26,6 +26,7 @@
 #include "json/json.h"
 
 #include "collection_pipeline/CollectionPipelineContext.h"
+#include "container_manager/ContainerDiscoveryOptions.h"
 #include "file_server/ContainerInfo.h"
 
 namespace logtail {
@@ -46,6 +47,10 @@ public:
     bool IsContainerDiscoveryEnabled() const { return mEnableContainerDiscovery; }
     void SetEnableContainerDiscoveryFlag(bool flag) { mEnableContainerDiscovery = true; }
     const std::shared_ptr<std::vector<ContainerInfo>>& GetContainerInfo() const { return mContainerInfos; }
+
+    void SetContainerDiscoveryOptions(ContainerDiscoveryOptions option) {mContainerDiscovery = std::move(option);}
+    ContainerDiscoveryOptions GetContainerDiscoveryOptions() const { return mContainerDiscovery; }
+
     void SetContainerInfo(const std::shared_ptr<std::vector<ContainerInfo>>& info) { mContainerInfos = info; }
     void SetDeduceAndSetContainerBaseDirFunc(bool (*f)(ContainerInfo&,
                                                        const CollectionPipelineContext*,
@@ -111,6 +116,7 @@ private:
 
     bool mEnableContainerDiscovery = false;
     std::shared_ptr<std::vector<ContainerInfo>> mContainerInfos; // must not be null if container discovery is enabled
+    ContainerDiscoveryOptions mContainerDiscovery;
     bool (*mDeduceAndSetContainerBaseDirFunc)(ContainerInfo& containerInfo,
                                               const CollectionPipelineContext*,
                                               const FileDiscoveryOptions*)

@@ -25,6 +25,7 @@
 #include "collection_pipeline/CollectionPipelineContext.h"
 #include "collection_pipeline/plugin/instance/PluginInstance.h"
 #include "file_server/FileDiscoveryOptions.h"
+#include <boost/regex.hpp>
 
 namespace logtail {
 
@@ -40,6 +41,21 @@ struct ContainerFilters {
     std::unordered_map<std::string, std::string> mExcludeContainerLabel;
 
     bool Init(const Json::Value& config, const CollectionPipelineContext& ctx, const std::string& pluginType);
+};
+
+struct K8SFilter {
+    // 正则表达式的智能指针
+    boost::regex mNamespaceReg;
+    boost::regex mPodReg;
+    boost::regex mContainerReg;
+
+    // 包含和排除的标签
+    std::unordered_map<std::string, std::string> mIncludeLabels;
+    std::unordered_map<std::string, std::string> mExcludeLabels;
+
+    // 包含与排除标签的正则表达式
+    std::unordered_map<std::string, boost::regex> mIncludeLabelRegs;
+    std::unordered_map<std::string, boost::regex> mExcludeLabelRegs;
 };
 
 struct ContainerDiscoveryOptions {

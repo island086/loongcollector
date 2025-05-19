@@ -16,6 +16,8 @@ package pluginmanager
 
 import (
 	"context"
+	"encoding/json"
+	"path/filepath"
 	"time"
 
 	"github.com/alibaba/ilogtail/pkg/helper"
@@ -32,6 +34,75 @@ var k8sLabelSet map[string]struct{}
 
 var cachedFullList map[string]struct{}
 var lastFetchAllTime time.Time
+
+type Mount struct {
+	Source      string
+	Destination string
+}
+
+type DockerFileUpdateCmd struct {
+	ID        string
+	Tags      []string // 用户自定义Tag
+	MetaDatas []string // 容器信息
+	Mounts    []Mount  // 容器挂载路径
+	UpperDir  string   // 容器默认路径
+	LogPath   string   // 标准输出路径
+}
+
+type DockerFileUpdateCmdAll struct {
+	AllCmd []DockerFileUpdateCmd
+}
+
+func convertDockerInfos(info *helper.DockerInfoDetail, allCmd *DockerFileUpdateCmdAll) {
+	var cmd DockerFileUpdateCmd
+	cmd.ID = info.ContainerInfo.ID
+
+	cmd.UpperDir = filepath.Clean(info.DefaultRootPath)
+	cmd.LogPath = filepath.Clean(info.StdoutPath)
+	// tags
+	/*
+		tags := info.GetExternalTags(idf.ExternalEnvTag, idf.ExternalK8sLabelTag)
+		cmd.Tags = make([]string, 0, len(tags)*2)
+		for key, val := range tags {
+			cmd.Tags = append(cmd.Tags, key)
+			cmd.Tags = append(cmd.Tags, val)
+		}
+	*/
+	// info.ContainerNameTag
+	cmd.MetaDatas = make([]string, 0, len(info.ContainerNameTag)*2)
+	for key, val := range info.ContainerNameTag {
+		cmd.MetaDatas = append(cmd.MetaDatas, key)
+		cmd.MetaDatas = append(cmd.MetaDatas, val)
+	}
+	cmd.Mounts = make([]Mount, 0, len(info.ContainerInfo.Mounts))
+	for _, mount := range info.ContainerInfo.Mounts {
+		cmd.Mounts = append(cmd.Mounts, Mount{
+			Source:      filepath.Clean(mount.Source),
+			Destination: filepath.Clean(mount.Destination),
+		})
+	}
+	if allCmd != nil {
+		allCmd.AllCmd = append(allCmd.AllCmd, cmd)
+	}
+}
+
+/*
+func GetAllContainers() []ContainerInfo {}
+func GetDiffContainers() (add []ContainerInfo,update []ContainerInfo, delete []string, stop []string) {}
+*/
+
+func GetAllContainers() string {
+	allCmd := new(DockerFileUpdateCmdAll)
+	infos := helper.GetAllContainerToRecord(envSet, containerLabelSet, k8sLabelSet, make(map[string]struct{}))
+	for _, info := range infos {
+		convertDockerInfos(info.Detail, allCmd)
+	}
+	cmdBuf, _ := json.Marshal(allCmd)
+	return string(cmdBuf)
+}
+func GetDiffContainers() (add string, update string, delete string, stop string) {
+	return "", "", "", ""
+}
 
 func CollectContainers(logGroup *protocol.LogGroup) {
 	if isCollectContainers() {

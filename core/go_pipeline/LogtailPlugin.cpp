@@ -434,10 +434,16 @@ bool LogtailPlugin::LoadPluginBase() {
             LOG_ERROR(sLogger, ("load Start error, Message", error));
             return mPluginValid;
         }
-        // C++获取容器信息的
+        // C++获取单个容器信息的
         mGetContainerMetaFun = (GetContainerMetaFun)loader.LoadMethod("GetContainerMeta", error);
         if (!error.empty()) {
             LOG_ERROR(sLogger, ("load GetContainerMeta error, Message", error));
+            return mPluginValid;
+        }
+        // C++获取全量容器信息的
+        mGetAllContainerMetaFun = (GetAllContainerMetaFun)loader.LoadMethod("GetAllContainers", error);
+        if (!error.empty()) {
+            LOG_ERROR(sLogger, ("load GetAllContainerMetaFun error, Message", error));
             return mPluginValid;
         }
         // C++传递单条数据到golang插件
@@ -579,6 +585,16 @@ void LogtailPlugin::GetGoMetrics(std::vector<std::map<std::string, std::string>>
             free(metrics);
         }
     }
+}
+
+std::string LogtailPlugin::GetAllContainersMeta() {
+    if (mPluginValid && mGetAllContainerMetaFun != nullptr) {
+        char* res = mGetAllContainerMetaFun();
+        std::string cppString(res);
+        free(res);
+        return cppString;
+    }
+    return "";
 }
 
 K8sContainerMeta LogtailPlugin::GetContainerMeta(const string& containerID) {

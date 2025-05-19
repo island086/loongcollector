@@ -81,13 +81,16 @@ bool InputFile::Init(const Json::Value& config, Json::Value& optionalGoPipeline)
                               mContext->GetRegion());
     }
     if (mEnableContainerDiscovery) {
-        if (!mContainerDiscovery.Init(config, *mContext, sName)) {
+        ContainerDiscoveryOptions containerDiscovery;
+        if (!containerDiscovery.Init(config, *mContext, sName)) {
             return false;
         }
         mFileDiscovery.SetEnableContainerDiscoveryFlag(true);
         mFileDiscovery.SetDeduceAndSetContainerBaseDirFunc(DeduceAndSetContainerBaseDir);
-        mContainerDiscovery.GenerateContainerMetaFetchingGoPipeline(
-            optionalGoPipeline, &mFileDiscovery, mContext->GetPipeline().GenNextPluginMeta(false));
+        mFileDiscovery.SetContainerDiscoveryOptions(containerDiscovery);
+
+        //mContainerDiscovery.GenerateContainerMetaFetchingGoPipeline(
+        //    optionalGoPipeline, &mFileDiscovery, mContext->GetPipeline().GenNextPluginMeta(false));
     }
 
     if (!mFileReader.Init(config, *mContext, sName)) {

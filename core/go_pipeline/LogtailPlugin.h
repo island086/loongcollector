@@ -144,6 +144,7 @@ typedef GoInt (*InitPluginBaseV2Fun)(GoString cfg);
 typedef GoInt (*ProcessLogsFun)(GoString c, GoSlice l, GoString p, GoString t, GoSlice tags);
 typedef GoInt (*ProcessLogGroupFun)(GoString c, GoSlice l, GoString p);
 typedef struct innerContainerMeta* (*GetContainerMetaFun)(GoString containerID);
+typedef char*(*GetAllContainerMetaFun)()  ;
 typedef InnerPluginMetrics* (*GetGoMetricsFun)(GoString metricType);
 
 // Methods export by adapter.
@@ -256,6 +257,8 @@ public:
 
     K8sContainerMeta GetContainerMeta(const std::string& containerID);
 
+    std::string GetAllContainersMeta();
+
     void GetGoMetrics(std::vector<std::map<std::string, std::string>>& metircsList, const std::string& metricType);
 
 private:
@@ -275,6 +278,7 @@ private:
     ProcessLogsFun mProcessLogsFun;
     ProcessLogGroupFun mProcessLogGroupFun;
     GetContainerMetaFun mGetContainerMetaFun;
+    GetAllContainerMetaFun mGetAllContainerMetaFun;
     GetGoMetricsFun mGetGoMetricsFun;
 
     // Configuration for plugin system in JSON format.

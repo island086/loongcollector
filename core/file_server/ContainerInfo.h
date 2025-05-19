@@ -36,6 +36,15 @@ struct Mount {
     Mount() = default;
 };
 
+struct K8sInfo {
+    // 成员变量
+    std::string mNamespace;
+    std::string mPod;
+    std::string mContainerName;
+    std::unordered_map<std::string, std::string> mLabels;
+    bool mPausedContainer;
+};
+
 struct ContainerInfo {
     std::string mID; // id of this container
     // container path for this config's path. eg, config path '/home/admin', container path
