@@ -45,6 +45,13 @@ struct K8sInfo {
     bool mPausedContainer;
 };
 
+struct RawContainerInfo {
+    K8sInfo mK8sInfo;
+    std::vector<Mount> mMounts;
+    std::unordered_map<std::string, std::string> mEnv;
+    std::unordered_map<std::string, std::string> mContainerLabels;
+};
+
 struct ContainerInfo {
     std::string mID; // id of this container
     // container path for this config's path. eg, config path '/home/admin', container path
