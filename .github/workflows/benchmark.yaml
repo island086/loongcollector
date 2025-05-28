@@ -18,6 +18,7 @@ on:
   push:
     branches:
       - main
+      - "3.0"
     paths-ignore:
       - 'docs/**'
       - 'example_config/**'
