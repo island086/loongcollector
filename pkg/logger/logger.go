@@ -101,7 +101,6 @@ var (
 func Init() {
 	once.Do(func() {
 		initNormalLogger()
-		catchStandardOutput()
 	})
 }
 
@@ -326,7 +325,6 @@ func generateDefaultConfig() string {
 
 // Close the logger and recover the stdout and stderr
 func Close() {
-	CloseCatchStdout()
 	logtailLogger.Close()
 }
 
