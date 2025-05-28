@@ -209,7 +209,11 @@ func (m *metaCollector) processPersistentVolumeEntity(data *k8smeta.ObjectWrappe
 		log.Contents.Add("status", string(obj.Status.Phase))
 		log.Contents.Add("storage_class_name", obj.Spec.StorageClassName)
 		log.Contents.Add("persistent_volume_reclaim_policy", string(obj.Spec.PersistentVolumeReclaimPolicy))
-		log.Contents.Add("volume_mode", string(*obj.Spec.VolumeMode))
+		if obj.Spec.VolumeMode != nil {
+			log.Contents.Add("volume_mode", string(*obj.Spec.VolumeMode))
+		} else {
+			log.Contents.Add("volume_mode", "")
+		}
 		log.Contents.Add("capacity", obj.Spec.Capacity.Storage().String())
 		log.Contents.Add("fsType", obj.Spec.CSI.FSType)
 		return []models.PipelineEvent{log}
@@ -231,7 +235,11 @@ func (m *metaCollector) processPersistentVolumeClaimEntity(data *k8smeta.ObjectW
 		log.Contents.Add("annotations", m.processEntityJSONObject(obj.Annotations))
 		log.Contents.Add("status", string(obj.Status.Phase))
 		log.Contents.Add("storeage_requests", obj.Spec.Resources.Requests.Storage().String())
-		log.Contents.Add("storage_class_name", obj.Spec.StorageClassName)
+		if obj.Spec.StorageClassName != nil {
+			log.Contents.Add("storage_class_name", *obj.Spec.StorageClassName)
+		} else {
+			log.Contents.Add("storage_class_name", "")
+		}
 		log.Contents.Add("volume_name", obj.Spec.VolumeName)
 		return []models.PipelineEvent{log}
 	}
