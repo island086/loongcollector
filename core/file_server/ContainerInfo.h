@@ -45,12 +45,6 @@ struct K8sInfo {
     bool mPausedContainer;
 };
 
-struct RawContainerInfo {
-    K8sInfo mK8sInfo;
-    std::vector<Mount> mMounts;
-    std::unordered_map<std::string, std::string> mEnv;
-    std::unordered_map<std::string, std::string> mContainerLabels;
-};
 
 struct ContainerInfo {
     std::string mID; // id of this container
@@ -66,8 +60,16 @@ struct ContainerInfo {
     Json::Value mJson; // this obj's json, for saving to local file
     bool mStopped = false; // whether this container is stopped
 
-    static bool ParseByJSONObj(const Json::Value&, ContainerInfo&, std::string&);
-    static bool ParseAllByJSONObj(const Json::Value&, std::unordered_map<std::string, ContainerInfo>&, std::string&);
+
+    K8sInfo mK8sInfo;
+    std::unordered_map<std::string, std::string> mEnv;
+    std::unordered_map<std::string, std::string> mContainerLabels;
+
+    bool ParseAllByJSONObj(const Json::Value& paramsAll,
+                                      std::unordered_map<std::string, ContainerInfo>& containerInfoMap,
+                                      std::string& errorMsg);
+    bool ParseByJSONObj(const Json::Value& params, ContainerInfo& containerInfo, std::string& errorMsg);
+    void AddMetadata(const std::string& key, const std::string& value);
 
     bool operator==(const ContainerInfo& rhs) const {
         if (mID != rhs.mID) {
@@ -115,8 +117,6 @@ struct ContainerInfo {
         return true;
     }
     bool operator!=(const ContainerInfo& rhs) const { return !(*this == rhs); }
-
-    void AddMetadata(const std::string& key, const std::string& value);
 
 private:
 };

@@ -21,6 +21,10 @@
 #include <vector>
 #include "file_server/ContainerInfo.h"
 #include "container_manager/ContainerDiscoveryOptions.h"
+#include "file_server/FileDiscoveryOptions.h"
+#include "common/Thread.h"
+
+
 
 
 
@@ -28,17 +32,22 @@ namespace logtail {
 
 class ContainerManager {
 public:
+    ContainerManager();
+    ~ContainerManager();
+    void Run();
+    void CheckContainerUpdate();
+    void CheckConfigContainerUpdate(const FileDiscoveryOptions* options);
     void UpdateAllContainers();
     void GetAllAcceptedInfoV2(
-        std::unordered_map<std::string, bool>& fullList,
-        std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>>& matchList,
-        const std::unordered_map<std::string, std::string>& includeLabel,
+        std::set<std::string>& fullList,
+        std::unordered_map<std::string, std::shared_ptr<ContainerInfo>>& matchList,
         const ContainerFilters& filters);
 
 private:
-    std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>> mContainerMap;
+    std::unordered_map<std::string, std::shared_ptr<ContainerInfo>> mContainerMap;
+    std::mutex mContainerMapMutex;
     uint32_t mLastUpdateTime = 0;
-
+    ThreadPtr mThread;
 };
 
 }

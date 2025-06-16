@@ -53,7 +53,7 @@ type DockerFileUpdateCmdAll struct {
 	AllCmd []DockerFileUpdateCmd
 }
 
-func convertDockerInfos(info *helper.DockerInfoDetail, allCmd *DockerFileUpdateCmdAll) {
+func convertDockerInfos(info *containercenter.DockerInfoDetail, allCmd *DockerFileUpdateCmdAll) {
 	var cmd DockerFileUpdateCmd
 	cmd.ID = info.ContainerInfo.ID
 
@@ -93,7 +93,7 @@ func GetDiffContainers() (add []ContainerInfo,update []ContainerInfo, delete []s
 
 func GetAllContainers() string {
 	allCmd := new(DockerFileUpdateCmdAll)
-	infos := helper.GetAllContainerToRecord(envSet, containerLabelSet, k8sLabelSet, make(map[string]struct{}))
+	infos := containercenter.GetAllContainerToRecord(envSet, containerLabelSet, k8sLabelSet, make(map[string]struct{}))
 	for _, info := range infos {
 		convertDockerInfos(info.Detail, allCmd)
 	}

@@ -48,6 +48,8 @@ public:
     void SetEnableContainerDiscoveryFlag(bool flag) { mEnableContainerDiscovery = true; }
     const std::shared_ptr<std::vector<ContainerInfo>>& GetContainerInfo() const { return mContainerInfos; }
 
+    const std::shared_ptr<std::set<std::string>>& GetFullContainerList() const {return mFullContainerList;}
+
     void SetContainerDiscoveryOptions(ContainerDiscoveryOptions option) {mContainerDiscovery = std::move(option);}
     ContainerDiscoveryOptions GetContainerDiscoveryOptions() const { return mContainerDiscovery; }
 
@@ -115,6 +117,8 @@ private:
     std::vector<std::string> mFileNameBlacklist;
 
     bool mEnableContainerDiscovery = false;
+
+    std::shared_ptr<std::set<std::string>> mFullContainerList;
     std::shared_ptr<std::vector<ContainerInfo>> mContainerInfos; // must not be null if container discovery is enabled
     ContainerDiscoveryOptions mContainerDiscovery;
     bool (*mDeduceAndSetContainerBaseDirFunc)(ContainerInfo& containerInfo,
