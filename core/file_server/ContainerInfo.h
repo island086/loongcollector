@@ -65,10 +65,10 @@ struct ContainerInfo {
     std::unordered_map<std::string, std::string> mEnv;
     std::unordered_map<std::string, std::string> mContainerLabels;
 
-    bool ParseAllByJSONObj(const Json::Value& paramsAll,
+    static bool ParseAllByJSONObj(const Json::Value& paramsAll,
                                       std::unordered_map<std::string, ContainerInfo>& containerInfoMap,
                                       std::string& errorMsg);
-    bool ParseByJSONObj(const Json::Value& params, ContainerInfo& containerInfo, std::string& errorMsg);
+    static bool ParseByJSONObj(const Json::Value& params, ContainerInfo& containerInfo, std::string& errorMsg);
     void AddMetadata(const std::string& key, const std::string& value);
 
     bool operator==(const ContainerInfo& rhs) const {

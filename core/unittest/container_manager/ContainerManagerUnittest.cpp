@@ -36,7 +36,75 @@ private:
 };
 
 void ContainerManagerUnittest::TestGetAllAcceptedInfoV2() const {
+    ContainerManager containerManager;
     
+    std::set<std::string> fullList;
+    std::unordered_map<std::string, std::shared_ptr<ContainerInfo>> matchList;
+    {
+        // test empty filter
+        ContainerFilters filters;
+        containerManager.GetAllAcceptedInfoV2(fullList, matchList, filters);
+        EXPECT_EQ(fullList.size(), 0);
+        EXPECT_EQ(matchList.size(), 0);
+    }
+
+    {
+        // test env filter
+        ContainerFilters filters;
+        ContainerInfo containerInfo1;
+        containerInfo1.mID = "123";
+        containerInfo1.mRealBaseDir = "/var/lib/docker/containers/123";
+        containerInfo1.mLogPath = "/var/lib/docker/containers/123/logs";
+        containerInfo1.mEnv["test"] = "test";
+        containerManager.mContainerMap["123"] = std::make_shared<ContainerInfo>(containerInfo1);
+
+        ContainerInfo containerInfo2;
+        containerInfo2.mID = "1234";
+        containerInfo2.mRealBaseDir = "/var/lib/docker/containers/1234";
+        containerInfo2.mLogPath = "/var/lib/docker/containers/1234/logs";
+        containerInfo2.mEnv["test"] = "test2";
+        containerManager.mContainerMap["1234"] = std::make_shared<ContainerInfo>(containerInfo2);
+
+        matchList.clear();
+        fullList.clear();
+        filters.mEnvFilter.mIncludeFields.mFieldsMap["test"] = "test";
+        containerManager.GetAllAcceptedInfoV2(fullList, matchList, filters);
+        EXPECT_EQ(fullList.size(), 2);
+        EXPECT_EQ(matchList.size(), 1);
+        EXPECT_EQ(matchList.find("123") != matchList.end(), true);
+    }   
+
+    {
+        // test k8s filter
+        ContainerFilters filters;
+        ContainerInfo containerInfo1;
+        containerInfo1.mID = "123";
+        containerInfo1.mRealBaseDir = "/var/lib/docker/containers/123";
+        containerInfo1.mLogPath = "/var/lib/docker/containers/123/logs";
+        containerInfo1.mK8sInfo.mPod = "pod1";
+        containerInfo1.mK8sInfo.mNamespace = "namespace1";
+        containerInfo1.mK8sInfo.mContainerName = "container1";
+        containerManager.mContainerMap["123"] = std::make_shared<ContainerInfo>(containerInfo1);
+
+        ContainerInfo containerInfo2;
+        containerInfo2.mID = "1234";
+        containerInfo2.mRealBaseDir = "/var/lib/docker/containers/1234";
+        containerInfo2.mLogPath = "/var/lib/docker/containers/1234/logs";
+        containerInfo2.mK8sInfo.mPod = "pod2";
+        containerInfo2.mK8sInfo.mNamespace = "namespace2";
+        containerInfo2.mK8sInfo.mContainerName = "container2";
+        containerManager.mContainerMap["1234"] = std::make_shared<ContainerInfo>(containerInfo2);
+
+        matchList.clear();
+        fullList.clear();
+        filters.mK8SFilter.mPodReg = std::make_shared<boost::regex>("pod1");
+        filters.mK8SFilter.mNamespaceReg = std::make_shared<boost::regex>("namespace1");
+        filters.mK8SFilter.mContainerReg = std::make_shared<boost::regex>("container1");
+        containerManager.GetAllAcceptedInfoV2(fullList, matchList, filters);
+        EXPECT_EQ(fullList.size(), 2);
+        EXPECT_EQ(matchList.size(), 1);
+        EXPECT_EQ(matchList.find("123") != matchList.end(), true);
+    }
 }
 
 UNIT_TEST_CASE(ContainerManagerUnittest, TestGetAllAcceptedInfoV2)

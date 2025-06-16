@@ -48,6 +48,8 @@ private:
     std::mutex mContainerMapMutex;
     uint32_t mLastUpdateTime = 0;
     ThreadPtr mThread;
+
+    friend class ContainerManagerUnittest;
 };
 
 }

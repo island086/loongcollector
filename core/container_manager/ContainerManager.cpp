@@ -12,8 +12,8 @@
 namespace logtail {
 
     ContainerManager::ContainerManager() {
-        LOG_INFO(sLogger, ("ContainerManager", "init"));
-        mThread = CreateThread([this]() { Run(); });
+        //LOG_INFO(sLogger, ("ContainerManager", "init"));
+        //mThread = CreateThread([this]() { Run(); });
     }
     ContainerManager::~ContainerManager() = default;
 
