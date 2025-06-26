@@ -538,7 +538,9 @@ func (dc *ContainerCenter) getImageName(id, defaultVal string) string {
 		return imageName
 	}
 
-	image, _, err := dc.client.ImageInspectWithRaw(context.Background(), id)
+	ctx, cancel := getContextWithTimeout(defaultContextTimeout)
+	defer cancel()
+	image, _, err := dc.client.ImageInspectWithRaw(ctx, id)
 	logger.Debug(context.Background(), "get image name, id", id, "error", err)
 	if err == nil && len(image.RepoTags) > 0 {
 		dc.imageLock.Lock()
@@ -1056,7 +1058,9 @@ func (dc *ContainerCenter) updateContainer(id string, container *DockerInfoDetai
 func (dc *ContainerCenter) fetchAll() error {
 	dc.containerStateLock.Lock()
 	defer dc.containerStateLock.Unlock()
-	containers, err := dc.client.ContainerList(context.Background(), types.ContainerListOptions{All: true})
+	ctx, cancel := getContextWithTimeout(defaultContextTimeout)
+	defer cancel()
+	containers, err := dc.client.ContainerList(ctx, types.ContainerListOptions{All: true})
 	if err != nil {
 		dc.setLastError(err, "list container error")
 		return err
@@ -1067,7 +1071,9 @@ func (dc *ContainerCenter) fetchAll() error {
 	for _, container := range containers {
 		var containerDetail types.ContainerJSON
 		for idx := 0; idx < 3; idx++ {
-			if containerDetail, err = dc.client.ContainerInspect(context.Background(), container.ID); err == nil {
+			ctx, cancel := getContextWithTimeout(defaultContextTimeout)
+			defer cancel()
+			if containerDetail, err = dc.client.ContainerInspect(ctx, container.ID); err == nil {
 				break
 			}
 			time.Sleep(time.Second * 5)
@@ -1088,7 +1094,9 @@ func (dc *ContainerCenter) fetchAll() error {
 func (dc *ContainerCenter) fetchOne(containerID string, tryFindSandbox bool) error {
 	dc.containerStateLock.Lock()
 	defer dc.containerStateLock.Unlock()
-	containerDetail, err := dc.client.ContainerInspect(context.Background(), containerID)
+	ctx, cancel := getContextWithTimeout(defaultContextTimeout)
+	defer cancel()
+	containerDetail, err := dc.client.ContainerInspect(ctx, containerID)
 	if err != nil {
 		dc.setLastError(err, "inspect container error "+containerID)
 		return err
@@ -1103,7 +1111,9 @@ func (dc *ContainerCenter) fetchOne(containerID string, tryFindSandbox bool) err
 	logger.Debug(context.Background(), "update container", containerID, "detail", containerDetail)
 	if tryFindSandbox && containerDetail.Config != nil {
 		if id := containerDetail.Config.Labels["io.kubernetes.sandbox.id"]; id != "" {
-			containerDetail, err = dc.client.ContainerInspect(context.Background(), id)
+			ctx, cancel := getContextWithTimeout(defaultContextTimeout)
+			defer cancel()
+			containerDetail, err = dc.client.ContainerInspect(ctx, id)
 			if err != nil {
 				dc.setLastError(err, "inspect sandbox container error "+id)
 			} else {
