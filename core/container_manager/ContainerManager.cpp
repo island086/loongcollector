@@ -1,4 +1,5 @@
 #include "container_manager/ContainerManager.h"
+#include <ctime>
 #include "file_server/FileServer.h"
 #include <boost/regex.hpp>
 #include "go_pipeline/LogtailPlugin.h"
@@ -11,19 +12,79 @@
 
 namespace logtail {
 
-    ContainerManager::ContainerManager() {
-        //LOG_INFO(sLogger, ("ContainerManager", "init"));
-        //mThread = CreateThread([this]() { Run(); });
-    }
+    ContainerManager::ContainerManager() = default;
+    
     ContainerManager::~ContainerManager() = default;
+
+    void ContainerManager::Init() {
+        LOG_INFO(sLogger, ("ContainerManager", "init"));
+        mThread = CreateThread([this]() { Run(); });
+    }
 
 
     void ContainerManager::Run() {
+        time_t lastUpdateAllTime = 0;
+        time_t lastUpdateDiffTime = 0;
         while (true) {
-            UpdateAllContainers();
-            std::this_thread::sleep_for(std::chrono::seconds(10));
+            time_t now = time(nullptr);
+            if (now - lastUpdateAllTime >= 100) {
+                UpdateAllContainers();
+                lastUpdateAllTime = now;
+            } else if (now - lastUpdateDiffTime >= 10) {
+                UpdateDiffContainers();
+                lastUpdateDiffTime = now;
+            } 
+            std::this_thread::sleep_for(std::chrono::seconds(1));
         }
     }
+
+    bool ContainerManager::IsUpdateContainerPaths() {
+        return mLastUpdateTime != time(nullptr);
+    }
+
+    void ContainerManager::UpdateDiffContainers() {
+        std::string diffContainersMeta = LogtailPlugin::GetInstance()->GetDiffContainersMeta();
+        Json::Value jsonParams;
+        std::string errorMsg;
+        if (!ParseJsonTable(diffContainersMeta, jsonParams, errorMsg)) {
+            LOG_ERROR(sLogger, ("invalid docker container params", diffContainersMeta)("errorMsg", errorMsg));
+            return;
+        }
+        Json::Value diffContainers = jsonParams["DiffCmd"];
+        Json::Value updateContainers = diffContainers["Update"];
+        Json::Value deleteContainers = diffContainers["Delete"];
+        Json::Value stopContainers = diffContainers["Stop"];
+
+        for (const auto& container : updateContainers) {
+            std::string containerId = container["ID"].asString();
+            std::string containerUpperDir = container["UpperDir"].asString();
+            std::string containerLogPath = container["LogPath"].asString();
+
+            std::shared_ptr<RawContainerInfo> containerInfo = std::make_shared<RawContainerInfo>();
+            containerInfo->mID = containerId;
+            containerInfo->mUpperDir = containerUpperDir;
+            containerInfo->mLogPath = containerLogPath;
+
+            mContainerMapMutex.lock();
+            mContainerMap[containerId] = containerInfo;
+            mContainerMapMutex.unlock();
+        }
+
+
+        for (const auto& container : deleteContainers) {
+            std::string containerId = container.asString();
+            mContainerMapMutex.lock();
+            mContainerMap.erase(containerId);
+            mContainerMapMutex.unlock();
+        }
+        for (const auto& container : stopContainers) {
+            std::string containerId = container.asString();
+            mStoppedContainerIDsMutex.lock();
+            mStoppedContainerIDs.push_back(containerId);
+            mStoppedContainerIDsMutex.unlock();
+        }
+    }
+    
     void ContainerManager::UpdateAllContainers() {
         std::string allContainersMeta = LogtailPlugin::GetInstance()->GetAllContainersMeta();
         LOG_INFO(sLogger, ("allContainersMeta", allContainersMeta));
@@ -34,14 +95,14 @@ namespace logtail {
             LOG_ERROR(sLogger, ("invalid docker container params", allContainersMeta)("errorMsg", errorMsg));
             return;
         }
-        std::unordered_map<std::string, std::shared_ptr<ContainerInfo>> tmpContainerMap; 
+        std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>> tmpContainerMap; 
         Json::Value allContainers = jsonParams["AllCmd"];
         for (const auto& container : allContainers) {
             std::string containerId = container["ID"].asString();
             std::string containerUpperDir = container["UpperDir"].asString();
             std::string containerLogPath = container["LogPath"].asString();
 
-            std::shared_ptr<ContainerInfo> containerInfo = std::make_shared<ContainerInfo>();
+            std::shared_ptr<RawContainerInfo> containerInfo = std::make_shared<RawContainerInfo>();
             containerInfo->mID = containerId;
             containerInfo->mUpperDir = containerUpperDir;
             containerInfo->mLogPath = containerLogPath;
@@ -53,26 +114,58 @@ namespace logtail {
     }
 
 
-    void ContainerManager::CheckConfigContainerUpdate(const FileDiscoveryOptions* options) {
-        //GetAllAcceptedInfoV2
-        std::unordered_map<std::string, std::shared_ptr<ContainerInfo>> containerInfoMap;
-        auto containerInfos = options->GetContainerInfo();
-        if (containerInfos) {
-            for (const auto& info : *containerInfos) {
-                containerInfoMap[info.mID] = std::make_shared<ContainerInfo>(info);
-            }
-        }
-        GetAllAcceptedInfoV2(*(options->GetFullContainerList()), containerInfoMap, options->GetContainerDiscoveryOptions().mContainerFilters);
-    } 
-
     void ContainerManager::CheckContainerUpdate() {
         auto nameConfigMap = FileServer::GetInstance()->GetAllFileDiscoveryConfigs();
         for (auto itr = nameConfigMap.begin(); itr != nameConfigMap.end(); ++itr) {
             const FileDiscoveryOptions* options = itr->second.first;
             if (options->IsContainerDiscoveryEnabled()) {
-                //auto containerOptions = options->GetContainerDiscoveryOptions();
                 CheckConfigContainerUpdate(options);
             }
+        }
+    }
+
+    void ContainerManager::CheckConfigContainerUpdate(const FileDiscoveryOptions* options) {
+        bool isUpdate = false;
+
+        std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>> containerInfoMap;
+        const auto& containerInfos = options->GetContainerInfo();
+        if (containerInfos) {
+            for (const auto& info : *containerInfos) {
+                containerInfoMap[info.mID] = info.mRawContainerInfo;
+            }
+        }
+        GetMatchedContainersInfo(*(options->GetFullContainerList()), containerInfoMap, options->GetContainerDiscoveryOptions().mContainerFilters);
+        if (isUpdate) {
+            //options->UpdateRawContainerInfo(containerInfoMap);
+        }
+    } 
+
+    void ContainerManager::GetContainerStoppedEvents(std::vector<Event*>& eventVec) {
+        auto nameConfigMap = FileServer::GetInstance()->GetAllFileDiscoveryConfigs();
+        mStoppedContainerIDsMutex.lock();
+        std::vector<std::string> stoppedContainerIDs;
+        stoppedContainerIDs.swap(mStoppedContainerIDs);
+        mStoppedContainerIDsMutex.unlock();
+
+        for (const auto& containerId : stoppedContainerIDs) {
+            Event* pStoppedEvent = new Event(containerId, "", EVENT_ISDIR | EVENT_CONTAINER_STOPPED, -1, 0);
+            for (auto itr = nameConfigMap.begin(); itr != nameConfigMap.end(); ++itr) {
+                const FileDiscoveryOptions* options = itr->second.first;
+                if (options->IsContainerDiscoveryEnabled()) {
+                    const auto& containerInfos = options->GetContainerInfo();
+                    if (containerInfos) {
+                        for (auto& info : *containerInfos) {
+                            if (info.mID == containerId) {
+                                info.mStopped = true;
+                                pStoppedEvent->SetConfigName(itr->first);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            pStoppedEvent->SetContainerID(containerId);
+            eventVec.push_back(pStoppedEvent);
         }
     }
 
@@ -146,9 +239,9 @@ bool IsK8sFilterMatch(const K8sFilter& filter, const K8sInfo& k8sInfo) {
 }
 
 
-void ContainerManager::GetAllAcceptedInfoV2(
+void ContainerManager::GetMatchedContainersInfo(
         std::set<std::string>& fullList,
-        std::unordered_map<std::string, std::shared_ptr<ContainerInfo>>& matchList,
+        std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>>& matchList,
         const ContainerFilters& filters
     ) {
         std::vector<std::string> matchAddedList;

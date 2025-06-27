@@ -446,6 +446,12 @@ bool LogtailPlugin::LoadPluginBase() {
             LOG_ERROR(sLogger, ("load GetAllContainerMetaFun error, Message", error));
             return mPluginValid;
         }
+        // C++获取差异容器信息的
+        mGetDiffContainerMetaFun = (GetDiffContainerMetaFun)loader.LoadMethod("GetDiffContainers", error);
+        if (!error.empty()) {
+            LOG_ERROR(sLogger, ("load GetDiffContainerMetaFun error, Message", error));
+            return mPluginValid;
+        }
         // C++传递单条数据到golang插件
         mProcessLogsFun = (ProcessLogsFun)loader.LoadMethod("ProcessLog", error);
         if (!error.empty()) {
@@ -588,6 +594,7 @@ void LogtailPlugin::GetGoMetrics(std::vector<std::map<std::string, std::string>>
 }
 
 std::string LogtailPlugin::GetAllContainersMeta() {
+#ifndef APSARA_UNIT_TEST_MAIN
     if (mPluginValid && mGetAllContainerMetaFun != nullptr) {
         char* res = mGetAllContainerMetaFun();
         std::string cppString(res);
@@ -595,6 +602,24 @@ std::string LogtailPlugin::GetAllContainersMeta() {
         return cppString;
     }
     return "";
+#else
+    return LogtailPluginMock::GetInstance()->GetAllContainersMeta();
+#endif
+}
+
+
+std::string LogtailPlugin::GetDiffContainersMeta() {
+#ifndef APSARA_UNIT_TEST_MAIN
+    if (mPluginValid && mGetDiffContainerMetaFun != nullptr) {
+        char* res = mGetDiffContainerMetaFun();
+        std::string cppString(res);
+        free(res);
+        return cppString;
+    }
+    return "";
+#else
+    return LogtailPluginMock::GetInstance()->GetDiffContainersMeta();
+#endif
 }
 
 K8sContainerMeta LogtailPlugin::GetContainerMeta(const string& containerID) {

@@ -42,7 +42,6 @@ type Mount struct {
 
 type DockerFileUpdateCmd struct {
 	ID        string
-	Tags      []string // 用户自定义Tag
 	MetaDatas []string // 容器信息
 	Mounts    []Mount  // 容器挂载路径
 	UpperDir  string   // 容器默认路径
@@ -53,21 +52,19 @@ type DockerFileUpdateCmdAll struct {
 	AllCmd []DockerFileUpdateCmd
 }
 
+type DiffCmd struct {
+	Update []DockerFileUpdateCmd
+	Delete []string
+	Stop   []string
+}
+
 func convertDockerInfos(info *containercenter.DockerInfoDetail, allCmd *DockerFileUpdateCmdAll) {
 	var cmd DockerFileUpdateCmd
 	cmd.ID = info.ContainerInfo.ID
 
 	cmd.UpperDir = filepath.Clean(info.DefaultRootPath)
 	cmd.LogPath = filepath.Clean(info.StdoutPath)
-	// tags
-	/*
-		tags := info.GetExternalTags(idf.ExternalEnvTag, idf.ExternalK8sLabelTag)
-		cmd.Tags = make([]string, 0, len(tags)*2)
-		for key, val := range tags {
-			cmd.Tags = append(cmd.Tags, key)
-			cmd.Tags = append(cmd.Tags, val)
-		}
-	*/
+
 	// info.ContainerNameTag
 	cmd.MetaDatas = make([]string, 0, len(info.ContainerNameTag)*2)
 	for key, val := range info.ContainerNameTag {
@@ -86,11 +83,6 @@ func convertDockerInfos(info *containercenter.DockerInfoDetail, allCmd *DockerFi
 	}
 }
 
-/*
-func GetAllContainers() []ContainerInfo {}
-func GetDiffContainers() (add []ContainerInfo,update []ContainerInfo, delete []string, stop []string) {}
-*/
-
 func GetAllContainers() string {
 	allCmd := new(DockerFileUpdateCmdAll)
 	infos := containercenter.GetAllContainerToRecord(envSet, containerLabelSet, k8sLabelSet, make(map[string]struct{}))
@@ -100,8 +92,9 @@ func GetAllContainers() string {
 	cmdBuf, _ := json.Marshal(allCmd)
 	return string(cmdBuf)
 }
-func GetDiffContainers() (add string, update string, delete string, stop string) {
-	return "", "", "", ""
+func GetDiffContainers() string {
+
+	return ""
 }
 
 func CollectContainers(logGroup *protocol.LogGroup) {

@@ -64,6 +64,11 @@ public:
     bool IsMatch(const std::string& path, const std::string& name) const;
     bool IsTimeout(const std::string& path) const;
     bool WithinMaxDepth(const std::string& path) const;
+
+    bool UpdateRawContainerInfo(const RawContainerInfo& rawContainerInfo, const CollectionPipelineContext*);
+    
+    bool DeleteRawContainerInfo(const std::string& containerID);
+
     bool IsSameContainerInfo(const Json::Value& paramsJSON, const CollectionPipelineContext*);
     bool UpdateContainerInfo(const Json::Value& paramsJSON, const CollectionPipelineContext*);
     bool DeleteContainerInfo(const Json::Value& paramsJSON);

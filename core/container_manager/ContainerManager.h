@@ -23,6 +23,8 @@
 #include "container_manager/ContainerDiscoveryOptions.h"
 #include "file_server/FileDiscoveryOptions.h"
 #include "common/Thread.h"
+#include "file_server/event/Event.h"
+
 
 
 
@@ -34,18 +36,27 @@ class ContainerManager {
 public:
     ContainerManager();
     ~ContainerManager();
+    void Init();
     void Run();
+    bool IsUpdateContainerPaths();
     void CheckContainerUpdate();
     void CheckConfigContainerUpdate(const FileDiscoveryOptions* options);
     void UpdateAllContainers();
-    void GetAllAcceptedInfoV2(
+    void UpdateDiffContainers();
+
+    void GetContainerStoppedEvents(std::vector<Event*>& eventVec);
+    
+    void GetMatchedContainersInfo(
         std::set<std::string>& fullList,
-        std::unordered_map<std::string, std::shared_ptr<ContainerInfo>>& matchList,
+        std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>>& matchList,
         const ContainerFilters& filters);
 
 private:
-    std::unordered_map<std::string, std::shared_ptr<ContainerInfo>> mContainerMap;
+    std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>> mContainerMap;
     std::mutex mContainerMapMutex;
+    std::vector<std::string> mStoppedContainerIDs;
+    std::mutex mStoppedContainerIDsMutex;
+    
     uint32_t mLastUpdateTime = 0;
     ThreadPtr mThread;
 

@@ -37,7 +37,6 @@ struct Mount {
 };
 
 struct K8sInfo {
-    // 成员变量
     std::string mNamespace;
     std::string mPod;
     std::string mContainerName;
@@ -45,8 +44,27 @@ struct K8sInfo {
     bool mPausedContainer;
 };
 
+struct RawContainerInfo {
+    std::string mID;
+    // 标准输出
+    std::string mLogPath;
+    // rootfs
+    std::string mUpperDir;
+    // 挂载
+    std::vector<Mount> mMounts;
+    // 原始k8s信息
+    K8sInfo mK8sInfo;
+    // 环境变量信息
+    std::unordered_map<std::string, std::string> mEnv;
+    // 容器标签信息
+    std::unordered_map<std::string, std::string> mContainerLabels;
+};
+
 
 struct ContainerInfo {
+    // 原始容器信息
+    std::shared_ptr<RawContainerInfo> mRawContainerInfo;
+
     std::string mID; // id of this container
     // container path for this config's path. eg, config path '/home/admin', container path
     // '/host_all/var/lib/xxxxxx/upper/home/admin' if config is wildcard, this will mapping to config->mWildcardPaths[0]
