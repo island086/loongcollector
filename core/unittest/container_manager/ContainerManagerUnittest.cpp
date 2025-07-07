@@ -42,11 +42,14 @@ void ContainerManagerUnittest::TestGetMatchedContainersInfo() const {
     ContainerManager containerManager;
     
     std::set<std::string> fullList;
+    std::vector<std::string> removedList;
+    std::vector<std::string> matchAddedList;
     std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>> matchList;
     {
         // test empty filter
         ContainerFilters filters;
-        containerManager.GetMatchedContainersInfo(fullList, matchList, filters);
+        ContainerDiff diff;
+        containerManager.GetMatchedContainersInfo(fullList, diff, matchList, filters);
         EXPECT_EQ(fullList.size(), 0);
         EXPECT_EQ(matchList.size(), 0);
     }
@@ -68,8 +71,10 @@ void ContainerManagerUnittest::TestGetMatchedContainersInfo() const {
 
         matchList.clear();
         fullList.clear();
+
         filters.mEnvFilter.mIncludeFields.mFieldsMap["test"] = "test";
-        containerManager.GetMatchedContainersInfo(fullList, matchList, filters);
+        ContainerDiff diff;
+        containerManager.GetMatchedContainersInfo(fullList, diff, matchList, filters);
         EXPECT_EQ(fullList.size(), 2);
         EXPECT_EQ(matchList.size(), 1);
         EXPECT_EQ(matchList.find("123") != matchList.end(), true);
@@ -96,10 +101,12 @@ void ContainerManagerUnittest::TestGetMatchedContainersInfo() const {
 
         matchList.clear();
         fullList.clear();
+
         filters.mK8SFilter.mPodReg = std::make_shared<boost::regex>("pod1");
         filters.mK8SFilter.mNamespaceReg = std::make_shared<boost::regex>("namespace1");
         filters.mK8SFilter.mContainerReg = std::make_shared<boost::regex>("container1");
-        containerManager.GetMatchedContainersInfo(fullList, matchList, filters);
+        ContainerDiff diff;
+        containerManager.GetMatchedContainersInfo(fullList, diff, matchList, filters);
         EXPECT_EQ(fullList.size(), 2);
         EXPECT_EQ(matchList.size(), 1);
         EXPECT_EQ(matchList.find("123") != matchList.end(), true);

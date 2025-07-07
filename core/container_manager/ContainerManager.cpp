@@ -1,5 +1,6 @@
 #include "container_manager/ContainerManager.h"
 #include <ctime>
+#include "ConfigManager.h"
 #include "file_server/FileServer.h"
 #include <boost/regex.hpp>
 #include "go_pipeline/LogtailPlugin.h"
@@ -16,7 +17,16 @@ namespace logtail {
     
     ContainerManager::~ContainerManager() = default;
 
+    ContainerManager* ContainerManager::GetInstance() {
+        static ContainerManager instance;
+        return &instance;
+    }
+
     void ContainerManager::Init() {
+        if (mIsRunning) {
+            return;
+        }
+        mIsRunning = true;
         LOG_INFO(sLogger, ("ContainerManager", "init"));
         mThread = CreateThread([this]() { Run(); });
     }
@@ -34,13 +44,66 @@ namespace logtail {
                 UpdateDiffContainers();
                 lastUpdateDiffTime = now;
             } 
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            std::this_thread::sleep_for(std::chrono::seconds(3));
         }
     }
 
-    bool ContainerManager::IsUpdateContainerPaths() {
-        return mLastUpdateTime != time(nullptr);
+    void ContainerManager::DoUpdateContainerPaths() {
+        auto nameConfigMap = FileServer::GetInstance()->GetAllFileDiscoveryConfigs();
+        for (auto& pair : mConfigContainerDiffMap) {
+            const auto& itr = nameConfigMap.find(pair.first);
+            if (itr == nameConfigMap.end()) {
+                continue;
+            }
+            const auto& options = itr->second.first;
+            const auto& ctx = itr->second.second;
+
+
+            const auto& diff = pair.second;
+            for (const auto& container : diff->mAdded) {
+                options->UpdateRawContainerInfo(container, ctx);
+            }
+            for (const auto& container : diff->mModified) {
+                options->UpdateRawContainerInfo(container, ctx);
+            }
+        }
+        mConfigContainerDiffMap.clear();
     }
+
+
+    bool ContainerManager::CheckContainerUpdate() {
+        bool isUpdate = false;
+        auto nameConfigMap = FileServer::GetInstance()->GetAllFileDiscoveryConfigs();
+        for (auto itr = nameConfigMap.begin(); itr != nameConfigMap.end(); ++itr) {
+            FileDiscoveryOptions* options = itr->second.first;
+            if (options->IsContainerDiscoveryEnabled()) {
+                bool isCurrentConfigUpdate = CheckConfigContainerUpdate(options, itr->second.second);
+                if (isCurrentConfigUpdate) {
+                    isUpdate = true;
+                }
+            }
+        }
+        return isUpdate;
+    }
+
+    bool ContainerManager::CheckConfigContainerUpdate(FileDiscoveryOptions* options, const CollectionPipelineContext* ctx) {
+        std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>> containerInfoMap;
+        const auto& containerInfos = options->GetContainerInfo();
+        if (containerInfos) {
+            for (const auto& info : *containerInfos) {
+                containerInfoMap[info.mID] = info.mRawContainerInfo;
+            }
+        }
+        std::vector<std::string> removedList;
+        std::vector<std::string> matchAddedList;
+        ContainerDiff diff;
+        GetMatchedContainersInfo(*(options->GetFullContainerList()), diff, containerInfoMap, options->GetContainerDiscoveryOptions().mContainerFilters);
+        if (diff.IsEmpty()) {
+            return false;
+        }
+        mConfigContainerDiffMap[ctx->GetConfigName()] = std::make_shared<ContainerDiff>(diff);
+        return true;
+    } 
 
     void ContainerManager::UpdateDiffContainers() {
         std::string diffContainersMeta = LogtailPlugin::GetInstance()->GetDiffContainersMeta();
@@ -65,17 +128,14 @@ namespace logtail {
             containerInfo->mUpperDir = containerUpperDir;
             containerInfo->mLogPath = containerLogPath;
 
-            mContainerMapMutex.lock();
+            std::lock_guard<std::mutex> lock(mContainerMapMutex);
             mContainerMap[containerId] = containerInfo;
-            mContainerMapMutex.unlock();
         }
-
 
         for (const auto& container : deleteContainers) {
             std::string containerId = container.asString();
-            mContainerMapMutex.lock();
+            std::lock_guard<std::mutex> lock(mContainerMapMutex);
             mContainerMap.erase(containerId);
-            mContainerMapMutex.unlock();
         }
         for (const auto& container : stopContainers) {
             std::string containerId = container.asString();
@@ -108,37 +168,10 @@ namespace logtail {
             containerInfo->mLogPath = containerLogPath;
             tmpContainerMap[containerId] = containerInfo;
         }
-        mContainerMapMutex.lock();
+        std::lock_guard<std::mutex> lock(mContainerMapMutex);
         mContainerMap = tmpContainerMap;
-        mContainerMapMutex.unlock();
     }
-
-
-    void ContainerManager::CheckContainerUpdate() {
-        auto nameConfigMap = FileServer::GetInstance()->GetAllFileDiscoveryConfigs();
-        for (auto itr = nameConfigMap.begin(); itr != nameConfigMap.end(); ++itr) {
-            const FileDiscoveryOptions* options = itr->second.first;
-            if (options->IsContainerDiscoveryEnabled()) {
-                CheckConfigContainerUpdate(options);
-            }
-        }
-    }
-
-    void ContainerManager::CheckConfigContainerUpdate(const FileDiscoveryOptions* options) {
-        bool isUpdate = false;
-
-        std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>> containerInfoMap;
-        const auto& containerInfos = options->GetContainerInfo();
-        if (containerInfos) {
-            for (const auto& info : *containerInfos) {
-                containerInfoMap[info.mID] = info.mRawContainerInfo;
-            }
-        }
-        GetMatchedContainersInfo(*(options->GetFullContainerList()), containerInfoMap, options->GetContainerDiscoveryOptions().mContainerFilters);
-        if (isUpdate) {
-            //options->UpdateRawContainerInfo(containerInfoMap);
-        }
-    } 
+    
 
     void ContainerManager::GetContainerStoppedEvents(std::vector<Event*>& eventVec) {
         auto nameConfigMap = FileServer::GetInstance()->GetAllFileDiscoveryConfigs();
@@ -241,11 +274,10 @@ bool IsK8sFilterMatch(const K8sFilter& filter, const K8sInfo& k8sInfo) {
 
 void ContainerManager::GetMatchedContainersInfo(
         std::set<std::string>& fullList,
-        std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>>& matchList,
+        ContainerDiff& diff,
+        const std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>>& matchList,
         const ContainerFilters& filters
     ) {
-        std::vector<std::string> matchAddedList;
-        std::vector<std::string> matchDeletedList;
         int newCount = 0;
         int delCount = 0;
 
@@ -255,8 +287,8 @@ void ContainerManager::GetMatchedContainersInfo(
                 const std::string& id = *it;
                 it = fullList.erase(it); // 删除元素并移到下一个
                 if (matchList.find(id) != matchList.end()) {
-                    matchDeletedList.push_back(id);
-                    matchList.erase(id);
+                    diff.mRemoved.push_back(id);
+                    //matchList.erase(id);
                     delCount++;
                 }
             } else {
@@ -268,7 +300,9 @@ void ContainerManager::GetMatchedContainersInfo(
         for (auto& pair : matchList) {
             if (auto it = mContainerMap.find(pair.first); it != mContainerMap.end()) {
                 // 更新为最新的 info
-                pair.second = it->second;
+                if (*pair.second != *it->second) {
+                    diff.mModified.push_back(it->second);
+                }
             } else {
                 std::cerr << "Matched container not in Docker center: " << pair.first << std::endl;
             }
@@ -284,8 +318,7 @@ void ContainerManager::GetMatchedContainersInfo(
                     IsMapLabelsMatch(filters.mEnvFilter, pair.second->mEnv) &&
                     IsK8sFilterMatch(filters.mK8SFilter, pair.second->mK8sInfo)) {
                     newCount++;
-                    matchList[pair.first] = pair.second; // 添加到匹配列表
-                    matchAddedList.push_back(pair.first); // 添加到变换列表
+                    diff.mAdded.push_back(pair.second); // 添加到变换列表
                 }
             }
         }

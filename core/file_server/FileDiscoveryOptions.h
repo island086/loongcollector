@@ -65,8 +65,7 @@ public:
     bool IsTimeout(const std::string& path) const;
     bool WithinMaxDepth(const std::string& path) const;
 
-    bool UpdateRawContainerInfo(const RawContainerInfo& rawContainerInfo, const CollectionPipelineContext*);
-    
+    bool UpdateRawContainerInfo(const std::shared_ptr<RawContainerInfo>& rawContainerInfo, const CollectionPipelineContext*);
     bool DeleteRawContainerInfo(const std::string& containerID);
 
     bool IsSameContainerInfo(const Json::Value& paramsJSON, const CollectionPipelineContext*);

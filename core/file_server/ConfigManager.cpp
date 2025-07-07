@@ -34,6 +34,7 @@
 #include "checkpoint/CheckPointManager.h"
 #include "collection_pipeline/CollectionPipeline.h"
 #include "collection_pipeline/CollectionPipelineManager.h"
+#include "container_manager/ContainerManager.h"
 #include "common/CompressTools.h"
 #include "common/ErrorUtil.h"
 #include "common/ExceptionBase.h"
@@ -250,11 +251,13 @@ bool ConfigManager::RegisterHandlers() {
     }
     sort(sortedConfigs.begin(), sortedConfigs.end(), FileDiscoveryOptions::CompareByPathLength);
     bool result = true;
+    bool hasContainerConfig = false;
     for (auto itr = sortedConfigs.begin(); itr != sortedConfigs.end(); ++itr) {
         const FileDiscoveryOptions* config = itr->first;
         if (!config->IsContainerDiscoveryEnabled()) {
             result &= RegisterHandlers(config->GetBasePath(), *itr);
         } else {
+            hasContainerConfig = true;
             for (size_t i = 0; i < config->GetContainerInfo()->size(); ++i) {
                 result &= RegisterHandlers((*config->GetContainerInfo())[i].mRealBaseDir, *itr);
             }
@@ -265,10 +268,14 @@ bool ConfigManager::RegisterHandlers() {
         if (!config->IsContainerDiscoveryEnabled()) {
             RegisterWildcardPath(*itr, config->GetWildcardPaths()[0], 0);
         } else {
+            hasContainerConfig = true;
             for (size_t i = 0; i < config->GetContainerInfo()->size(); ++i) {
                 RegisterWildcardPath(*itr, (*config->GetContainerInfo())[i].mRealBaseDir, 0);
             }
         }
+    }
+    if (hasContainerConfig) {
+        ContainerManager::GetInstance()->Init();
     }
     return result;
 }

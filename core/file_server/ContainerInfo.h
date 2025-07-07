@@ -58,6 +58,60 @@ struct RawContainerInfo {
     std::unordered_map<std::string, std::string> mEnv;
     // 容器标签信息
     std::unordered_map<std::string, std::string> mContainerLabels;
+
+    bool operator==(const RawContainerInfo& rhs) const {
+        if (mID != rhs.mID) {
+            return false;
+        }
+        if (mLogPath != rhs.mLogPath) {
+            return false;
+        }
+        if (mUpperDir != rhs.mUpperDir) {
+            return false;
+        }
+        if (mMounts.size() != rhs.mMounts.size()) {
+            return false;
+        }
+        for (size_t idx = 0; idx < mMounts.size(); ++idx) {
+            const auto& lhsMount = mMounts[idx];
+            const auto& rhsMount = rhs.mMounts[idx];
+            if (lhsMount.mSource != rhsMount.mSource || lhsMount.mDestination != rhsMount.mDestination) {
+                return false;
+            }
+        }
+        if (mK8sInfo.mNamespace != rhs.mK8sInfo.mNamespace || mK8sInfo.mPod != rhs.mK8sInfo.mPod || mK8sInfo.mContainerName != rhs.mK8sInfo.mContainerName) {
+            return false;
+        }
+        if (mK8sInfo.mLabels.size() != rhs.mK8sInfo.mLabels.size()) {
+            return false;
+        }
+        for (const auto& label : mK8sInfo.mLabels) {
+            const auto& rhsLabel = rhs.mK8sInfo.mLabels.find(label.first);
+            if (rhsLabel == rhs.mK8sInfo.mLabels.end() || rhsLabel->second != label.second) {
+                return false;
+            }
+        }
+        if (mEnv.size() != rhs.mEnv.size()) {
+            return false;
+        }
+        for (const auto& env : mEnv) {
+            const auto& rhsEnv = rhs.mEnv.find(env.first);
+            if (rhsEnv == rhs.mEnv.end() || rhsEnv->second != env.second) {
+                return false;
+            }
+        }
+        if (mContainerLabels.size() != rhs.mContainerLabels.size()) {
+            return false;
+        }
+        for (const auto& label : mContainerLabels) {
+            const auto& rhsLabel = rhs.mContainerLabels.find(label.first);
+            if (rhsLabel == rhs.mContainerLabels.end() || rhsLabel->second != label.second) {
+                return false;
+            }
+        }
+        return true;
+    }
+    bool operator!=(const RawContainerInfo& rhs) const { return !(*this == rhs); }
 };
 
 

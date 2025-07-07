@@ -24,10 +24,7 @@
 #include "file_server/FileDiscoveryOptions.h"
 #include "common/Thread.h"
 #include "file_server/event/Event.h"
-
-
-
-
+#include "container_manager/ContainerDiff.h"
 
 
 namespace logtail {
@@ -36,11 +33,12 @@ class ContainerManager {
 public:
     ContainerManager();
     ~ContainerManager();
+    static ContainerManager* GetInstance();
     void Init();
     void Run();
-    bool IsUpdateContainerPaths();
-    void CheckContainerUpdate();
-    void CheckConfigContainerUpdate(const FileDiscoveryOptions* options);
+    void DoUpdateContainerPaths();
+    bool CheckContainerUpdate();
+    bool CheckConfigContainerUpdate(FileDiscoveryOptions* options, const CollectionPipelineContext* ctx);
     void UpdateAllContainers();
     void UpdateDiffContainers();
 
@@ -48,18 +46,20 @@ public:
     
     void GetMatchedContainersInfo(
         std::set<std::string>& fullList,
-        std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>>& matchList,
+        ContainerDiff& diff,
+        const std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>>& matchList,
         const ContainerFilters& filters);
 
 private:
     std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>> mContainerMap;
+    std::unordered_map<std::string, std::shared_ptr<ContainerDiff>> mConfigContainerDiffMap;
     std::mutex mContainerMapMutex;
     std::vector<std::string> mStoppedContainerIDs;
     std::mutex mStoppedContainerIDsMutex;
     
     uint32_t mLastUpdateTime = 0;
     ThreadPtr mThread;
-
+    bool mIsRunning = false;
     friend class ContainerManagerUnittest;
 };
 

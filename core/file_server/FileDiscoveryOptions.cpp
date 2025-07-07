@@ -711,18 +711,18 @@ bool FileDiscoveryOptions::IsSameContainerInfo(const Json::Value& paramsJSON, co
     return true;
 }
 
-bool FileDiscoveryOptions::UpdateRawContainerInfo(const RawContainerInfo& rawContainerInfo, const CollectionPipelineContext* ctx) {
+bool FileDiscoveryOptions::UpdateRawContainerInfo(const std::shared_ptr<RawContainerInfo>& rawContainerInfo, const CollectionPipelineContext* ctx) {
     if (!mContainerInfos) {
         return false;
     }
 
     ContainerInfo containerInfo;
-    containerInfo.mRawContainerInfo = std::make_shared<RawContainerInfo>(rawContainerInfo);
+    containerInfo.mRawContainerInfo = rawContainerInfo;
     if (!mDeduceAndSetContainerBaseDirFunc(containerInfo, ctx, this)) {
         return false;
     }
     for (size_t i = 0; i < mContainerInfos->size(); ++i) {
-        if ((*mContainerInfos)[i].mID == rawContainerInfo.mID) {
+        if ((*mContainerInfos)[i].mID == rawContainerInfo->mID) {
             (*mContainerInfos)[i] = containerInfo;
             return true;
         }
