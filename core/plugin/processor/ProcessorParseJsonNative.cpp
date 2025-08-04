@@ -89,6 +89,7 @@ bool ProcessorParseJsonNative::Init(const Json::Value& config) {
     std::cout <<  "active : " << simdjson::get_active_implementation()->name() << std::endl;
 #endif
 
+    std::cout << "no simd" << std::endl;
     mDiscardedEventsTotal = GetMetricsRecordRef().CreateCounter(METRIC_PLUGIN_DISCARDED_EVENTS_TOTAL);
     mOutFailedEventsTotal = GetMetricsRecordRef().CreateCounter(METRIC_PLUGIN_OUT_FAILED_EVENTS_TOTAL);
     mOutKeyNotFoundEventsTotal = GetMetricsRecordRef().CreateCounter(METRIC_PLUGIN_OUT_KEY_NOT_FOUND_EVENTS_TOTAL);
@@ -97,7 +98,6 @@ bool ProcessorParseJsonNative::Init(const Json::Value& config) {
     return true;
 }
 
-#if defined(__EXCLUDE_SSE4_2__)
 
 void ProcessorParseJsonNative::Process(PipelineEventGroup& logGroup) {
     if (logGroup.GetEvents().empty()) {
@@ -154,6 +154,8 @@ bool ProcessorParseJsonNative::ProcessEvent(const StringView& logPath,
     return true;
 }
 
+
+#if defined(__EXCLUDE_SSE4_2__)
 bool ProcessorParseJsonNative::JsonLogLineParser(LogEvent& sourceEvent,
                                                  const StringView& logPath,
                                                  PipelineEventPtr& e,
@@ -220,60 +222,6 @@ bool ProcessorParseJsonNative::JsonLogLineParser(LogEvent& sourceEvent,
 #else
 
 
-void ProcessorParseJsonNative::Process(PipelineEventGroup& logGroup) {
-    if (logGroup.GetEvents().empty()) {
-        return;
-    }
-
-    const StringView& logPath = logGroup.GetMetadata(EventGroupMetaKey::LOG_FILE_PATH_RESOLVED);
-    EventsContainer& events = logGroup.MutableEvents();
-
-    size_t wIdx = 0;
-    for (size_t rIdx = 0; rIdx < events.size(); ++rIdx) {
-        if (ProcessEvent(logPath, events[rIdx], logGroup.GetAllMetadata())) {
-            if (wIdx != rIdx) {
-                events[wIdx] = std::move(events[rIdx]);
-            }
-            ++wIdx;
-        }
-    }
-    events.resize(wIdx);
-}
-
-bool ProcessorParseJsonNative::ProcessEvent(const StringView& logPath,
-                                            PipelineEventPtr& e,
-                                            const GroupMetadata& metadata) {
-    if (!IsSupportedEvent(e)) {
-        mOutFailedEventsTotal->Add(1);
-        return true;
-    }
-    auto& sourceEvent = e.Cast<LogEvent>();
-    if (!sourceEvent.HasContent(mSourceKey)) {
-        mOutKeyNotFoundEventsTotal->Add(1);
-        return true;
-    }
-
-    auto rawContent = sourceEvent.GetContent(mSourceKey);
-
-    bool sourceKeyOverwritten = false;
-    bool parseSuccess = JsonLogLineParser(sourceEvent, logPath, e, sourceKeyOverwritten);
-
-    if (!parseSuccess || !sourceKeyOverwritten) {
-        sourceEvent.DelContent(mSourceKey);
-    }
-    if (mCommonParserOptions.ShouldAddSourceContent(parseSuccess)) {
-        AddLog(mCommonParserOptions.mRenamedSourceKey, rawContent, sourceEvent, false);
-    }
-    if (mCommonParserOptions.ShouldAddLegacyUnmatchedRawLog(parseSuccess)) {
-        AddLog(mCommonParserOptions.legacyUnmatchedRawLogKey, rawContent, sourceEvent, false);
-    }
-    if (mCommonParserOptions.ShouldEraseEvent(parseSuccess, sourceEvent, metadata)) {
-        mDiscardedEventsTotal->Add(1);
-        return false;
-    }
-    mOutSuccessfulEventsTotal->Add(1);
-    return true;
-}
 
 bool ProcessorParseJsonNative::JsonLogLineParser(LogEvent& sourceEvent,
                                                  const StringView& logPath,
@@ -311,8 +259,11 @@ bool ProcessorParseJsonNative::JsonLogLineParser(LogEvent& sourceEvent,
               return false;
               
     }
-    bool parseSuccess = true;
 
+    // Store parsed fields temporarily - reserve space to avoid reallocations
+    std::vector<std::pair<StringView, StringView>> tempFields;
+    tempFields.reserve(16); // Reserve space for typical JSON object size
+    
     for(auto field : object) {
         try {
         // parses and writes out the key, after unescaping it,
@@ -321,88 +272,57 @@ bool ProcessorParseJsonNative::JsonLogLineParser(LogEvent& sourceEvent,
         StringBuffer contentKeyBuffer = sourceEvent.GetSourceBuffer()->CopyString(keyv.data(), keyv.size());
 
         simdjson::ondemand::value value = field.value();
-        std::string value_str;
+        std::string_view value_view;
         {
-            // 将 value 转成字符串
+            // 获取 value 的字符串视图，减少字符串复制
             switch (value.type()) {
-                case simdjson::fallback::ondemand::json_type::null: {
-                    value_str = "null";
-                    break;
-                }
-                case simdjson::fallback::ondemand::json_type::number: {
-                    simdjson::ondemand::number num = value.get_number();
-                    simdjson::ondemand::number_type t = num.get_number_type();
-                    switch(t) {
-                        case simdjson::ondemand::number_type::signed_integer:
-                            value_str = std::to_string(num.get_int64());
-
-                            break;
-                        case simdjson::ondemand::number_type::unsigned_integer:
-                            value_str = std::to_string(num.get_uint64());
-
-                            break;
-                        case simdjson::ondemand::number_type::floating_point_number:
-                            value_str = std::to_string(num.get_double());
-
-                            break;
-                        case simdjson::ondemand::number_type::big_integer:
-                            std::string_view tmp = value.get_string();
-                            value_str = {tmp.data(), tmp.size()};
-                            break;
-                    }
+                case simdjson::fallback::ondemand::json_type::null:
+                case simdjson::fallback::ondemand::json_type::number:
+                case simdjson::fallback::ondemand::json_type::boolean: {
+                    // Use raw_json for primitive types to avoid conversion overhead
+                    value_view = value.raw_json();
                     break;
                 }
                 case simdjson::fallback::ondemand::json_type::string: {
-                    std::string_view tmp = value.get_string();
-                    value_str = {tmp.data(), tmp.size()};
+                    value_view = value.get_string();
                     break;
                 }
-                case simdjson::fallback::ondemand::json_type::boolean: {
-                    value_str = value.get_bool() ? "true" : "false";
-                    break;
-                }
-                case simdjson::fallback::ondemand::json_type::object: {
-                    std::string_view tmp = simdjson::to_json_string(value);
-                    value_str = {tmp.data(), tmp.size()};
-                    break;
-                }
+                case simdjson::fallback::ondemand::json_type::object:
                 case simdjson::fallback::ondemand::json_type::array: {
-                    std::string_view tmp = simdjson::to_json_string(value);
-                    value_str = {tmp.data(), tmp.size()};
+                    value_view = simdjson::to_json_string(value);
                     break;
                 }
                 default: {
-                    value_str = "unknown type";
+                    static const std::string_view unknown_type = "unknown type";
+                    value_view = unknown_type;
                     break;
                 }
             }
         }
 
         
-        StringBuffer contentValueBuffer = sourceEvent.GetSourceBuffer()->CopyString(value_str);
-
-        //std::string_view valuev = field.value().raw_json();
-        //StringBuffer contentValueBuffer = sourceEvent.GetSourceBuffer()->CopyString(valuev.data(), valuev.size());   
+        StringBuffer contentValueBuffer = sourceEvent.GetSourceBuffer()->CopyString(value_view.data(), value_view.size());   
 
         if (keyv == mSourceKey) {
             sourceKeyOverwritten = true;
         }
 
-        AddLog(StringView(contentKeyBuffer.data, contentKeyBuffer.size),
-               StringView(contentValueBuffer.data, contentValueBuffer.size),
-               sourceEvent);
+        // Store temporarily instead of adding directly
+        tempFields.emplace_back(StringView(contentKeyBuffer.data, contentKeyBuffer.size),
+                               StringView(contentValueBuffer.data, contentValueBuffer.size));
         } catch (simdjson::simdjson_error &error) {
             
     std::cerr << "JSON error: " << error.what() << " near "
               << doc.current_location() << std::endl;
-              parseSuccess = false;
+              ADD_COUNTER(mOutFailedEventsTotal, 1);
+              return false;
               
         }
-
     }
-    if (!parseSuccess) {
-        ADD_COUNTER(mOutFailedEventsTotal, 1);
-              return false;
+    
+    // Only add fields if all parsing succeeded
+    for (const auto& field : tempFields) {
+        AddLog(field.first, field.second, sourceEvent);
     }
     
     return true;

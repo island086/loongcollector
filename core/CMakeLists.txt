@@ -62,6 +62,8 @@ else ()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse4.2")
 endif()
 
+message(STATUS "loongcollector Cpp compile flags: ${CMAKE_CXX_FLAGS}")
+
 add_definitions(-DXXH_DISPATCH_AVX2=0)
 add_definitions(-DXXH_DISPATCH_AVX512=0)
 
