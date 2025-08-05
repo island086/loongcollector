@@ -26,6 +26,7 @@
 
 #include "collection_pipeline/plugin/instance/ProcessorInstance.h"
 #include "common/ParamExtractor.h"
+#include "common/StringTools.h"
 #include "models/LogEvent.h"
 #include "monitor/metric_constants/MetricConstants.h"
 
@@ -285,35 +286,79 @@ bool ProcessorParseJsonNative::JsonLogLineParser(LogEvent& sourceEvent,
         StringBuffer contentKeyBuffer = sourceEvent.GetSourceBuffer()->CopyString(keyv.data(), keyv.size());
 
         simdjson::ondemand::value value = field.value();
-        std::string_view value_view;
+        std::string valueStr;
         {
-            // 获取 value 的字符串视图，减少字符串复制
+            // 统一处理各种类型，与rapidjson行为保持一致
             switch (value.type()) {
-                case simdjson::ondemand::json_type::null:
-                case simdjson::ondemand::json_type::number:
+                case simdjson::ondemand::json_type::null: {
+                    valueStr = "";  // null转换为空字符串，与rapidjson一致
+                    break;
+                }
                 case simdjson::ondemand::json_type::boolean: {
-                    // Use raw_json for primitive types to avoid conversion overhead
-                    value_view = value.raw_json();
+                    auto bool_result = value.get_bool();
+                    if (!bool_result.error()) {
+                        valueStr = ToString(bool_result.value());
+                    } else {
+                        valueStr = "false";  // fallback
+                    }
+                    break;
+                }
+                case simdjson::ondemand::json_type::number: {
+                    // 检查是否为整数类型
+                    if (value.is_integer()) {
+                        if (value.is_negative()) {
+                            auto int_result = value.get_int64();
+                            if (!int_result.error()) {
+                                valueStr = ToString(int_result.value());
+                            } else {
+                                valueStr = "0";  // fallback
+                            }
+                        } else {
+                            auto uint_result = value.get_uint64();
+                            if (!uint_result.error()) {
+                                valueStr = ToString(uint_result.value());
+                            } else {
+                                valueStr = "0";  // fallback
+                            }
+                        }
+                    } else {
+                        // 浮点数使用ToString以获得与rapidjson一致的格式
+                        auto double_result = value.get_double();
+                        if (!double_result.error()) {
+                            valueStr = ToString(double_result.value());
+                        } else {
+                            valueStr = "0.0";  // fallback
+                        }
+                    }
                     break;
                 }
                 case simdjson::ondemand::json_type::string: {
-                    value_view = value.get_string();
+                    auto str_result = value.get_string();
+                    if (!str_result.error()) {
+                        valueStr = std::string(str_result.value());
+                    } else {
+                        valueStr = "";  // fallback
+                    }
                     break;
                 }
                 case simdjson::ondemand::json_type::object:
                 case simdjson::ondemand::json_type::array: {
-                    value_view = simdjson::to_json_string(value);
+                    auto json_str = simdjson::to_json_string(value);
+                    if (!json_str.error()) {
+                        valueStr = std::string(json_str.value());
+                    } else {
+                        valueStr = "{}";  // fallback for object/array
+                    }
                     break;
                 }
                 default: {
-                    static const std::string_view unknown_type = "unknown type";
-                    value_view = unknown_type;
+                    valueStr = "unknown type";
                     break;
                 }
             }
         }
 
-        StringBuffer contentValueBuffer = sourceEvent.GetSourceBuffer()->CopyString(value_view.data(), value_view.size());   
+        StringBuffer contentValueBuffer = sourceEvent.GetSourceBuffer()->CopyString(valueStr);   
         if (keyv == mSourceKey) {
             sourceKeyOverwritten = true;
         }
