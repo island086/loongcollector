@@ -34,34 +34,6 @@
 
 namespace logtail {
 
-#if !defined(__INCLUDE_SSE4_2__)
-static std::string RapidjsonValueToString(const rapidjson::Value& value) {
-    if (value.IsString())
-        return std::string(value.GetString(), value.GetStringLength());
-    else if (value.IsBool())
-        return ToString(value.GetBool());
-    else if (value.IsInt())
-        return ToString(value.GetInt());
-    else if (value.IsUint())
-        return ToString(value.GetUint());
-    else if (value.IsInt64())
-        return ToString(value.GetInt64());
-    else if (value.IsUint64())
-        return ToString(value.GetUint64());
-    else if (value.IsDouble())
-        return ToString(value.GetDouble());
-    else if (value.IsNull())
-        return "";
-    else // if (value.IsObject() || value.IsArray())
-    {
-        rapidjson::StringBuffer buffer;
-        rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-        value.Accept(writer);
-        return std::string(buffer.GetString(), buffer.GetLength());
-    }
-}
-#endif
-
 const std::string ProcessorParseJsonNative::sName = "processor_parse_json_native";
 
 bool ProcessorParseJsonNative::Init(const Json::Value& config) {
@@ -158,7 +130,7 @@ bool ProcessorParseJsonNative::ProcessEvent(const StringView& logPath,
 }
 
 
-#if !defined(__INCLUDE_SSE4_2__)
+#if defined(__INCLUDE_SSE4_2__)
 // Optimized number processing function using stack buffer
 static StringBuffer ProcessNumberValueOptimized(simdjson::ondemand::value& value,
                                                 LogEvent& sourceEvent,
@@ -370,6 +342,33 @@ bool ProcessorParseJsonNative::JsonLogLineParser(LogEvent& sourceEvent,
 }
 
 #else
+
+static std::string RapidjsonValueToString(const rapidjson::Value& value) {
+    if (value.IsString())
+        return std::string(value.GetString(), value.GetStringLength());
+    else if (value.IsBool())
+        return ToString(value.GetBool());
+    else if (value.IsInt())
+        return ToString(value.GetInt());
+    else if (value.IsUint())
+        return ToString(value.GetUint());
+    else if (value.IsInt64())
+        return ToString(value.GetInt64());
+    else if (value.IsUint64())
+        return ToString(value.GetUint64());
+    else if (value.IsDouble())
+        return ToString(value.GetDouble());
+    else if (value.IsNull())
+        return "";
+    else // if (value.IsObject() || value.IsArray())
+    {
+        rapidjson::StringBuffer buffer;
+        rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+        value.Accept(writer);
+        return std::string(buffer.GetString(), buffer.GetLength());
+    }
+}
+
 bool ProcessorParseJsonNative::JsonLogLineParser(LogEvent& sourceEvent,
                                                  const StringView& logPath,
                                                  PipelineEventPtr& e,
