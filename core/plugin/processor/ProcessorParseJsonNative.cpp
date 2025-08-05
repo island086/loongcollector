@@ -86,6 +86,8 @@ bool ProcessorParseJsonNative::Init(const Json::Value& config) {
     if (! my_implementation->supported_by_runtime_system()) { exit(1); }
     simdjson::get_active_implementation() = my_implementation;
     LOG_INFO(sLogger, ("simdjson active implementation : ", simdjson::get_active_implementation()->name()));
+#else
+    LOG_INFO(sLogger, ("active implementation : ", "rapidjson"));
 #endif
 
     mDiscardedEventsTotal = GetMetricsRecordRef().CreateCounter(METRIC_PLUGIN_DISCARDED_EVENTS_TOTAL);
