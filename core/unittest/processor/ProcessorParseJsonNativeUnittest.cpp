@@ -1239,8 +1239,8 @@ void ProcessorParseJsonNativeUnittest::TestInvalidJsonFormats() {
 
     // Test cases for different invalid JSON formats
     std::vector<std::string> invalidJsonCases = {
-        "{\"missing_quote: \"value\"}",  // Missing quote in key
-        "{\"key\": \"unclosed_string}",   // Unclosed string
+        "{\"missing_quote: \"value\"}", // Missing quote in key
+        "{\"key\": \"unclosed_string}", // Unclosed string
         "{\"key\": value_without_quotes}", // Unquoted value
         "{\"trailing_comma\": \"value\",}", // Trailing comma
         "{invalid_json_without_quotes}", // Clearly invalid
