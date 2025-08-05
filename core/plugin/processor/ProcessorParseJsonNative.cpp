@@ -17,13 +17,13 @@
 #include "plugin/processor/ProcessorParseJsonNative.h"
 
 #include "rapidjson/document.h"
-#if !defined(__INCLUDE_SSE4_2__)
-#include "rapidjson/stringbuffer.h"
-#include "rapidjson/writer.h"
-#else
+#if defined(__INCLUDE_SSE4_2__)
 #include <plugin/processor/simdjson.h>
 #include <cinttypes>
 #include <cstdio>
+#else
+#include "rapidjson/stringbuffer.h"
+#include "rapidjson/writer.h"
 #endif
 
 #include "collection_pipeline/plugin/instance/ProcessorInstance.h"
@@ -159,71 +159,6 @@ bool ProcessorParseJsonNative::ProcessEvent(const StringView& logPath,
 
 
 #if !defined(__INCLUDE_SSE4_2__)
-bool ProcessorParseJsonNative::JsonLogLineParser(LogEvent& sourceEvent,
-                                                 const StringView& logPath,
-                                                 PipelineEventPtr& e,
-                                                 bool& sourceKeyOverwritten) {
-    StringView buffer = sourceEvent.GetContent(mSourceKey);
-
-    if (buffer.empty())
-        return false;
-
-    bool parseSuccess = true;
-    rapidjson::Document doc;
-    doc.Parse(buffer.data(), buffer.size());
-    if (doc.HasParseError()) {
-        if (AlarmManager::GetInstance()->IsLowLevelAlarmValid()) {
-            LOG_WARNING(sLogger,
-                        ("parse json log fail, log", buffer)("rapidjson offset", doc.GetErrorOffset())(
-                            "rapidjson error", doc.GetParseError())("project", GetContext().GetProjectName())(
-                            "logstore", GetContext().GetLogstoreName())("file", logPath));
-            AlarmManager::GetInstance()->SendAlarmWarning(PARSE_LOG_FAIL_ALARM,
-                                                          std::string("parse json fail:") + buffer.to_string(),
-                                                          GetContext().GetRegion(),
-                                                          GetContext().GetProjectName(),
-                                                          GetContext().GetConfigName(),
-                                                          GetContext().GetLogstoreName());
-        }
-        ADD_COUNTER(mOutFailedEventsTotal, 1);
-        parseSuccess = false;
-    } else if (!doc.IsObject()) {
-        if (AlarmManager::GetInstance()->IsLowLevelAlarmValid()) {
-            LOG_WARNING(sLogger,
-                        ("invalid json object, log", buffer)("project", GetContext().GetProjectName())(
-                            "logstore", GetContext().GetLogstoreName())("file", logPath));
-            AlarmManager::GetInstance()->SendAlarmWarning(PARSE_LOG_FAIL_ALARM,
-                                                          std::string("invalid json object:") + buffer.to_string(),
-                                                          GetContext().GetRegion(),
-                                                          GetContext().GetProjectName(),
-                                                          GetContext().GetConfigName(),
-                                                          GetContext().GetLogstoreName());
-        }
-        ADD_COUNTER(mOutFailedEventsTotal, 1);
-        parseSuccess = false;
-    }
-    if (!parseSuccess) {
-        return false;
-    }
-
-    for (rapidjson::Value::ConstMemberIterator itr = doc.MemberBegin(); itr != doc.MemberEnd(); ++itr) {
-        std::string contentKey = RapidjsonValueToString(itr->name);
-        std::string contentValue = RapidjsonValueToString(itr->value);
-
-        StringBuffer contentKeyBuffer = sourceEvent.GetSourceBuffer()->CopyString(contentKey);
-        StringBuffer contentValueBuffer = sourceEvent.GetSourceBuffer()->CopyString(contentValue);
-
-        if (contentKey.c_str() == mSourceKey) {
-            sourceKeyOverwritten = true;
-        }
-
-        AddLog(StringView(contentKeyBuffer.data, contentKeyBuffer.size),
-               StringView(contentValueBuffer.data, contentValueBuffer.size),
-               sourceEvent);
-    }
-    return true;
-}
-#else
-
 // Optimized number processing function using stack buffer
 static StringBuffer ProcessNumberValueOptimized(simdjson::ondemand::value& value,
                                                 LogEvent& sourceEvent,
@@ -433,6 +368,72 @@ bool ProcessorParseJsonNative::JsonLogLineParser(LogEvent& sourceEvent,
     }
     return true;
 }
+
+#else
+bool ProcessorParseJsonNative::JsonLogLineParser(LogEvent& sourceEvent,
+                                                 const StringView& logPath,
+                                                 PipelineEventPtr& e,
+                                                 bool& sourceKeyOverwritten) {
+    StringView buffer = sourceEvent.GetContent(mSourceKey);
+
+    if (buffer.empty())
+        return false;
+
+    bool parseSuccess = true;
+    rapidjson::Document doc;
+    doc.Parse(buffer.data(), buffer.size());
+    if (doc.HasParseError()) {
+        if (AlarmManager::GetInstance()->IsLowLevelAlarmValid()) {
+            LOG_WARNING(sLogger,
+                        ("parse json log fail, log", buffer)("rapidjson offset", doc.GetErrorOffset())(
+                            "rapidjson error", doc.GetParseError())("project", GetContext().GetProjectName())(
+                            "logstore", GetContext().GetLogstoreName())("file", logPath));
+            AlarmManager::GetInstance()->SendAlarmWarning(PARSE_LOG_FAIL_ALARM,
+                                                          std::string("parse json fail:") + buffer.to_string(),
+                                                          GetContext().GetRegion(),
+                                                          GetContext().GetProjectName(),
+                                                          GetContext().GetConfigName(),
+                                                          GetContext().GetLogstoreName());
+        }
+        ADD_COUNTER(mOutFailedEventsTotal, 1);
+        parseSuccess = false;
+    } else if (!doc.IsObject()) {
+        if (AlarmManager::GetInstance()->IsLowLevelAlarmValid()) {
+            LOG_WARNING(sLogger,
+                        ("invalid json object, log", buffer)("project", GetContext().GetProjectName())(
+                            "logstore", GetContext().GetLogstoreName())("file", logPath));
+            AlarmManager::GetInstance()->SendAlarmWarning(PARSE_LOG_FAIL_ALARM,
+                                                          std::string("invalid json object:") + buffer.to_string(),
+                                                          GetContext().GetRegion(),
+                                                          GetContext().GetProjectName(),
+                                                          GetContext().GetConfigName(),
+                                                          GetContext().GetLogstoreName());
+        }
+        ADD_COUNTER(mOutFailedEventsTotal, 1);
+        parseSuccess = false;
+    }
+    if (!parseSuccess) {
+        return false;
+    }
+
+    for (rapidjson::Value::ConstMemberIterator itr = doc.MemberBegin(); itr != doc.MemberEnd(); ++itr) {
+        std::string contentKey = RapidjsonValueToString(itr->name);
+        std::string contentValue = RapidjsonValueToString(itr->value);
+
+        StringBuffer contentKeyBuffer = sourceEvent.GetSourceBuffer()->CopyString(contentKey);
+        StringBuffer contentValueBuffer = sourceEvent.GetSourceBuffer()->CopyString(contentValue);
+
+        if (contentKey.c_str() == mSourceKey) {
+            sourceKeyOverwritten = true;
+        }
+
+        AddLog(StringView(contentKeyBuffer.data, contentKeyBuffer.size),
+               StringView(contentValueBuffer.data, contentValueBuffer.size),
+               sourceEvent);
+    }
+    return true;
+}
+
 #endif
 
 
