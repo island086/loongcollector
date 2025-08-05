@@ -21,8 +21,12 @@ if (LINUX)
 endif ()
 
 add_definitions(-DAPSARA_UNIT_TEST_MAIN)
-#set(NO_TCMALLOC TRUE)
-#add_definitions(-DLOGTAIL_NO_TC_MALLOC)
+
+if (NOT BUILD_LOGTAIL_UT_WITH_BENCHMARK) 
+    set(NO_TCMALLOC TRUE)
+    add_definitions(-DLOGTAIL_NO_TC_MALLOC)
+endif ()
+
 if (MSVC)
     add_definitions(-DNOMINMAX)
 endif ()

@@ -85,11 +85,8 @@ bool ProcessorParseJsonNative::Init(const Json::Value& config) {
     if (! my_implementation) { exit(1); }
     if (! my_implementation->supported_by_runtime_system()) { exit(1); }
     simdjson::get_active_implementation() = my_implementation;
-
-    std::cout <<  "active : " << simdjson::get_active_implementation()->name() << std::endl;
 #endif
 
-    std::cout << "no simd" << std::endl;
     mDiscardedEventsTotal = GetMetricsRecordRef().CreateCounter(METRIC_PLUGIN_DISCARDED_EVENTS_TOTAL);
     mOutFailedEventsTotal = GetMetricsRecordRef().CreateCounter(METRIC_PLUGIN_OUT_FAILED_EVENTS_TOTAL);
     mOutKeyNotFoundEventsTotal = GetMetricsRecordRef().CreateCounter(METRIC_PLUGIN_OUT_KEY_NOT_FOUND_EVENTS_TOTAL);
@@ -233,17 +230,23 @@ bool ProcessorParseJsonNative::JsonLogLineParser(LogEvent& sourceEvent,
         return false;
 
     simdjson::ondemand::parser parser;
-
     simdjson::padded_string bufStr(buffer.data(), buffer.size());
-
-    
     simdjson::ondemand::document doc;
     
-    //auto doc = parser.iterate(bufStr);
-
     auto error = parser.iterate(bufStr).get(doc);
 
     if (error) {
+        if (AlarmManager::GetInstance()->IsLowLevelAlarmValid()) {
+            LOG_WARNING(sLogger,
+                        ("parse json log fail, log", buffer)("simdjson error", simdjson::simdjson_error(error).what())("project", GetContext().GetProjectName())(
+                            "logstore", GetContext().GetLogstoreName())("file", logPath));
+            AlarmManager::GetInstance()->SendAlarmWarning(PARSE_LOG_FAIL_ALARM,
+                                                            std::string("parse json fail:") + buffer.to_string(),
+                                                            GetContext().GetRegion(),
+                                                            GetContext().GetProjectName(),
+                                                            GetContext().GetConfigName(),
+                                                            GetContext().GetLogstoreName());
+        }
         ADD_COUNTER(mOutFailedEventsTotal, 1);
         return false;
     }
@@ -252,12 +255,19 @@ bool ProcessorParseJsonNative::JsonLogLineParser(LogEvent& sourceEvent,
     try {
         object = doc.get_object();
     } catch (simdjson::simdjson_error &error) {
-            
-    std::cerr << "JSON error: " << error.what() << " near "
-              << doc.current_location() << std::endl;
-              ADD_COUNTER(mOutFailedEventsTotal, 1);
-              return false;
-              
+        if (AlarmManager::GetInstance()->IsLowLevelAlarmValid()) {
+            LOG_WARNING(sLogger,
+                        ("parse json log fail, log", buffer)("simdjson error", error.what())("project", GetContext().GetProjectName())(
+                            "logstore", GetContext().GetLogstoreName())("file", logPath));
+            AlarmManager::GetInstance()->SendAlarmWarning(PARSE_LOG_FAIL_ALARM,
+                                                            std::string("parse json fail:") + buffer.to_string(),
+                                                            GetContext().GetRegion(),
+                                                            GetContext().GetProjectName(),
+                                                            GetContext().GetConfigName(),
+                                                            GetContext().GetLogstoreName());
+        }
+        ADD_COUNTER(mOutFailedEventsTotal, 1);
+        return false;
     }
 
     // Store parsed fields temporarily - reserve space to avoid reallocations
@@ -300,31 +310,33 @@ bool ProcessorParseJsonNative::JsonLogLineParser(LogEvent& sourceEvent,
             }
         }
 
-        
         StringBuffer contentValueBuffer = sourceEvent.GetSourceBuffer()->CopyString(value_view.data(), value_view.size());   
-
         if (keyv == mSourceKey) {
             sourceKeyOverwritten = true;
         }
-
         // Store temporarily instead of adding directly
         tempFields.emplace_back(StringView(contentKeyBuffer.data, contentKeyBuffer.size),
                                StringView(contentValueBuffer.data, contentValueBuffer.size));
         } catch (simdjson::simdjson_error &error) {
-            
-    std::cerr << "JSON error: " << error.what() << " near "
-              << doc.current_location() << std::endl;
+            if (AlarmManager::GetInstance()->IsLowLevelAlarmValid()) {
+                LOG_WARNING(sLogger,
+                            ("parse json log fail, log", buffer)("simdjson error", error.what())("project", GetContext().GetProjectName())(
+                                "logstore", GetContext().GetLogstoreName())("file", logPath));
+                AlarmManager::GetInstance()->SendAlarmWarning(PARSE_LOG_FAIL_ALARM,
+                                                                std::string("parse json fail:") + buffer.to_string(),
+                                                                GetContext().GetRegion(),
+                                                                GetContext().GetProjectName(),
+                                                                GetContext().GetConfigName(),
+                                                                GetContext().GetLogstoreName());
+            }
               ADD_COUNTER(mOutFailedEventsTotal, 1);
               return false;
-              
         }
     }
-    
     // Only add fields if all parsing succeeded
     for (const auto& field : tempFields) {
         AddLog(field.first, field.second, sourceEvent);
     }
-    
     return true;
 }
 #endif
