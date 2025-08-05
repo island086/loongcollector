@@ -17,7 +17,7 @@
 #include "plugin/processor/ProcessorParseJsonNative.h"
 
 #include "rapidjson/document.h"
-#if defined(__EXCLUDE_SSE4_2__)
+#if !defined(__INCLUDE_SSE4_2__)
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
 #else
@@ -32,7 +32,7 @@
 
 namespace logtail {
 
-#if defined(__EXCLUDE_SSE4_2__)
+#if !defined(__INCLUDE_SSE4_2__)
 static std::string RapidjsonValueToString(const rapidjson::Value& value) {
     if (value.IsString())
         return std::string(value.GetString(), value.GetStringLength());
@@ -81,7 +81,7 @@ bool ProcessorParseJsonNative::Init(const Json::Value& config) {
         return false;
     }
 
-#if !defined(__EXCLUDE_SSE4_2__)
+#if defined(__INCLUDE_SSE4_2__)
     auto my_implementation = simdjson::get_available_implementations()["westmere"];
     if (! my_implementation) { exit(1); }
     if (! my_implementation->supported_by_runtime_system()) { exit(1); }
@@ -156,7 +156,7 @@ bool ProcessorParseJsonNative::ProcessEvent(const StringView& logPath,
 }
 
 
-#if defined(__EXCLUDE_SSE4_2__)
+#if !defined(__INCLUDE_SSE4_2__)
 bool ProcessorParseJsonNative::JsonLogLineParser(LogEvent& sourceEvent,
                                                  const StringView& logPath,
                                                  PipelineEventPtr& e,
