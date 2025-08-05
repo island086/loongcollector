@@ -276,19 +276,19 @@ bool ProcessorParseJsonNative::JsonLogLineParser(LogEvent& sourceEvent,
         {
             // 获取 value 的字符串视图，减少字符串复制
             switch (value.type()) {
-                case simdjson::fallback::ondemand::json_type::null:
-                case simdjson::fallback::ondemand::json_type::number:
-                case simdjson::fallback::ondemand::json_type::boolean: {
+                case simdjson::ondemand::json_type::null:
+                case simdjson::ondemand::json_type::number:
+                case simdjson::ondemand::json_type::boolean: {
                     // Use raw_json for primitive types to avoid conversion overhead
                     value_view = value.raw_json();
                     break;
                 }
-                case simdjson::fallback::ondemand::json_type::string: {
+                case simdjson::ondemand::json_type::string: {
                     value_view = value.get_string();
                     break;
                 }
-                case simdjson::fallback::ondemand::json_type::object:
-                case simdjson::fallback::ondemand::json_type::array: {
+                case simdjson::ondemand::json_type::object:
+                case simdjson::ondemand::json_type::array: {
                     value_view = simdjson::to_json_string(value);
                     break;
                 }
