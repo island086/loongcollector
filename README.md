@@ -14,7 +14,7 @@
 [![Coverage Status](https://codecov.io/gh/alibaba/loongcollector/branch/main/graph/badge.svg)](https://codecov.io/gh/alibaba/loongcollector)
 [![Go Report Card](https://goreportcard.com/badge/github.com/alibaba/loongcollector)](https://goreportcard.com/report/github.com/alibaba/loongcollector)
 
-[Quick Start](#-quick-start) • [Documentation](https://ilogtail.gitbook.io/ilogtail-docs/) • [Performance Benchmarks](#-performance-benchmarks) • [Contributing](#-contributing)
+[Quick Start](#-quick-start) • [Documentation](#-documentation) • [Performance Benchmarks](#-performance-benchmarks) • [Contributing](#-contributing)
 
 </div>
 
@@ -164,8 +164,6 @@ We welcome contributions from the community! Here are some ways you can help:
 
 - **GitHub Issues**: [Report bugs and feature requests](https://github.com/alibaba/loongcollector/issues)
 - **GitHub Discussions**: [Join community discussions](https://github.com/alibaba/loongcollector/discussions)
-- **Documentation**: [GitBook](https://ilogtail.gitbook.io/ilogtail-docs/)
-- **Chinese Community**: [可观测中文社区](https://observability.cn/project/loongcollector/readme)
 
 ### Community Channels
 
