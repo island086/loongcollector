@@ -26,7 +26,7 @@ fi
 PUB_KEY_PATH="$HOME/.ssh/id_rsa.pub"
 if [ -f "$PUB_KEY_PATH" ]; then
   cp "$PUB_KEY_PATH" authorized_keys
-else
-  echo "主机未找到公钥 $PUB_KEY_PATH，请先生成。"
+  chmod 600 authorized_keys
+  echo "Public key $PUB_KEY_PATH not found on host. Please generate it first."
   exit 1
 fi
