@@ -73,9 +73,9 @@ void HostMonitorInputRunnerUnittest::TestScheduleOnce() const {
     ctx.SetConfigName(configName);
     ProcessQueueManager::GetInstance()->CreateOrUpdateBoundedQueue(queueKey, 0, ctx);
 
-    HostMonitorTimerEvent::CollectConfig collectConfig(MockCollector::sName, queueKey, 0, std::chrono::seconds(60));
     std::chrono::time_point now = std::chrono::steady_clock::now();
-    runner->ScheduleOnce(now, collectConfig);
+    HostMonitorTimerEvent::CollectConfig collectConfig(MockCollector::sName, queueKey, 0, std::chrono::seconds(60), now);
+    runner->ScheduleOnce(collectConfig);
     std::this_thread::sleep_for(std::chrono::seconds(1));
     APSARA_TEST_EQUAL_FATAL(1, Timer::GetInstance()->mQueue.size());
     APSARA_TEST_EQUAL_FATAL((now + std::chrono::seconds(60)).time_since_epoch().count(),

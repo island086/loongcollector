@@ -43,7 +43,8 @@ void SystemCollectorUnittest::TestCollect() const {
     double cores = static_cast<double>(std::thread::hardware_concurrency());
     auto collector = SystemCollector();
     PipelineEventGroup group(make_shared<SourceBuffer>());
-    HostMonitorTimerEvent::CollectConfig collectconfig(SystemCollector::sName, 0, 0, std::chrono::seconds(1));
+    HostMonitorTimerEvent::CollectConfig collectconfig(
+        SystemCollector::sName, 0, 0, std::chrono::seconds(1), std::chrono::steady_clock::now());
 
     APSARA_TEST_TRUE(collector.Collect(collectconfig, &group));
     APSARA_TEST_TRUE(collector.Collect(collectconfig, &group));

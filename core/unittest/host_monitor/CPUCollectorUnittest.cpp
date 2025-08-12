@@ -47,12 +47,11 @@ protected:
 void CPUCollectorUnittest::TestCollectNormal() const {
     auto collector = CPUCollector();
     PipelineEventGroup group(make_shared<SourceBuffer>());
-    HostMonitorTimerEvent::CollectConfig collectConfig(CPUCollector::sName, 0, 0, std::chrono::seconds(1));
+    HostMonitorTimerEvent::CollectConfig collectConfig(
+        CPUCollector::sName, 0, 0, std::chrono::seconds(1), std::chrono::steady_clock::now());
 
     APSARA_TEST_TRUE(collector.Collect(collectConfig, &group));
 
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds{INT32_FLAG(system_interface_default_cache_ttl)}); // wait system interface cache stale
     ofstream ofs("./stat", std::ios::trunc);
     ofs << "cpu  2 2 2 2 2 2 2 2 2 2 \n";
     ofs << "cpu0 1 1 1 1 1 1 1 1 1 1\n";
@@ -62,8 +61,6 @@ void CPUCollectorUnittest::TestCollectNormal() const {
     PROCESS_DIR = ".";
     APSARA_TEST_TRUE(collector.Collect(collectConfig, &group));
 
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds{INT32_FLAG(system_interface_default_cache_ttl)}); // wait system interface cache stale
     ofstream ofs1("./stat", std::ios::trunc);
     ofs1 << "cpu  3 3 3 3 3 3 3 3 3 3 \n";
     ofs1 << "cpu0 1 1 1 1 1 1 1 1 1 1\n";
@@ -73,8 +70,6 @@ void CPUCollectorUnittest::TestCollectNormal() const {
     PROCESS_DIR = ".";
     APSARA_TEST_TRUE(collector.Collect(collectConfig, &group));
 
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds{INT32_FLAG(system_interface_default_cache_ttl)}); // wait system interface cache stale
     ofstream ofs2("./stat", std::ios::trunc);
     ofs2 << "cpu  4 4 4 4 4 4 4 4 4 4 \n";
     ofs2 << "cpu0 1 1 1 1 1 1 1 1 1 1\n";
@@ -120,7 +115,8 @@ void CPUCollectorUnittest::TestCollectNormal() const {
 void CPUCollectorUnittest::TestCpuValue0() const {
     auto collector = CPUCollector();
     PipelineEventGroup group(make_shared<SourceBuffer>());
-    HostMonitorTimerEvent::CollectConfig collectConfig(CPUCollector::sName, 0, 0, std::chrono::seconds(1));
+    HostMonitorTimerEvent::CollectConfig collectConfig(
+        CPUCollector::sName, 0, 0, std::chrono::seconds(1), std::chrono::steady_clock::now());
 
     ofstream ofs("./stat", std::ios::trunc);
     ofs << "cpu  0 0 0 0 0 0 0 0 0 0 \n";
@@ -134,7 +130,8 @@ void CPUCollectorUnittest::TestCpuValue0() const {
 void CPUCollectorUnittest::TestjiffiesDeltaNegative() const {
     auto collector = CPUCollector();
     PipelineEventGroup group(make_shared<SourceBuffer>());
-    HostMonitorTimerEvent::CollectConfig collectConfig(CPUCollector::sName, 0, 0, std::chrono::seconds(1));
+    HostMonitorTimerEvent::CollectConfig collectConfig(
+        CPUCollector::sName, 0, 0, std::chrono::seconds(1), std::chrono::steady_clock::now());
 
     ofstream ofs("./stat", std::ios::trunc);
     ofs << "cpu  2 2 2 2 2 2 2 2 2 2 \n";
@@ -143,8 +140,6 @@ void CPUCollectorUnittest::TestjiffiesDeltaNegative() const {
     PROCESS_DIR = ".";
     APSARA_TEST_TRUE(collector.Collect(collectConfig, &group));
 
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds{INT32_FLAG(system_interface_default_cache_ttl)}); // wait system interface cache stale
     ofstream ofs1("./stat", std::ios::trunc);
     ofs1 << "cpu 1 1 1 1 1 1 1 1 1 1\n";
     ofs1 << "cpu0 1 1 1 1 1 1 1 1 1 1\n";
@@ -159,17 +154,15 @@ void CPUCollectorUnittest::TestCpuCount0() const {
     CPUInformation cpuInfo;
     auto collector = CPUCollector();
     PipelineEventGroup group(make_shared<SourceBuffer>());
-    HostMonitorTimerEvent::CollectConfig collectConfig(CPUCollector::sName, 0, 0, std::chrono::seconds(1));
+    HostMonitorTimerEvent::CollectConfig collectConfig(
+        CPUCollector::sName, 0, 0, std::chrono::seconds(1), std::chrono::steady_clock::now());
 
     ofstream ofs2("./stat", std::ios::trunc);
     ofs2 << "cpu  0 0 0 0 0 0 0 0 0 0\n";
     ofs2.close();
     PROCESS_DIR = ".";
 
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds{INT32_FLAG(system_interface_default_cache_ttl)}); // wait system interface cache stale
-
-    APSARA_TEST_TRUE(SystemInterface::GetInstance()->GetCPUInformation(cpuInfo));
+    APSARA_TEST_TRUE(SystemInterface::GetInstance()->GetCPUInformation(std::chrono::steady_clock::now(), cpuInfo));
 
     APSARA_TEST_FALSE_FATAL(collector.Collect(collectConfig, &group));
 }
@@ -177,15 +170,14 @@ void CPUCollectorUnittest::TestCpuCount0() const {
 void CPUCollectorUnittest::TestGetCPUInformation() const {
     auto collector = CPUCollector();
     PipelineEventGroup group(make_shared<SourceBuffer>());
-    HostMonitorTimerEvent::CollectConfig collectConfig(CPUCollector::sName, 0, 0, std::chrono::seconds(1));
+    HostMonitorTimerEvent::CollectConfig collectConfig(
+        CPUCollector::sName, 0, 0, std::chrono::seconds(1), std::chrono::steady_clock::now());
 
     ofstream ofs3("./stat", std::ios::trunc);
     ofs3 << "cpua a b c \n";
     ofs3.close();
     PROCESS_DIR = ".";
 
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds{INT32_FLAG(system_interface_default_cache_ttl)}); // wait system interface cache stale
     APSARA_TEST_FALSE_FATAL(collector.Collect(collectConfig, &group));
 }
 
@@ -193,24 +185,24 @@ void CPUCollectorUnittest::TestGetCPUInformationInterface() const {
     CPUInformation cpuInfo;
     auto collector = CPUCollector();
     PipelineEventGroup group(make_shared<SourceBuffer>());
-    HostMonitorTimerEvent::CollectConfig collectConfig(CPUCollector::sName, 0, 0, std::chrono::seconds(1));
+    HostMonitorTimerEvent::CollectConfig collectConfig(
+        CPUCollector::sName, 0, 0, std::chrono::seconds(1), std::chrono::steady_clock::now());
 
     ofstream ofs4("./stat", std::ios::trunc);
     ofs4 << "";
     ofs4.close();
     PROCESS_DIR = ".";
 
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds{INT32_FLAG(system_interface_default_cache_ttl)}); // wait system interface cache stale
-
-    APSARA_TEST_FALSE_FATAL(SystemInterface::GetInstance()->GetCPUInformation(cpuInfo));
+    APSARA_TEST_FALSE_FATAL(
+        SystemInterface::GetInstance()->GetCPUInformation(std::chrono::steady_clock::now(), cpuInfo));
 }
 
 void CPUCollectorUnittest::TestGroupNull() const {
     auto collector = CPUCollector();
     PipelineEventGroup* group = nullptr;
 
-    HostMonitorTimerEvent::CollectConfig collectConfig(CPUCollector::sName, 0, 0, std::chrono::seconds(1));
+    HostMonitorTimerEvent::CollectConfig collectConfig(
+        CPUCollector::sName, 0, 0, std::chrono::seconds(1), std::chrono::steady_clock::now());
 
     APSARA_TEST_FALSE_FATAL(collector.Collect(collectConfig, group));
 }

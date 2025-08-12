@@ -49,7 +49,7 @@ bool MemCollector::Collect(const HostMonitorTimerEvent::CollectConfig& collectCo
     }
 
     MemoryInformation meminfo;
-    if (!GetHostMeminfoStat(meminfo)) {
+    if (!SystemInterface::GetInstance()->GetHostMemInformationStat(collectConfig.mExecTime, meminfo)) {
         return false;
     }
 
@@ -65,13 +65,12 @@ bool MemCollector::Collect(const HostMonitorTimerEvent::CollectConfig& collectCo
 
     mCount = 0;
     mCalculateMeminfo.Reset();
-    const time_t now = time(nullptr);
 
     MetricEvent* metricEvent = group->AddMetricEvent(true);
     if (!metricEvent) {
         return false;
     }
-    metricEvent->SetTimestamp(now, 0);
+    metricEvent->SetTimestamp(collectConfig.mExecTime.time_since_epoch().count(), 0);
     metricEvent->SetValue<UntypedMultiDoubleValues>(metricEvent);
     auto* multiDoubleValues = metricEvent->MutableValue<UntypedMultiDoubleValues>();
     multiDoubleValues->SetValue(std::string("memory_usedutilization_min"),
@@ -111,14 +110,6 @@ bool MemCollector::Collect(const HostMonitorTimerEvent::CollectConfig& collectCo
     multiDoubleValues->SetValue(std::string("memory_totalspace_avg"),
                                 UntypedMultiDoubleValue{UntypedValueMetricType::MetricTypeGauge, avgMem.total});
     metricEvent->SetTag(std::string("m"), std::string("system.memory"));
-    return true;
-}
-
-bool MemCollector::GetHostMeminfoStat(MemoryInformation& meminfo) {
-    if (!SystemInterface::GetInstance()->GetHostMemInformationStat(meminfo)) {
-        return false;
-    }
-
     return true;
 }
 

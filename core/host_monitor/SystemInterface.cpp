@@ -35,15 +35,19 @@
 #include "unittest/host_monitor/MockSystemInterface.h"
 #endif
 
-DEFINE_FLAG_INT32(system_interface_default_cache_ttl, "system interface default cache ttl, ms", 1000);
+DEFINE_FLAG_INT32(system_interface_cache_queue_size, "system interface default cache size", 15);
+DEFINE_FLAG_INT32(system_interface_cache_entry_expire_seconds, "cache entry expire time in minutes", 10);
+DEFINE_FLAG_INT32(system_interface_cache_cleanup_interval_seconds, "cache cleanup interval in minutes", 5);
+DEFINE_FLAG_INT32(system_interface_cache_max_cleanup_batch_size, "max entries to cleanup in one batch", 50);
 
 namespace logtail {
 
 SystemInterface* SystemInterface::GetInstance() {
+#ifdef APSARA_UNIT_TEST_MAIN
+    return MockSystemInterface::GetInstance();
+#endif
 #ifdef __linux__
     return LinuxSystemInterface::GetInstance();
-#elif APSARA_UNIT_TEST_MAIN
-    return MockSystemInterface::GetInstance();
 #else
     LOG_ERROR(sLogger, "SystemInterface is not implemented for this platform");
     return nullptr;
@@ -63,19 +67,22 @@ bool SystemInterface::GetSystemInformation(SystemInformation& systemInfo) {
     return false;
 }
 
-bool SystemInterface::GetCPUInformation(CPUInformation& cpuInfo) {
+bool SystemInterface::GetCPUInformation(std::chrono::steady_clock::time_point now, CPUInformation& cpuInfo) {
     const std::string errorType = "cpu";
     return MemoizedCall(
         mCPUInformationCache,
+        now,
         [this](BaseInformation& info) { return this->GetCPUInformationOnce(static_cast<CPUInformation&>(info)); },
         cpuInfo,
         errorType);
 }
 
-bool SystemInterface::GetProcessListInformation(ProcessListInformation& processListInfo) {
+bool SystemInterface::GetProcessListInformation(std::chrono::steady_clock::time_point now,
+                                                ProcessListInformation& processListInfo) {
     const std::string errorType = "process list";
     return MemoizedCall(
         mProcessListInformationCache,
+        now,
         [this](BaseInformation& info) {
             return this->GetProcessListInformationOnce(static_cast<ProcessListInformation&>(info));
         },
@@ -83,10 +90,13 @@ bool SystemInterface::GetProcessListInformation(ProcessListInformation& processL
         errorType);
 }
 
-bool SystemInterface::GetProcessInformation(pid_t pid, ProcessInformation& processInfo) {
+bool SystemInterface::GetProcessInformation(std::chrono::steady_clock::time_point now,
+                                            pid_t pid,
+                                            ProcessInformation& processInfo) {
     const std::string errorType = "process";
     return MemoizedCall(
         mProcessInformationCache,
+        now,
         [this](BaseInformation& info, pid_t pid) {
             return this->GetProcessInformationOnce(pid, static_cast<ProcessInformation&>(info));
         },
@@ -95,10 +105,12 @@ bool SystemInterface::GetProcessInformation(pid_t pid, ProcessInformation& proce
         pid);
 }
 
-bool SystemInterface::GetSystemLoadInformation(SystemLoadInformation& systemLoadInfo) {
+bool SystemInterface::GetSystemLoadInformation(std::chrono::steady_clock::time_point now,
+                                               SystemLoadInformation& systemLoadInfo) {
     const std::string errorType = "system load";
     return MemoizedCall(
         mSystemLoadInformationCache,
+        now,
         [this](BaseInformation& info) {
             return this->GetSystemLoadInformationOnce(static_cast<SystemLoadInformation&>(info));
         },
@@ -107,20 +119,22 @@ bool SystemInterface::GetSystemLoadInformation(SystemLoadInformation& systemLoad
 }
 
 bool SystemInterface::GetCPUCoreNumInformation(CpuCoreNumInformation& cpuCoreNumInfo) {
-    const std::string errorType = "cpu core num";
-    return MemoizedCall(
-        mCPUCoreNumInformationCache,
-        [this](BaseInformation& info) {
-            return this->GetCPUCoreNumInformationOnce(static_cast<CpuCoreNumInformation&>(info));
-        },
-        cpuCoreNumInfo,
-        errorType);
+    if (mCPUCoreNumInformationCache.collectTime.time_since_epoch().count() > 0) {
+        cpuCoreNumInfo = mCPUCoreNumInformationCache;
+        return true;
+    }
+    if (GetCPUCoreNumInformationOnce(mCPUCoreNumInformationCache)) {
+        cpuCoreNumInfo = mCPUCoreNumInformationCache;
+        return true;
+    }
+    return false;
 }
 
-bool SystemInterface::GetHostMemInformationStat(MemoryInformation& meminfo) {
+bool SystemInterface::GetHostMemInformationStat(std::chrono::steady_clock::time_point now, MemoryInformation& meminfo) {
     const std::string errorType = "mem";
     return MemoizedCall(
         mMemInformationCache,
+        now,
         [this](BaseInformation& info) {
             return this->GetHostMemInformationStatOnce(static_cast<MemoryInformation&>(info));
         },
@@ -231,10 +245,12 @@ bool SystemInterface::GetProcessOpenFiles(pid_t pid, ProcessFd& processFd) {
         errorType,
         pid);
 }
-bool SystemInterface::GetTCPStatInformation(TCPStatInformation& tcpStatInfo) {
+bool SystemInterface::GetTCPStatInformation(std::chrono::steady_clock::time_point now,
+                                            TCPStatInformation& tcpStatInfo) {
     const std::string errorType = "TCP stat";
     return MemoizedCall(
         mTCPStatInformationCache,
+        now,
         [this](BaseInformation& info) {
             return this->GetTCPStatInformationOnce(static_cast<TCPStatInformation&>(info));
         },
@@ -242,10 +258,12 @@ bool SystemInterface::GetTCPStatInformation(TCPStatInformation& tcpStatInfo) {
         errorType);
 }
 
-bool SystemInterface::GetNetInterfaceInformation(NetInterfaceInformation& netInterfaceInfo) {
+bool SystemInterface::GetNetInterfaceInformation(std::chrono::steady_clock::time_point now,
+                                                 NetInterfaceInformation& netInterfaceInfo) {
     const std::string errorType = "Net interface";
     return MemoizedCall(
         mNetInterfaceInformationCache,
+        now,
         [this](BaseInformation& info) {
             return this->GetNetInterfaceInformationOnce(static_cast<NetInterfaceInformation&>(info));
         },
@@ -254,10 +272,13 @@ bool SystemInterface::GetNetInterfaceInformation(NetInterfaceInformation& netInt
 }
 
 template <typename F, typename InfoT, typename... Args>
-bool SystemInterface::MemoizedCall(
-    SystemInformationCache<InfoT, Args...>& cache, F&& func, InfoT& info, const std::string& errorType, Args... args) {
-    if (cache.GetWithTimeout(
-            info, std::chrono::milliseconds{INT32_FLAG(system_interface_default_cache_ttl)}, args...)) {
+bool SystemInterface::MemoizedCall(SystemInformationCache<InfoT, Args...>& cache,
+                                   std::chrono::steady_clock::time_point now,
+                                   F&& func,
+                                   InfoT& info,
+                                   const std::string& errorType,
+                                   Args... args) {
+    if (cache.Get(now, info, args...)) {
         return true;
     }
     bool status = std::forward<F>(func)(info, args...);
@@ -266,102 +287,93 @@ bool SystemInterface::MemoizedCall(
     } else {
         LOG_ERROR(sLogger, ("failed to get system information", errorType));
     }
-    static int sGCCount = 0;
-    sGCCount++;
-    if (sGCCount >= 100) { // Perform GC every 100 calls
-        cache.GC();
-        sGCCount = 0;
-    }
     return status;
 }
 
 template <typename InfoT, typename... Args>
-bool SystemInterface::SystemInformationCache<InfoT, Args...>::GetWithTimeout(InfoT& info,
-                                                                             std::chrono::milliseconds timeout,
-                                                                             Args... args) {
-    auto now = std::chrono::steady_clock::now();
+bool SystemInterface::SystemInformationCache<InfoT, Args...>::Get(std::chrono::steady_clock::time_point now,
+                                                                  InfoT& info,
+                                                                  Args... args) {
     std::unique_lock<std::mutex> lock(mMutex);
     auto it = mCache.find(std::make_tuple(args...));
     if (it != mCache.end()) {
-        if (now - it->second.first.collectTime < mTTL) {
-            info = it->second.first; // copy to avoid external modify
-            return true;
-        }
-        if (!it->second.second) {
-            // the cache is stale and no thread is updating, will update by this thread
-            it->second.second.store(true);
-            return false;
+        it->second.lastAccessTime = std::chrono::steady_clock::now();
+        for (size_t i = it->second.data.size() - 1; i >= 0; --i) {
+            auto& cacheEntry = it->second.data[i];
+            if (now == cacheEntry.collectTime) {
+                info = cacheEntry;
+                return true;
+            } else if (now > cacheEntry.collectTime) {
+                if (i < it->second.data.size() - 1) {
+                    // input time is past, we can never get the data at this time. So return the closest entry after now
+                    info = it->second.data[i + 1];
+                    return true;
+                } else {
+                    return false;
+                }
+            }
         }
     } else {
-        // no data in cache, directly update
-        mCache[std::make_tuple(args...)] = std::make_pair(InfoT{}, true);
+        mCache[std::make_tuple(args...)] = CacheEntry();
         return false;
     }
-    // the cache is stale and other threads is updating, wait for it
-    auto status = mConditionVariable.wait_until(lock, std::chrono::steady_clock::now() + timeout);
-    if (status == std::cv_status::timeout) {
-        LOG_ERROR(sLogger,
-                  ("system information update", "too slow")("type", boost::typeindex::type_id<InfoT>().pretty_name()));
-        return false; // timeout
-    }
-    // query again
-    now = std::chrono::steady_clock::now();
-    it = mCache.find(std::make_tuple(args...));
-    if (it != mCache.end() && now - it->second.first.collectTime < mTTL) {
-        info = it->second.first; // copy to avoid external modify
-        return true;
-    }
-    return false;
 }
 
 template <typename InfoT, typename... Args>
 bool SystemInterface::SystemInformationCache<InfoT, Args...>::Set(InfoT& info, Args... args) {
-    std::lock_guard<std::mutex> lock(mMutex);
-    mCache[std::make_tuple(args...)] = std::make_pair(info, false);
-    mConditionVariable.notify_all();
-    return true;
-}
+    bool needsCleanup = false;
+    {
+        std::lock_guard<std::mutex> lock(mMutex);
+        auto& cacheEntry = mCache[std::make_tuple(args...)];
+        auto& deque = cacheEntry.data;
 
-template <typename InfoT, typename... Args>
-bool SystemInterface::SystemInformationCache<InfoT, Args...>::GC() {
-    std::lock_guard<std::mutex> lock(mMutex);
-    auto now = std::chrono::steady_clock::now();
-    for (auto it = mCache.begin(); it != mCache.end();) {
-        if (now - it->second.first.collectTime > mTTL) {
-            it = mCache.erase(it);
+        // Find correct position to maintain time ordering (newest at back)
+        auto insertPos = std::upper_bound(deque.begin(), deque.end(), info, [](const InfoT& a, const InfoT& b) {
+            return a.collectTime < b.collectTime;
+        });
+        if (insertPos != deque.end() && insertPos->collectTime == info.collectTime) {
+            // conflict, use old value
+            info = *insertPos;
         } else {
-            ++it;
+            deque.insert(insertPos, info);
         }
+
+        // Remove oldest entries if size exceeds limit
+        if (deque.size() > mCacheSize) {
+            deque.pop_front();
+        }
+
+        // Update access time
+        cacheEntry.lastAccessTime = std::chrono::steady_clock::now();
+
+        // Check if cleanup is needed (don't hold lock during cleanup)
+        needsCleanup = ShouldPerformCleanup();
     }
+
+    if (needsCleanup) {
+        PerformGarbageCollection();
+    }
+
     return true;
 }
 
 template <typename InfoT>
-bool SystemInterface::SystemInformationCache<InfoT>::GetWithTimeout(InfoT& info, std::chrono::milliseconds timeout) {
-    auto now = std::chrono::steady_clock::now();
+bool SystemInterface::SystemInformationCache<InfoT>::Get(std::chrono::steady_clock::time_point now, InfoT& info) {
     std::unique_lock<std::mutex> lock(mMutex);
-    if (mCache.first.collectTime.time_since_epoch().count() > 0 && now - mCache.first.collectTime < mTTL) {
-        info = mCache.first; // copy to avoid external modify
-        return true;
-    }
-    if (!mCache.second) {
-        // the cache is stale and no thread is updating, will update by this thread
-        mCache.second.store(true);
-        return false;
-    }
-    // the cache is stale and other threads is updating, wait for it
-    auto status
-        = mConditionVariable.wait_until(lock, std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout));
-    if (status == std::cv_status::timeout) {
-        LOG_ERROR(sLogger,
-                  ("system information update", "too slow")("type", boost::typeindex::type_id<InfoT>().pretty_name()));
-        return false; // timeout
-    }
-    // query again
-    now = std::chrono::steady_clock::now();
-    if (now - mCache.first.collectTime < mTTL) {
-        info = mCache.first; // copy to avoid external modify
-        return true;
+    for (size_t i = mCache.size() - 1; i >= 0; --i) {
+        auto& cacheEntry = mCache[i];
+        if (now == cacheEntry.collectTime) {
+            info = cacheEntry;
+            return true;
+        } else if (now > cacheEntry.collectTime) {
+            if (i < mCache.size() - 1) {
+                // input time is past, we can never get the data at this time. So return the closest entry after now
+                info = mCache[i + 1];
+                return true;
+            } else {
+                return false;
+            }
+        }
     }
     return false;
 }
@@ -369,14 +381,22 @@ bool SystemInterface::SystemInformationCache<InfoT>::GetWithTimeout(InfoT& info,
 template <typename InfoT>
 bool SystemInterface::SystemInformationCache<InfoT>::Set(InfoT& info) {
     std::lock_guard<std::mutex> lock(mMutex);
-    mCache = std::make_pair(info, false);
-    mConditionVariable.notify_all();
-    return true;
-}
 
-template <typename InfoT>
-bool SystemInterface::SystemInformationCache<InfoT>::GC() {
-    // no need to GC for single cache
+    // Find correct position to maintain time ordering (newest at back)
+    auto insertPos = std::upper_bound(mCache.begin(), mCache.end(), info, [](const InfoT& a, const InfoT& b) {
+        return a.collectTime < b.collectTime;
+    });
+    if (insertPos != mCache.end() && insertPos->collectTime == info.collectTime) {
+        // conflict, use old value
+        info = *insertPos;
+    } else {
+        mCache.insert(insertPos, info);
+    }
+
+    // Remove oldest entries if size exceeds limit
+    if (mCache.size() > mCacheSize) {
+        mCache.pop_front();
+    }
     return true;
 }
 
@@ -421,6 +441,48 @@ std::string NetAddress::str() const {
         name = it->second(this);
     }
     return name;
+}
+
+// GC implementation for SystemInformationCache with arguments
+template <typename InfoT, typename... Args>
+void SystemInterface::SystemInformationCache<InfoT, Args...>::PerformGarbageCollection() {
+    auto expireThreshold = std::chrono::seconds(INT32_FLAG(system_interface_cache_entry_expire_seconds));
+    if (ClearExpiredEntries(expireThreshold)) {
+        // only update last cleanup time if all expired entries are cleared
+        mLastCleanupTime = std::chrono::steady_clock::now();
+    }
+}
+
+template <typename InfoT, typename... Args>
+bool SystemInterface::SystemInformationCache<InfoT, Args...>::ClearExpiredEntries(
+    std::chrono::steady_clock::duration maxAge) {
+    std::lock_guard<std::mutex> lock(mMutex);
+    auto now = std::chrono::steady_clock::now();
+    auto maxCleanupCount = static_cast<size_t>(INT32_FLAG(system_interface_cache_max_cleanup_batch_size));
+    size_t cleanedCount = 0;
+
+    for (auto it = mCache.begin(); it != mCache.end() && cleanedCount < maxCleanupCount;) {
+        if (now - it->second.lastAccessTime > maxAge) {
+            it = mCache.erase(it);
+            ++cleanedCount;
+        } else {
+            ++it;
+        }
+    }
+    return cleanedCount < maxCleanupCount;
+}
+
+template <typename InfoT, typename... Args>
+bool SystemInterface::SystemInformationCache<InfoT, Args...>::ShouldPerformCleanup() const {
+    auto cleanupInterval = std::chrono::seconds(INT32_FLAG(system_interface_cache_cleanup_interval_seconds));
+    auto now = std::chrono::steady_clock::now();
+    return (now - mLastCleanupTime) >= cleanupInterval;
+}
+
+template <typename InfoT, typename... Args>
+size_t SystemInterface::SystemInformationCache<InfoT, Args...>::GetCacheSize() const {
+    std::lock_guard<std::mutex> lock(mMutex);
+    return mCache.size();
 }
 
 } // namespace logtail

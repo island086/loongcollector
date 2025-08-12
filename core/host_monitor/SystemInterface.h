@@ -29,6 +29,7 @@
 #include <condition_variable>
 #include <functional>
 #include <mutex>
+#include <queue>
 #include <tuple>
 #include <unordered_map>
 #include <utility>
@@ -38,7 +39,7 @@
 #include "common/Flags.h"
 #include "common/ProcParser.h"
 
-DECLARE_FLAG_INT32(system_interface_default_cache_ttl);
+DECLARE_FLAG_INT32(system_interface_cache_queue_size);
 
 namespace logtail {
 
@@ -602,17 +603,29 @@ class SystemInterface {
 public:
     template <typename InfoT, typename... Args>
     class SystemInformationCache {
+    private:
+        struct CacheEntry {
+            std::deque<InfoT> data;
+            std::chrono::steady_clock::time_point lastAccessTime;
+
+            CacheEntry() : lastAccessTime(std::chrono::steady_clock::now()) {}
+        };
+
     public:
-        SystemInformationCache(std::chrono::milliseconds ttl) : mTTL(ttl) {}
-        bool GetWithTimeout(InfoT& info, std::chrono::milliseconds timeout, Args... args);
+        SystemInformationCache(size_t cacheSize)
+            : mCacheSize(cacheSize), mLastCleanupTime(std::chrono::steady_clock::now()) {}
+        bool Get(std::chrono::steady_clock::time_point now, InfoT& info, Args... args);
         bool Set(InfoT& info, Args... args);
-        bool GC();
+        void PerformGarbageCollection();
+        size_t GetCacheSize() const;
+        bool ClearExpiredEntries(std::chrono::steady_clock::duration maxAge);
+        bool ShouldPerformCleanup() const;
 
     private:
-        std::mutex mMutex;
-        std::unordered_map<std::tuple<Args...>, std::pair<InfoT, std::atomic_bool>, TupleHash> mCache;
-        std::condition_variable mConditionVariable;
-        std::chrono::milliseconds mTTL;
+        mutable std::mutex mMutex;
+        std::unordered_map<std::tuple<Args...>, CacheEntry, TupleHash> mCache;
+        size_t mCacheSize;
+        std::chrono::steady_clock::time_point mLastCleanupTime;
 
 #ifdef APSARA_UNIT_TEST_MAIN
         friend class SystemInterfaceUnittest;
@@ -622,16 +635,14 @@ public:
     template <typename InfoT>
     class SystemInformationCache<InfoT> {
     public:
-        SystemInformationCache(std::chrono::milliseconds ttl) : mTTL(ttl) {}
-        bool GetWithTimeout(InfoT& info, std::chrono::milliseconds timeout);
+        SystemInformationCache(size_t cacheSize) : mCacheSize(cacheSize) {}
+        bool Get(std::chrono::steady_clock::time_point now, InfoT& info);
         bool Set(InfoT& info);
-        bool GC();
 
     private:
         std::mutex mMutex;
-        std::pair<InfoT, std::atomic_bool> mCache;
-        std::condition_variable mConditionVariable;
-        std::chrono::milliseconds mTTL;
+        std::deque<InfoT> mCache;
+        size_t mCacheSize;
 
 #ifdef APSARA_UNIT_TEST_MAIN
         friend class SystemInterfaceUnittest;
@@ -646,12 +657,12 @@ public:
     static SystemInterface* GetInstance();
 
     bool GetSystemInformation(SystemInformation& systemInfo);
-    bool GetCPUInformation(CPUInformation& cpuInfo);
-    bool GetProcessListInformation(ProcessListInformation& processListInfo);
-    bool GetProcessInformation(pid_t pid, ProcessInformation& processInfo);
-    bool GetSystemLoadInformation(SystemLoadInformation& systemLoadInfo);
+    bool GetCPUInformation(std::chrono::steady_clock::time_point now, CPUInformation& cpuInfo);
+    bool GetProcessListInformation(std::chrono::steady_clock::time_point now, ProcessListInformation& processListInfo);
+    bool GetProcessInformation(std::chrono::steady_clock::time_point now, pid_t pid, ProcessInformation& processInfo);
+    bool GetSystemLoadInformation(std::chrono::steady_clock::time_point now, SystemLoadInformation& systemLoadInfo);
     bool GetCPUCoreNumInformation(CpuCoreNumInformation& cpuCoreNumInfo);
-    bool GetHostMemInformationStat(MemoryInformation& meminfo);
+    bool GetHostMemInformationStat(std::chrono::steady_clock::time_point now, MemoryInformation& meminfo);
     bool GetFileSystemListInformation(FileSystemListInformation& fileSystemListInfo);
     bool GetSystemUptimeInformation(SystemUptimeInformation& systemUptimeInfo);
     bool GetDiskSerialIdInformation(std::string diskName, SerialIdInformation& serialIdInfo);
@@ -662,17 +673,17 @@ public:
     bool GetExecutablePathCache(pid_t pid, ProcessExecutePath& executePath);
     bool GetProcessOpenFiles(pid_t pid, ProcessFd& processFd);
 
-    bool GetTCPStatInformation(TCPStatInformation& tcpStatInfo);
-    bool GetNetInterfaceInformation(NetInterfaceInformation& netInterfaceInfo);
-    explicit SystemInterface(std::chrono::milliseconds ttl
-                             = std::chrono::milliseconds{INT32_FLAG(system_interface_default_cache_ttl)})
+    bool GetTCPStatInformation(std::chrono::steady_clock::time_point now, TCPStatInformation& tcpStatInfo);
+    bool GetNetInterfaceInformation(std::chrono::steady_clock::time_point now,
+                                    NetInterfaceInformation& netInterfaceInfo);
+    explicit SystemInterface(size_t cacheSize = INT32_FLAG(system_interface_cache_queue_size))
         : mSystemInformationCache(),
-          mCPUInformationCache(ttl),
-          mProcessListInformationCache(ttl),
-          mProcessInformationCache(ttl),
-          mSystemLoadInformationCache(ttl),
-          mCPUCoreNumInformationCache(ttl),
-          mMemInformationCache(ttl),
+          mCPUInformationCache(cacheSize),
+          mProcessListInformationCache(cacheSize),
+          mProcessInformationCache(cacheSize),
+          mSystemLoadInformationCache(cacheSize),
+          mCPUCoreNumInformationCache(),
+          mMemInformationCache(cacheSize),
           mFileSystemListInformationCache(ttl),
           mSystemUptimeInformationCache(ttl),
           mSerialIdInformationCache(ttl),
@@ -682,13 +693,14 @@ public:
           mProcessStatusCache(ttl),
           mProcessFdCache(ttl),
           mExecutePathCache(ttl),
-          mTCPStatInformationCache(ttl),
-          mNetInterfaceInformationCache(ttl) {}
+          mTCPStatInformationCache(cacheSize),
+          mNetInterfaceInformationCache(cacheSize) {}
     virtual ~SystemInterface() = default;
 
 private:
     template <typename F, typename InfoT, typename... Args>
     bool MemoizedCall(SystemInformationCache<InfoT, Args...>& cache,
+                      std::chrono::steady_clock::time_point now,
                       F&& func,
                       InfoT& info,
                       const std::string& errorType,
@@ -718,7 +730,7 @@ private:
     SystemInformationCache<ProcessListInformation> mProcessListInformationCache;
     SystemInformationCache<ProcessInformation, pid_t> mProcessInformationCache;
     SystemInformationCache<SystemLoadInformation> mSystemLoadInformationCache;
-    SystemInformationCache<CpuCoreNumInformation> mCPUCoreNumInformationCache;
+    CpuCoreNumInformation mCPUCoreNumInformationCache;
     SystemInformationCache<MemoryInformation> mMemInformationCache;
     SystemInformationCache<FileSystemListInformation> mFileSystemListInformationCache;
     SystemInformationCache<SystemUptimeInformation> mSystemUptimeInformationCache;

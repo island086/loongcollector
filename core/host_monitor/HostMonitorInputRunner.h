@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <cstdint>
+
 #include <atomic>
 #include <chrono>
 #include <memory>
@@ -80,8 +82,7 @@ public:
     bool HasRegisteredPlugins() const override;
 
     bool IsCollectTaskValid(const std::chrono::steady_clock::time_point& execTime, const std::string& collectorName);
-    void ScheduleOnce(const std::chrono::steady_clock::time_point& execTime,
-                      HostMonitorTimerEvent::CollectConfig& collectConfig);
+    void ScheduleOnce(HostMonitorTimerEvent::CollectConfig& collectConfig);
 
 private:
     HostMonitorInputRunner();
@@ -93,8 +94,7 @@ private:
         mRegisteredCollectorMap.emplace(T::sName, CollectorInstance(std::move(collector)));
     }
 
-    void PushNextTimerEvent(const std::chrono::steady_clock::time_point& execTime,
-                            const HostMonitorTimerEvent::CollectConfig& config);
+    void PushNextTimerEvent(HostMonitorTimerEvent::CollectConfig& config);
     void AddHostLabels(PipelineEventGroup& group);
 
     std::atomic_bool mIsStarted = false;
@@ -107,5 +107,7 @@ private:
     friend class HostMonitorInputRunnerUnittest;
 #endif
 };
+
+std::chrono::steady_clock::time_point GetFirstExecTime(uint32_t interval);
 
 } // namespace logtail

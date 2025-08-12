@@ -31,19 +31,22 @@ public:
         QueueKey mProcessQueueKey;
         size_t mInputIndex;
         std::chrono::seconds mInterval;
+        std::chrono::steady_clock::time_point mExecTime;
 
         CollectConfig(const std::string& collectorName,
                       QueueKey processQueueKey,
                       size_t inputIndex,
-                      const std::chrono::seconds& interval)
+                      const std::chrono::seconds& interval,
+                      const std::chrono::steady_clock::time_point& execTime)
             : mCollectorName(collectorName),
               mProcessQueueKey(processQueueKey),
               mInputIndex(inputIndex),
-              mInterval(interval) {}
+              mInterval(interval),
+              mExecTime(execTime) {}
     };
 
-    HostMonitorTimerEvent(const std::chrono::steady_clock::time_point& execTime, const CollectConfig& collectConfig)
-        : TimerEvent(execTime), mCollectConfig(collectConfig) {}
+    HostMonitorTimerEvent(const CollectConfig& collectConfig)
+        : TimerEvent(collectConfig.mExecTime), mCollectConfig(collectConfig) {}
 
     bool IsValid() const override;
     bool Execute() override;

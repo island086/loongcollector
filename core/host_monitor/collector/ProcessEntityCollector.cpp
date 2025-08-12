@@ -71,7 +71,7 @@ bool ProcessEntityCollector::Collect(const HostMonitorTimerEvent::CollectConfig&
         systemInfo.bootTime = 0;
     }
     std::vector<ExtendedProcessStatPtr> processes;
-    GetSortedProcess(processes, ProcessTopN);
+    GetSortedProcess(processes, ProcessTopN, collectConfig.mExecTime);
     for (const auto& extentedProcess : processes) {
         auto process = extentedProcess->stat;
         auto* event = group->AddLogEvent();
@@ -129,8 +129,9 @@ bool ProcessEntityCollector::Collect(const HostMonitorTimerEvent::CollectConfig&
     return true;
 }
 
-void ProcessEntityCollector::GetSortedProcess(std::vector<ExtendedProcessStatPtr>& processStats, size_t topN) {
-    steady_clock::time_point now = steady_clock::now();
+void ProcessEntityCollector::GetSortedProcess(std::vector<ExtendedProcessStatPtr>& processStats,
+                                              size_t topN,
+                                              std::chrono::steady_clock::time_point now) {
     auto compare = [](const std::pair<ExtendedProcessStatPtr, double>& a,
                       const std::pair<ExtendedProcessStatPtr, double>& b) { return a.second > b.second; };
     std::priority_queue<std::pair<ExtendedProcessStatPtr, double>,
@@ -141,7 +142,7 @@ void ProcessEntityCollector::GetSortedProcess(std::vector<ExtendedProcessStatPtr
     int readCount = 0;
     std::unordered_map<pid_t, ExtendedProcessStatPtr> newProcessStat;
     ProcessListInformation processListInfo;
-    if (!SystemInterface::GetInstance()->GetProcessListInformation(processListInfo)) {
+    if (!SystemInterface::GetInstance()->GetProcessListInformation(now, processListInfo)) {
         LOG_ERROR(sLogger, ("failed to get process list information", "skip collect"));
         return;
     }
@@ -155,7 +156,7 @@ void ProcessEntityCollector::GetSortedProcess(std::vector<ExtendedProcessStatPtr
             std::this_thread::sleep_for(milliseconds{100});
         }
         bool isFirstCollect = false;
-        auto ptr = GetProcessStat(pid, isFirstCollect);
+        auto ptr = GetProcessStat(pid, isFirstCollect, now);
         if (ptr == nullptr) {
             continue;
         }
@@ -185,9 +186,8 @@ void ProcessEntityCollector::GetSortedProcess(std::vector<ExtendedProcessStatPtr
     mProcessSortTime = now;
 }
 
-ExtendedProcessStatPtr ProcessEntityCollector::GetProcessStat(pid_t pid, bool& isFirstCollect) {
-    const auto now = steady_clock::now();
-
+ExtendedProcessStatPtr
+ProcessEntityCollector::GetProcessStat(pid_t pid, bool& isFirstCollect, std::chrono::steady_clock::time_point now) {
     // TODO: more accurate cache
     auto prev = mPrevProcessStat.find(pid);
     if (prev == mPrevProcessStat.end() || prev->second == nullptr
@@ -202,7 +202,7 @@ ExtendedProcessStatPtr ProcessEntityCollector::GetProcessStat(pid_t pid, bool& i
     }
     auto ptr = std::make_shared<ExtendedProcessStat>();
     ProcessInformation processInfo;
-    if (SystemInterface::GetInstance()->GetProcessInformation(pid, processInfo)) {
+    if (SystemInterface::GetInstance()->GetProcessInformation(now, pid, processInfo)) {
         ptr->stat = processInfo.stat;
     } else {
         LOG_ERROR(sLogger, ("failed to get process information", pid));

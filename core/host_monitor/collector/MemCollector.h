@@ -38,9 +38,6 @@ public:
     const std::string& Name() const override { return sName; }
 
 private:
-    bool GetHostMeminfoStat(MemoryInformation& memStat);
-
-private:
     int mCountPerReport = 0;
     int mCount = 0;
     MetricCalculate<MemoryStat> mCalculateMeminfo;

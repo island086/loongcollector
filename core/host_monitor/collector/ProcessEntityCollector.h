@@ -64,8 +64,10 @@ public:
 
 private:
     system_clock::time_point TicksToUnixTime(int64_t startTicks);
-    void GetSortedProcess(std::vector<ExtendedProcessStatPtr>& processStats, size_t topN);
-    ExtendedProcessStatPtr GetProcessStat(pid_t pid, bool& isFirstCollect);
+    void GetSortedProcess(std::vector<ExtendedProcessStatPtr>& processStats,
+                          size_t topN,
+                          std::chrono::steady_clock::time_point now);
+    ExtendedProcessStatPtr GetProcessStat(pid_t pid, bool& isFirstCollect, std::chrono::steady_clock::time_point now);
 
     std::string GetProcessEntityID(StringView pid, StringView createTime, StringView hostEntityID);
     void FetchDomainInfo(std::string& domain,

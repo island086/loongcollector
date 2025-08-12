@@ -46,7 +46,7 @@ bool SystemCollector::Collect(const HostMonitorTimerEvent::CollectConfig& collec
         return false;
     }
     SystemLoadInformation load;
-    if (!SystemInterface::GetInstance()->GetSystemLoadInformation(load)) {
+    if (!SystemInterface::GetInstance()->GetSystemLoadInformation(collectConfig.mExecTime, load)) {
         return false;
     }
 
@@ -62,8 +62,6 @@ bool SystemCollector::Collect(const HostMonitorTimerEvent::CollectConfig& collec
 
     mCount = 0;
     mCalculate.Reset();
-
-    const time_t now = time(nullptr);
 
     // 数据整理
     std::vector<double> values = {minSys.load1,
@@ -108,7 +106,7 @@ bool SystemCollector::Collect(const HostMonitorTimerEvent::CollectConfig& collec
     if (!metricEvent) {
         return false;
     }
-    metricEvent->SetTimestamp(now, 0);
+    metricEvent->SetTimestamp(collectConfig.mExecTime.time_since_epoch().count(), 0);
     metricEvent->SetValue<UntypedMultiDoubleValues>(metricEvent);
     metricEvent->SetTag(std::string("m"), std::string("system.load"));
     auto* multiDoubleValues = metricEvent->MutableValue<UntypedMultiDoubleValues>();

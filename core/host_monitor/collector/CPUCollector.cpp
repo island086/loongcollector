@@ -40,7 +40,7 @@ bool CPUCollector::Collect(const HostMonitorTimerEvent::CollectConfig& collectCo
     }
     CPUInformation cpuInfo;
     CPUPercent totalCpuPercent{};
-    if (!SystemInterface::GetInstance()->GetCPUInformation(cpuInfo)) {
+    if (!SystemInterface::GetInstance()->GetCPUInformation(collectConfig.mExecTime, cpuInfo)) {
         return false;
     }
 
@@ -48,8 +48,6 @@ bool CPUCollector::Collect(const HostMonitorTimerEvent::CollectConfig& collectCo
         LOG_ERROR(sLogger, ("cpu count is negative", cpuInfo.stats.size()));
         return false;
     }
-
-    const time_t now = time(nullptr);
 
     for (const auto& cpu : cpuInfo.stats) {
         if (cpu.index != -1) {
@@ -97,7 +95,7 @@ bool CPUCollector::Collect(const HostMonitorTimerEvent::CollectConfig& collectCo
         if (!metricEvent) {
             return false;
         }
-        metricEvent->SetTimestamp(now, 0);
+        metricEvent->SetTimestamp(collectConfig.mExecTime.time_since_epoch().count(), 0);
         metricEvent->SetValue<UntypedMultiDoubleValues>(metricEvent);
         metricEvent->SetTag(std::string("m"), std::string("system.cpu"));
         auto* multiDoubleValues = metricEvent->MutableValue<UntypedMultiDoubleValues>();

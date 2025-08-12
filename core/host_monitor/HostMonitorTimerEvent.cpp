@@ -25,7 +25,7 @@ bool HostMonitorTimerEvent::IsValid() const {
 }
 
 bool HostMonitorTimerEvent::Execute() {
-    HostMonitorInputRunner::GetInstance()->ScheduleOnce(GetExecTime(), mCollectConfig);
+    HostMonitorInputRunner::GetInstance()->ScheduleOnce(mCollectConfig);
     return true;
 }
 
