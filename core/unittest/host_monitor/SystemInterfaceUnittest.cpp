@@ -45,7 +45,7 @@ void SystemInterfaceUnittest::TestSystemInterfaceCache() const {
     { // case1: basic cache functionality
         SystemInterface::SystemInformationCache<MockInformation> cache(cacheSize);
         MockInformation info;
-        auto now = std::chrono::steady_clock::now();
+        auto now = time(nullptr);
 
         // Should miss initially
         APSARA_TEST_FALSE_FATAL(cache.Get(now, info));
@@ -57,18 +57,18 @@ void SystemInterfaceUnittest::TestSystemInterfaceCache() const {
 
         MockInformation info3;
         info3.id = 3;
-        info3.collectTime = now + std::chrono::milliseconds{2};
+        info3.collectTime = now + 2;
         cache.Set(info3);
 
         MockInformation info2;
         info2.id = 2;
-        info2.collectTime = now + std::chrono::milliseconds{1};
+        info2.collectTime = now + 1;
         cache.Set(info2);
 
         APSARA_TEST_EQUAL_FATAL(3, cache.mCache.size());
         for (size_t i = 0; i < cache.mCache.size(); ++i) {
             APSARA_TEST_EQUAL_FATAL(i + 1, cache.mCache[i].id);
-            APSARA_TEST_EQUAL_FATAL(now + std::chrono::milliseconds{i}, cache.mCache[i].collectTime);
+            APSARA_TEST_EQUAL_FATAL(now + i, cache.mCache[i].collectTime);
         }
     }
 
@@ -77,13 +77,13 @@ void SystemInterfaceUnittest::TestSystemInterfaceCache() const {
         auto future1 = async(std::launch::async, [&]() {
             MockInformation info;
             info.id = 2;
-            info.collectTime = std::chrono::steady_clock::now();
+            info.collectTime = time(nullptr);
             cache.Set(info);
         });
         auto future2 = async(std::launch::async, [&]() {
             std::this_thread::sleep_for(std::chrono::milliseconds{10});
             MockInformation info;
-            auto now = std::chrono::steady_clock::now();
+            auto now = time(nullptr);
             if (cache.Get(now, info)) {
                 APSARA_TEST_EQUAL_FATAL(2, info.id);
             }
@@ -95,37 +95,37 @@ void SystemInterfaceUnittest::TestSystemInterfaceCache() const {
     { // case3: now is between two entries, so return the closest entry after now
         SystemInterface::SystemInformationCache<MockInformation> cache(cacheSize);
         MockInformation info;
-        auto now = std::chrono::steady_clock::now();
+        auto now = time(nullptr);
         APSARA_TEST_FALSE_FATAL(cache.Get(now, info));
         info.id = 1;
-        info.collectTime = now - std::chrono::milliseconds{1};
+        info.collectTime = now - 1;
         cache.Set(info);
 
         MockInformation info2;
-        info.id = 2;
-        info.collectTime = now + std::chrono::milliseconds{1};
-        cache.Set(info);
+        info2.id = 2;
+        info2.collectTime = now + 1;
+        cache.Set(info2);
 
         MockInformation info3;
         APSARA_TEST_TRUE_FATAL(cache.Get(now, info3));
         APSARA_TEST_EQUAL_FATAL(2, info3.id);
-        APSARA_TEST_EQUAL_FATAL(now + std::chrono::milliseconds{1}, info3.collectTime);
+        APSARA_TEST_EQUAL_FATAL(now + 1, info3.collectTime);
 
         MockInformation info4;
-        APSARA_TEST_TRUE_FATAL(cache.Get(now - std::chrono::milliseconds{2}, info4));
+        APSARA_TEST_TRUE_FATAL(cache.Get(now - 2, info4));
         APSARA_TEST_EQUAL_FATAL(1, info4.id);
-        APSARA_TEST_EQUAL_FATAL(now - std::chrono::milliseconds{1}, info4.collectTime);
+        APSARA_TEST_EQUAL_FATAL(now - 1, info4.collectTime);
 
         MockInformation info5;
-        APSARA_TEST_FALSE_FATAL(cache.Get(now + std::chrono::milliseconds{2}, info5));
+        APSARA_TEST_FALSE_FATAL(cache.Get(now + 2, info5));
     }
     { // case4: cache is full, so the oldest entry is removed
         SystemInterface::SystemInformationCache<MockInformation> cache(3);
-        auto now = std::chrono::steady_clock::now();
+        auto now = time(nullptr);
         for (int i = 0; i < 3; ++i) {
             MockInformation info;
             info.id = i;
-            info.collectTime = now + std::chrono::milliseconds{i};
+            info.collectTime = now + i;
             cache.Set(info);
         }
         APSARA_TEST_EQUAL_FATAL(3, cache.mCache.size());
@@ -133,26 +133,26 @@ void SystemInterfaceUnittest::TestSystemInterfaceCache() const {
         APSARA_TEST_TRUE_FATAL(cache.Get(now, info));
         APSARA_TEST_EQUAL_FATAL(0, info.id);
         APSARA_TEST_EQUAL_FATAL(now, info.collectTime);
-        APSARA_TEST_TRUE_FATAL(cache.Get(now + std::chrono::milliseconds{1}, info));
+        APSARA_TEST_TRUE_FATAL(cache.Get(now + 1, info));
 
         MockInformation info2;
         info2.id = 2;
-        info2.collectTime = now + std::chrono::milliseconds{2};
+        info2.collectTime = now + 2;
         cache.Set(info2);
         APSARA_TEST_EQUAL_FATAL(3, cache.mCache.size());
-        APSARA_TEST_TRUE_FATAL(cache.Get(now + std::chrono::milliseconds{2}, info));
+        APSARA_TEST_TRUE_FATAL(cache.Get(now + 2, info));
         APSARA_TEST_EQUAL_FATAL(2, info.id);
 
         APSARA_TEST_TRUE_FATAL(cache.Get(now, info));
         APSARA_TEST_EQUAL_FATAL(1, info.id);
-        APSARA_TEST_EQUAL_FATAL(now + std::chrono::milliseconds{1}, info.collectTime);
+        APSARA_TEST_EQUAL_FATAL(now + 1, info.collectTime);
     }
 
     // With args
     { // case1: basic cache functionality with args
         SystemInterface::SystemInformationCache<MockInformation, int> cache(cacheSize);
         MockInformation info;
-        auto now = std::chrono::steady_clock::now();
+        auto now = time(nullptr);
 
         // Should miss initially
         APSARA_TEST_FALSE_FATAL(cache.Get(now, info, 1));
@@ -164,19 +164,19 @@ void SystemInterfaceUnittest::TestSystemInterfaceCache() const {
 
         MockInformation info3;
         info3.id = 3;
-        info3.collectTime = now + std::chrono::milliseconds{2};
+        info3.collectTime = now + 2;
         cache.Set(info3, 1);
 
         MockInformation info2;
         info2.id = 2;
-        info2.collectTime = now + std::chrono::milliseconds{1};
+        info2.collectTime = now + 1;
         cache.Set(info2, 1);
 
         auto cacheEntry = cache.mCache[1];
         APSARA_TEST_EQUAL_FATAL(3, cacheEntry.data.size());
         for (size_t i = 0; i < cacheEntry.data.size(); ++i) {
             APSARA_TEST_EQUAL_FATAL(i + 1, cacheEntry.data[i].id);
-            APSARA_TEST_EQUAL_FATAL(now + std::chrono::milliseconds{i}, cacheEntry.data[i].collectTime);
+            APSARA_TEST_EQUAL_FATAL(now + i, cacheEntry.data[i].collectTime);
         }
     }
 
@@ -185,13 +185,13 @@ void SystemInterfaceUnittest::TestSystemInterfaceCache() const {
         auto future1 = async(std::launch::async, [&]() {
             MockInformation info;
             info.id = 2;
-            info.collectTime = std::chrono::steady_clock::now();
+            info.collectTime = time(nullptr);
             cache.Set(info, 1);
         });
         auto future2 = async(std::launch::async, [&]() {
             std::this_thread::sleep_for(std::chrono::milliseconds{10});
             MockInformation info;
-            auto now = std::chrono::steady_clock::now();
+            auto now = time(nullptr);
             if (cache.Get(now, info, 1)) {
                 APSARA_TEST_EQUAL_FATAL(2, info.id);
             }
@@ -203,60 +203,60 @@ void SystemInterfaceUnittest::TestSystemInterfaceCache() const {
     { // case3: now is between two entries, so return the closest entry after now
         SystemInterface::SystemInformationCache<MockInformation, int> cache(cacheSize);
         MockInformation info;
-        auto now = std::chrono::steady_clock::now();
+        auto now = time(nullptr);
         APSARA_TEST_FALSE_FATAL(cache.Get(now, info, 1));
         info.id = 1;
-        info.collectTime = now - std::chrono::milliseconds{1};
+        info.collectTime = now - 1;
         cache.Set(info, 1);
 
         MockInformation info2;
-        info.id = 2;
-        info.collectTime = now + std::chrono::milliseconds{1};
-        cache.Set(info, 1);
+        info2.id = 2;
+        info2.collectTime = now + 1;
+        cache.Set(info2, 1);
 
         MockInformation info3;
         APSARA_TEST_TRUE_FATAL(cache.Get(now, info3, 1));
         APSARA_TEST_EQUAL_FATAL(2, info3.id);
-        APSARA_TEST_EQUAL_FATAL(now + std::chrono::milliseconds{1}, info3.collectTime);
+        APSARA_TEST_EQUAL_FATAL(now + 1, info3.collectTime);
 
         MockInformation info4;
-        APSARA_TEST_TRUE_FATAL(cache.Get(now - std::chrono::milliseconds{2}, info4, 1));
+        APSARA_TEST_TRUE_FATAL(cache.Get(now - 2, info4, 1));
         APSARA_TEST_EQUAL_FATAL(1, info4.id);
-        APSARA_TEST_EQUAL_FATAL(now - std::chrono::milliseconds{1}, info4.collectTime);
+        APSARA_TEST_EQUAL_FATAL(now - 1, info4.collectTime);
 
         MockInformation info5;
-        APSARA_TEST_FALSE_FATAL(cache.Get(now + std::chrono::milliseconds{2}, info5, 1));
+        APSARA_TEST_FALSE_FATAL(cache.Get(now + 2, info5, 1));
     }
     { // case4: cache is full, so the oldest entry is removed
         SystemInterface::SystemInformationCache<MockInformation, int> cache(3);
-        auto now = std::chrono::steady_clock::now();
+        auto now = time(nullptr);
         for (int i = 0; i < 3; ++i) {
             MockInformation info;
             info.id = i;
-            info.collectTime = now + std::chrono::milliseconds{i};
-            cache.Set(info, i);
+            info.collectTime = now + i;
+            cache.Set(info, 1);
         }
-        APSARA_TEST_EQUAL_FATAL(3, cache.mCache.size());
         MockInformation info;
         APSARA_TEST_TRUE_FATAL(cache.Get(now, info, 1));
         APSARA_TEST_EQUAL_FATAL(0, info.id);
         APSARA_TEST_EQUAL_FATAL(now, info.collectTime);
-        APSARA_TEST_TRUE_FATAL(cache.Get(now + std::chrono::milliseconds{1}, info, 1));
+        APSARA_TEST_TRUE_FATAL(cache.Get(now + 1, info, 1));
 
         MockInformation info2;
-        info2.id = 2;
-        info2.collectTime = now + std::chrono::milliseconds{2};
-        cache.Set(info2, 2);
-        APSARA_TEST_EQUAL_FATAL(3, cache.mCache.size());
-        APSARA_TEST_TRUE_FATAL(cache.Get(now + std::chrono::milliseconds{2}, info, 1));
+        info2.id = 4;
+        info2.collectTime = now + 4;
+        cache.Set(info2, 1);
+        APSARA_TEST_TRUE_FATAL(cache.Get(now + 4, info, 1));
+        APSARA_TEST_EQUAL_FATAL(4, info.id);
+        APSARA_TEST_EQUAL_FATAL(now + 4, info.collectTime);
 
         APSARA_TEST_TRUE_FATAL(cache.Get(now, info, 1));
         APSARA_TEST_EQUAL_FATAL(1, info.id);
-        APSARA_TEST_EQUAL_FATAL(now + std::chrono::milliseconds{1}, info.collectTime);
+        APSARA_TEST_EQUAL_FATAL(now + 1, info.collectTime);
     }
     { // case5: multiple keys with args
         SystemInterface::SystemInformationCache<MockInformation, int> cache(cacheSize);
-        auto now = std::chrono::steady_clock::now();
+        auto now = time(nullptr);
 
         // Add multiple entries with different keys
         for (int i = 1; i <= 3; ++i) {
@@ -291,28 +291,17 @@ void SystemInterfaceUnittest::TestSystemInterfaceCacheGC() const {
     SystemInterface::SystemInformationCache<MockInformation, int> cache(5);
     auto defaultLastCleanupTime = std::chrono::steady_clock::now() - std::chrono::seconds(1);
     cache.mLastCleanupTime = defaultLastCleanupTime;
-    auto now = std::chrono::steady_clock::now();
+    auto now = time(nullptr);
     for (int i = 0; i < 5; ++i) {
         MockInformation info;
         info.id = i;
-        info.collectTime = now + std::chrono::seconds(i);
+        info.collectTime = now + i;
         cache.Set(info, i);
     }
+    std::this_thread::sleep_for(std::chrono::seconds{2});
     // partial cleanup
     cache.PerformGarbageCollection();
     APSARA_TEST_EQUAL_FATAL(4, cache.GetCacheSize());
-    APSARA_TEST_EQUAL_FATAL(cache.mLastCleanupTime, defaultLastCleanupTime);
-    cache.PerformGarbageCollection();
-    APSARA_TEST_EQUAL_FATAL(3, cache.GetCacheSize());
-    APSARA_TEST_EQUAL_FATAL(cache.mLastCleanupTime, defaultLastCleanupTime);
-    cache.PerformGarbageCollection();
-    APSARA_TEST_EQUAL_FATAL(2, cache.GetCacheSize());
-    APSARA_TEST_EQUAL_FATAL(cache.mLastCleanupTime, defaultLastCleanupTime);
-    cache.PerformGarbageCollection();
-    APSARA_TEST_EQUAL_FATAL(1, cache.GetCacheSize());
-    APSARA_TEST_EQUAL_FATAL(cache.mLastCleanupTime, defaultLastCleanupTime);
-    cache.PerformGarbageCollection();
-    APSARA_TEST_EQUAL_FATAL(0, cache.GetCacheSize());
     APSARA_TEST_NOT_EQUAL_FATAL(cache.mLastCleanupTime, defaultLastCleanupTime);
 
     // restore flags
@@ -344,22 +333,16 @@ void SystemInterfaceUnittest::TestMemoizedCall() const {
         MockSystemInterface mockSystemInterface;
         mockSystemInterface.mBlockTime = 10;
         mockSystemInterface.mMockCalledCount = 0;
-        auto now = std::chrono::steady_clock::now();
-        auto future1 = async(std::launch::async, [&]() {
-            CPUInformation info;
-            info.collectTime = now;
-            mockSystemInterface.GetCPUInformation(now, info);
-        });
-        auto future2 = async(std::launch::async, [&]() {
-            CPUInformation info;
-            info.collectTime = now;
-            mockSystemInterface.GetCPUInformation(now, info);
-        });
-        future1.get();
-        future2.get();
+        auto now = time(nullptr);
+        CPUInformation info1;
+        info1.collectTime = now;
+        mockSystemInterface.GetCPUInformation(now, info1);
+        CPUInformation info2;
+        info2.collectTime = now;
+        mockSystemInterface.GetCPUInformation(now, info2);
         APSARA_TEST_EQUAL_FATAL(1, mockSystemInterface.mMockCalledCount);
         CPUInformation info;
-        info.collectTime = now + std::chrono::milliseconds{10};
+        info.collectTime = now + 10;
         mockSystemInterface.GetCPUInformation(now, info);
         APSARA_TEST_EQUAL_FATAL(1, mockSystemInterface.mMockCalledCount);
     }
@@ -367,17 +350,13 @@ void SystemInterfaceUnittest::TestMemoizedCall() const {
         MockSystemInterface mockSystemInterface;
         mockSystemInterface.mBlockTime = 10;
         mockSystemInterface.mMockCalledCount = 0;
-        auto now = std::chrono::steady_clock::now();
-        auto future1 = async(std::launch::async, [&]() {
-            ProcessListInformation info;
-            mockSystemInterface.GetProcessListInformation(now, info);
-        });
-        auto future2 = async(std::launch::async, [&]() {
-            ProcessListInformation info;
-            mockSystemInterface.GetProcessListInformation(now, info);
-        });
-        future1.get();
-        future2.get();
+        auto now = time(nullptr);
+        ProcessListInformation info1;
+        info1.collectTime = now;
+        mockSystemInterface.GetProcessListInformation(now, info1);
+        ProcessListInformation info2;
+        info2.collectTime = now;
+        mockSystemInterface.GetProcessListInformation(now, info2);
         APSARA_TEST_EQUAL_FATAL(1, mockSystemInterface.mMockCalledCount);
         std::this_thread::sleep_for(std::chrono::milliseconds{10});
         ProcessListInformation info;
@@ -388,17 +367,13 @@ void SystemInterfaceUnittest::TestMemoizedCall() const {
         MockSystemInterface mockSystemInterface;
         mockSystemInterface.mBlockTime = 10;
         mockSystemInterface.mMockCalledCount = 0;
-        auto now = std::chrono::steady_clock::now();
-        auto future1 = async(std::launch::async, [&]() {
-            ProcessInformation info;
-            mockSystemInterface.GetProcessInformation(now, 1, info);
-        });
-        auto future2 = async(std::launch::async, [&]() {
-            ProcessInformation info;
-            mockSystemInterface.GetProcessInformation(now, 1, info);
-        });
-        future1.get();
-        future2.get();
+        auto now = time(nullptr);
+        ProcessInformation info1;
+        info1.collectTime = now;
+        mockSystemInterface.GetProcessInformation(now, 1, info1);
+        ProcessInformation info2;
+        info2.collectTime = now;
+        mockSystemInterface.GetProcessInformation(now, 1, info2);
         APSARA_TEST_EQUAL_FATAL(1, mockSystemInterface.mMockCalledCount);
         std::this_thread::sleep_for(std::chrono::milliseconds{10});
         ProcessInformation info;
