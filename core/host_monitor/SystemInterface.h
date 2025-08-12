@@ -40,6 +40,9 @@
 #include "common/ProcParser.h"
 
 DECLARE_FLAG_INT32(system_interface_cache_queue_size);
+DECLARE_FLAG_INT32(system_interface_cache_max_cleanup_batch_size);
+DECLARE_FLAG_INT32(system_interface_cache_cleanup_interval_seconds);
+DECLARE_FLAG_INT32(system_interface_cache_entry_expire_seconds);
 
 namespace logtail {
 
@@ -613,7 +616,11 @@ public:
 
     public:
         SystemInformationCache(size_t cacheSize)
-            : mCacheSize(cacheSize), mLastCleanupTime(std::chrono::steady_clock::now()) {}
+            : mCacheSize(cacheSize),
+              mLastCleanupTime(std::chrono::steady_clock::now()),
+              mMaxCleanupCount(INT32_FLAG(system_interface_cache_max_cleanup_batch_size)),
+              mCleanupInterval(std::chrono::seconds(INT32_FLAG(system_interface_cache_cleanup_interval_seconds))),
+              mExpireThreshold(std::chrono::seconds(INT32_FLAG(system_interface_cache_entry_expire_seconds))) {}
         bool Get(std::chrono::steady_clock::time_point now, InfoT& info, Args... args);
         bool Set(InfoT& info, Args... args);
         void PerformGarbageCollection();
@@ -626,6 +633,9 @@ public:
         std::unordered_map<std::tuple<Args...>, CacheEntry, TupleHash> mCache;
         size_t mCacheSize;
         std::chrono::steady_clock::time_point mLastCleanupTime;
+        int32_t mMaxCleanupCount;
+        std::chrono::seconds mCleanupInterval;
+        std::chrono::seconds mExpireThreshold;
 
 #ifdef APSARA_UNIT_TEST_MAIN
         friend class SystemInterfaceUnittest;

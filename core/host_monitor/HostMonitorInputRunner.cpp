@@ -163,13 +163,6 @@ bool HostMonitorInputRunner::IsCollectTaskValid(const std::chrono::steady_clock:
 }
 
 void HostMonitorInputRunner::ScheduleOnce(HostMonitorTimerEvent::CollectConfig& config) {
-    if (!ProcessQueueManager::GetInstance()->IsValidToPush(config.mProcessQueueKey)) {
-        LOG_WARNING(sLogger,
-                    ("host monitor push process queue failed", "discard data")("collector", config.mCollectorName));
-        PushNextTimerEvent(config);
-        return;
-    }
-
     auto collectFn = [this, config]() mutable {
         PipelineEventGroup group(std::make_shared<SourceBuffer>());
         std::unique_lock<std::shared_mutex> lock(mRegisteredCollectorMapMutex);

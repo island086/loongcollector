@@ -298,20 +298,25 @@ bool SystemInterface::SystemInformationCache<InfoT, Args...>::Get(std::chrono::s
     auto it = mCache.find(std::make_tuple(args...));
     if (it != mCache.end()) {
         it->second.lastAccessTime = std::chrono::steady_clock::now();
-        for (size_t i = it->second.data.size() - 1; i >= 0; --i) {
-            auto& cacheEntry = it->second.data[i];
-            if (now == cacheEntry.collectTime) {
-                info = cacheEntry;
-                return true;
-            } else if (now > cacheEntry.collectTime) {
-                if (i < it->second.data.size() - 1) {
-                    // input time is past, we can never get the data at this time. So return the closest entry after now
-                    info = it->second.data[i + 1];
-                    return true;
-                } else {
-                    return false;
-                }
-            }
+
+        auto& data = it->second.data;
+        if (data.empty()) {
+            return false;
+        }
+
+        // Use binary search to find the first entry with collectTime >= now
+        auto lower = std::lower_bound(
+            data.begin(), data.end(), now, [](const InfoT& entry, const std::chrono::steady_clock::time_point& target) {
+                return entry.collectTime < target;
+            });
+
+        if (lower != data.end()) {
+            // Found entry with collectTime >= now, this is the closest entry after now
+            info = *lower;
+            return true;
+        } else {
+            // All entries have collectTime < now, no suitable entry found
+            return false;
         }
     } else {
         mCache[std::make_tuple(args...)] = CacheEntry();
@@ -321,7 +326,6 @@ bool SystemInterface::SystemInformationCache<InfoT, Args...>::Get(std::chrono::s
 
 template <typename InfoT, typename... Args>
 bool SystemInterface::SystemInformationCache<InfoT, Args...>::Set(InfoT& info, Args... args) {
-    bool needsCleanup = false;
     {
         std::lock_guard<std::mutex> lock(mMutex);
         auto& cacheEntry = mCache[std::make_tuple(args...)];
@@ -333,6 +337,7 @@ bool SystemInterface::SystemInformationCache<InfoT, Args...>::Set(InfoT& info, A
         });
         if (insertPos != deque.end() && insertPos->collectTime == info.collectTime) {
             // conflict, use old value
+            LOG_DEBUG(sLogger, ("system information cache conflict", "use old value instead of new value"));
             info = *insertPos;
         } else {
             deque.insert(insertPos, info);
@@ -345,12 +350,10 @@ bool SystemInterface::SystemInformationCache<InfoT, Args...>::Set(InfoT& info, A
 
         // Update access time
         cacheEntry.lastAccessTime = std::chrono::steady_clock::now();
-
-        // Check if cleanup is needed (don't hold lock during cleanup)
-        needsCleanup = ShouldPerformCleanup();
     }
 
-    if (needsCleanup) {
+    // Check if cleanup is needed (don't hold lock during cleanup)
+    if (ShouldPerformCleanup()) {
         PerformGarbageCollection();
     }
 
@@ -360,22 +363,25 @@ bool SystemInterface::SystemInformationCache<InfoT, Args...>::Set(InfoT& info, A
 template <typename InfoT>
 bool SystemInterface::SystemInformationCache<InfoT>::Get(std::chrono::steady_clock::time_point now, InfoT& info) {
     std::unique_lock<std::mutex> lock(mMutex);
-    for (size_t i = mCache.size() - 1; i >= 0; --i) {
-        auto& cacheEntry = mCache[i];
-        if (now == cacheEntry.collectTime) {
-            info = cacheEntry;
-            return true;
-        } else if (now > cacheEntry.collectTime) {
-            if (i < mCache.size() - 1) {
-                // input time is past, we can never get the data at this time. So return the closest entry after now
-                info = mCache[i + 1];
-                return true;
-            } else {
-                return false;
-            }
-        }
+
+    if (mCache.empty()) {
+        return false;
     }
-    return false;
+
+    // Use binary search to find the first entry with collectTime >= now
+    auto lower = std::lower_bound(
+        mCache.begin(), mCache.end(), now, [](const InfoT& entry, const std::chrono::steady_clock::time_point& target) {
+            return entry.collectTime < target;
+        });
+
+    if (lower != mCache.end()) {
+        // Found entry with collectTime >= now, this is the closest entry after now
+        info = *lower;
+        return true;
+    } else {
+        // All entries have collectTime < now, no suitable entry found
+        return false;
+    }
 }
 
 template <typename InfoT>
@@ -446,8 +452,7 @@ std::string NetAddress::str() const {
 // GC implementation for SystemInformationCache with arguments
 template <typename InfoT, typename... Args>
 void SystemInterface::SystemInformationCache<InfoT, Args...>::PerformGarbageCollection() {
-    auto expireThreshold = std::chrono::seconds(INT32_FLAG(system_interface_cache_entry_expire_seconds));
-    if (ClearExpiredEntries(expireThreshold)) {
+    if (ClearExpiredEntries(mExpireThreshold)) {
         // only update last cleanup time if all expired entries are cleared
         mLastCleanupTime = std::chrono::steady_clock::now();
     }
@@ -458,8 +463,12 @@ bool SystemInterface::SystemInformationCache<InfoT, Args...>::ClearExpiredEntrie
     std::chrono::steady_clock::duration maxAge) {
     std::lock_guard<std::mutex> lock(mMutex);
     auto now = std::chrono::steady_clock::now();
-    auto maxCleanupCount = static_cast<size_t>(INT32_FLAG(system_interface_cache_max_cleanup_batch_size));
-    size_t cleanedCount = 0;
+    auto maxCleanupCount = mMaxCleanupCount;
+    // if maxCleanupCount is set to 0 or negative, scan all entries
+    if (maxCleanupCount <= 0) {
+        maxCleanupCount = mCacheSize;
+    }
+    int32_t cleanedCount = 0;
 
     for (auto it = mCache.begin(); it != mCache.end() && cleanedCount < maxCleanupCount;) {
         if (now - it->second.lastAccessTime > maxAge) {
@@ -474,9 +483,8 @@ bool SystemInterface::SystemInformationCache<InfoT, Args...>::ClearExpiredEntrie
 
 template <typename InfoT, typename... Args>
 bool SystemInterface::SystemInformationCache<InfoT, Args...>::ShouldPerformCleanup() const {
-    auto cleanupInterval = std::chrono::seconds(INT32_FLAG(system_interface_cache_cleanup_interval_seconds));
     auto now = std::chrono::steady_clock::now();
-    return (now - mLastCleanupTime) >= cleanupInterval;
+    return (now - mLastCleanupTime) >= mCleanupInterval;
 }
 
 template <typename InfoT, typename... Args>
