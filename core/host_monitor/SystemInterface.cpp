@@ -177,7 +177,6 @@ bool SystemInterface::GetDiskSerialIdInformation(time_t now, std::string diskNam
 
 bool SystemInterface::GetDiskStateInformation(time_t now, DiskStateInformation& diskStateInfo) {
     const std::string errorType = "disk state";
-    std::cout << "GetDiskStateInformation" << std::endl;
     return MemoizedCall(
         mDiskStateInformationCache,
         now,
@@ -285,7 +284,6 @@ bool SystemInterface::MemoizedCall(SystemInformationCache<InfoT, Args...>& cache
                                    const std::string& errorType,
                                    Args... args) {
     if (cache.Get(now, info, args...)) {
-        std::cout << "Get cache" << std::endl;
         return true;
     }
     bool status = std::forward<F>(func)(info, args...);

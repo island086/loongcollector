@@ -44,6 +44,7 @@ void SystemCollectorUnittest::TestCollect() const {
     auto collector = SystemCollector();
     PipelineEventGroup group(make_shared<SourceBuffer>());
     HostMonitorTimerEvent::CollectContext collectconfig("test", SystemCollector::sName, 0, 0, std::chrono::seconds(1));
+    collectconfig.mCountPerReport = 3;
 
     APSARA_TEST_TRUE(collector.Collect(collectconfig, &group));
     APSARA_TEST_TRUE(collector.Collect(collectconfig, &group));
