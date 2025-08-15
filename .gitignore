@@ -99,3 +99,8 @@ license_coverage.txt
 /generated_files/
 /dist/
 /tags/
+
+### Cursor
+/.cursor/
+/.claude/
+/.gemini/
