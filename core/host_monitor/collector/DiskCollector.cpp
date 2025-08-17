@@ -458,10 +458,6 @@ int DiskCollector::GetDiskUsage(const HostMonitorTimerEvent::CollectTime& collec
     std::shared_ptr<IODev> ioDev;
     DiskUsage deviceUsage{};
     int status = GetIOstat(collectTime, dirName, diskUsage, ioDev, deviceUsage);
-    std::cout << "status " << status << " diskUsage.readBytes " << diskUsage.readBytes << " diskUsage.writeBytes "
-              << diskUsage.writeBytes << " diskUsage.rTime " << diskUsage.rTime << " diskUsage.wTime "
-              << diskUsage.wTime << " diskUsage.rTime " << diskUsage.rTime << " diskUsage.wTime " << diskUsage.wTime
-              << " diskUsage.qTime " << diskUsage.qTime << " diskUsage.time " << diskUsage.time << std::endl;
 
     if (status == 0 && ioDev) {
         // if (ioDev->isPartition) {
@@ -499,7 +495,6 @@ int DiskCollector::GetIOstat(const HostMonitorTimerEvent::CollectTime& collectTi
     if (stat(ioDev->name.c_str(), &ioStat) < 0) {
         return -1;
     }
-    // print(ioDev->name, ioStat);
 
     // 2. 统计dev的磁盘使用情况
     return GetDiskStat(collectTime, ioStat.st_rdev, disk, deviceUsage);

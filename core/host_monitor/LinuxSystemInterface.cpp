@@ -858,11 +858,6 @@ bool LinuxSystemInterface::GetDiskStateInformationOnce(DiskStateInformation& dis
                 LOG_ERROR(sLogger, ("failed to parse number in diskstats", diskLine));
                 return false;
             }
-            std::cout << "diskStat.major " << diskStat.major << " diskStat.minor " << diskStat.minor
-                      << " diskStat.reads " << diskStat.reads << " diskStat.readBytes " << diskStat.readBytes
-                      << " diskStat.rTime " << diskStat.rTime << " diskStat.writes " << diskStat.writes
-                      << " diskStat.writeBytes " << diskStat.writeBytes << " diskStat.wTime " << diskStat.wTime
-                      << " diskStat.qTime " << diskStat.qTime << " diskStat.time " << diskStat.time << std::endl;
             diskStateInfo.diskStats.push_back(diskStat);
         }
     }
