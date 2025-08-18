@@ -70,7 +70,7 @@ void ProcessEntityCollectorUnittest::TestGetSortProcessByCpu() const {
     auto prev = processes[0];
     for (auto i = 1UL; i < processes.size(); i++) {
         auto process = processes[i];
-        APSARA_TEST_TRUE_FATAL(process->cpuInfo.percent >= prev->cpuInfo.percent);
+        APSARA_TEST_TRUE_FATAL(process->cpuInfo.percent <= prev->cpuInfo.percent);
         prev = process;
     }
 }

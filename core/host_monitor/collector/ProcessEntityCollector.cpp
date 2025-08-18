@@ -133,7 +133,7 @@ time_t ProcessEntityCollector::GetSortedProcess(std::vector<ExtendedProcessStatP
                                                 size_t topN,
                                                 const HostMonitorTimerEvent::CollectTime& collectTime) {
     auto compare = [](const std::pair<ExtendedProcessStatPtr, double>& a,
-                      const std::pair<ExtendedProcessStatPtr, double>& b) { return a.second > b.second; };
+                      const std::pair<ExtendedProcessStatPtr, double>& b) { return a.second < b.second; };
     std::priority_queue<std::pair<ExtendedProcessStatPtr, double>,
                         std::vector<std::pair<ExtendedProcessStatPtr, double>>,
                         decltype(compare)>
