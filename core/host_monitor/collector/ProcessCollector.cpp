@@ -380,14 +380,14 @@ bool ProcessCollector::GetProcessFdNumber(time_t now, pid_t pid, ProcessFd& proc
 
 // 获取pid的内存信息
 bool ProcessCollector::GetProcessMemory(time_t now, pid_t pid, ProcessMemoryInformation& processMemory) {
-    ProcessStat processStat;
+    ProcessInformation processInfo;
 
-    if (!ReadProcessStat(now, pid, processStat)) {
+    if (!ReadProcessStat(now, pid, processInfo)) {
         return false;
     }
-    processMemory.minorFaults = processStat.minorFaults;
-    processMemory.majorFaults = processStat.majorFaults;
-    processMemory.pageFaults = processStat.minorFaults + processStat.majorFaults;
+    processMemory.minorFaults = processInfo.stat.minorFaults;
+    processMemory.majorFaults = processInfo.stat.majorFaults;
+    processMemory.pageFaults = processInfo.stat.minorFaults + processInfo.stat.majorFaults;
 
     if (!SystemInterface::GetInstance()->GetPorcessStatm(now, pid, processMemory)) {
         return false;
@@ -400,7 +400,7 @@ bool ProcessCollector::GetProcessMemory(time_t now, pid_t pid, ProcessMemoryInfo
 bool ProcessCollector::GetProcessState(time_t now, pid_t pid, ProcessStat& processState) {
     ProcessInformation processInfo;
 
-    if (!ReadProcessStat(now, pid, processInfo.stat)) {
+    if (!ReadProcessStat(now, pid, processInfo)) {
         return false;
     }
 
@@ -498,7 +498,7 @@ bool ProcessCollector::GetProcessCpuInformation(const HostMonitorTimerEvent::Col
 bool ProcessCollector::GetProcessTime(time_t now, pid_t pid, ProcessTime& output, bool includeCTime) {
     ProcessInformation processInfo;
 
-    if (!ReadProcessStat(now, pid, processInfo.stat)) {
+    if (!ReadProcessStat(now, pid, processInfo)) {
         return false;
     }
 
@@ -519,35 +519,10 @@ bool ProcessCollector::GetProcessTime(time_t now, pid_t pid, ProcessTime& output
 // 1 (cat) R 0 1 1 34816 1 4194560 1110 0 0 0 1 1 0 0 20 0 1 0 18938584 4505600 171 18446744073709551615 4194304 4238788
 // 140727020025920 0 0 0 0 0 0 0 0 0 17 3 0 0 0 0 0 6336016 6337300 21442560 140727020027760 140727020027777
 // 140727020027777 140727020027887 0
-bool ProcessCollector::ReadProcessStat(time_t now, pid_t pid, ProcessStat& processStat) {
-    processStat.pid = pid;
-    ProcessInformation processInfo{};
+bool ProcessCollector::ReadProcessStat(time_t now, pid_t pid, ProcessInformation& processInfo) {
     if (!SystemInterface::GetInstance()->GetProcessInformation(now, pid, processInfo)) {
         return false;
     }
-
-    processStat.name = processInfo.stat.name;
-
-    processStat.state = processInfo.stat.state;
-    processStat.parentPid = processInfo.stat.parentPid;
-    processStat.priority = processInfo.stat.priority;
-    processStat.nice = processInfo.stat.nice;
-    processStat.numThreads = processInfo.stat.numThreads;
-    processStat.tty = processInfo.stat.tty;
-    processStat.minorFaults = processInfo.stat.minorFaults;
-    processStat.majorFaults = processInfo.stat.majorFaults;
-
-    processStat.utimeTicks = processInfo.stat.utimeTicks;
-    processStat.stimeTicks = processInfo.stat.stimeTicks;
-    processStat.cutimeTicks = processInfo.stat.cutimeTicks;
-    processStat.cstimeTicks = processInfo.stat.cstimeTicks;
-
-    // startTicks is int64_t type
-    processStat.startTicks = processInfo.stat.startTicks;
-    processStat.vSize = processInfo.stat.vSize;
-    processStat.rss = processInfo.stat.rss;
-    processStat.processor = processInfo.stat.processor;
-
     return true;
 }
 

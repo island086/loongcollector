@@ -58,6 +58,7 @@ bool InputHostMeta::Start() {
     HostMonitorInputRunner::GetInstance()->UpdateCollector(mContext->GetConfigName(),
                                                            {ProcessEntityCollector::sName},
                                                            {mInterval},
+                                                           {HostMonitorCollectType::kSingleValue},
                                                            mContext->GetProcessQueueKey(),
                                                            mIndex);
     return true;

@@ -52,7 +52,8 @@ void HostMonitorInputRunnerUnittest::TestUpdateAndRemoveCollector() const {
     auto runner = HostMonitorInputRunner::GetInstance();
     runner->Init();
     std::string configName = "test";
-    runner->UpdateCollector(configName, {MockCollector::sName}, {60}, QueueKey{}, 0);
+    runner->UpdateCollector(
+        configName, {MockCollector::sName}, {60}, {HostMonitorCollectType::kMultiValue}, QueueKey{}, 0);
     auto startTime = runner->mRegisteredCollectorMap.at({configName, MockCollector::sName}).mStartTime;
     APSARA_TEST_TRUE_FATAL(runner->IsCollectTaskValid(startTime, configName, MockCollector::sName));
     APSARA_TEST_FALSE_FATAL(
@@ -72,7 +73,8 @@ void HostMonitorInputRunnerUnittest::TestScheduleOnce() const {
     runner->mThreadPool->Start();
     std::string configName = "test";
     // 先添加测试收集器配置
-    runner->UpdateCollector(configName, {MockCollector::sName}, {1}, QueueKey{}, 0);
+    runner->UpdateCollector(
+        configName, {MockCollector::sName}, {1}, {HostMonitorCollectType::kMultiValue}, QueueKey{}, 0);
     auto queueKey = QueueKeyManager::GetInstance()->GetKey(configName);
     auto ctx = CollectionPipelineContext();
     ctx.SetConfigName(configName);

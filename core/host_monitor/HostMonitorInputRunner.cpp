@@ -75,10 +75,12 @@ HostMonitorInputRunner::HostMonitorInputRunner() {
 void HostMonitorInputRunner::UpdateCollector(const std::string& configName,
                                              const std::vector<std::string>& newCollectorNames,
                                              const std::vector<uint32_t>& newCollectorIntervals,
+                                             const std::vector<HostMonitorCollectType>& newCollectorTypes,
                                              QueueKey processQueueKey,
                                              size_t inputIndex) {
-    if (newCollectorNames.size() != newCollectorIntervals.size()) {
-        LOG_ERROR(sLogger, ("host monitor", "collector names and intervals size mismatch")("config", configName));
+    if (newCollectorNames.size() != newCollectorIntervals.size()
+        || newCollectorNames.size() != newCollectorTypes.size()) {
+        LOG_ERROR(sLogger, ("host monitor", "collector names, intervals, types size mismatch")("config", configName));
         return;
     }
     for (size_t i = 0; i < newCollectorNames.size(); ++i) {
@@ -93,6 +95,7 @@ void HostMonitorInputRunner::UpdateCollector(const std::string& configName,
 
         HostMonitorTimerEvent::CollectContext collectContext(
             configName, collectorName, processQueueKey, inputIndex, std::chrono::seconds(newCollectorIntervals[i]));
+        collectContext.mCollectType = newCollectorTypes[i];
         if (!collector.Init(collectContext)) {
             LOG_ERROR(sLogger, ("host monitor", "init collector failed")("collector", collectorName));
             continue;

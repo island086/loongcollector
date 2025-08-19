@@ -88,6 +88,7 @@ public:
     void UpdateCollector(const std::string& configName,
                          const std::vector<std::string>& newCollectorNames,
                          const std::vector<uint32_t>& newCollectorIntervals,
+                         const std::vector<HostMonitorCollectType>& newCollectorTypes,
                          QueueKey processQueueKey,
                          size_t inputIndex);
     void RemoveCollector(const std::string& configName);

@@ -166,11 +166,13 @@ bool InputHostMonitor::Init(const Json::Value& config, Json::Value& optionalGoPi
 
 bool InputHostMonitor::Start() {
     HostMonitorInputRunner::GetInstance()->Init();
-    HostMonitorInputRunner::GetInstance()->UpdateCollector(mContext->GetConfigName(),
-                                                           mCollectors,
-                                                           std::vector(mCollectors.size(), mInterval),
-                                                           mContext->GetProcessQueueKey(),
-                                                           mIndex);
+    HostMonitorInputRunner::GetInstance()->UpdateCollector(
+        mContext->GetConfigName(),
+        mCollectors,
+        std::vector(mCollectors.size(), mInterval),
+        std::vector(mCollectors.size(), HostMonitorCollectType::kMultiValue),
+        mContext->GetProcessQueueKey(),
+        mIndex);
     return true;
 }
 

@@ -44,7 +44,7 @@ public:
 public:
     bool GetProcessTime(time_t now, pid_t pid, ProcessTime& output, bool includeCTime);
 
-    bool ReadProcessStat(time_t now, pid_t pid, ProcessStat& processStat);
+    bool ReadProcessStat(time_t now, pid_t pid, ProcessInformation& processInfo);
 
     bool GetPidsCpu(const HostMonitorTimerEvent::CollectTime& collectTime,
                     const std::vector<pid_t>& pids,
