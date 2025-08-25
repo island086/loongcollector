@@ -23,7 +23,7 @@
 #include "Flags.h"
 #include "host_monitor/SystemInterface.h"
 
-DEFINE_FLAG_INT32(basic_host_monitor_cpu_collect_interval, "basic host monitor cpu collect interval, seconds", 5);
+DEFINE_FLAG_INT32(basic_host_monitor_cpu_collect_interval, "basic host monitor cpu collect interval, seconds", 1);
 namespace logtail {
 
 const std::string CPUCollector::sName = "cpu";

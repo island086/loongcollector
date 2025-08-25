@@ -28,7 +28,7 @@
 #include "common/StringTools.h"
 #include "logger/Logger.h"
 
-DEFINE_FLAG_INT32(basic_host_monitor_net_collect_interval, "basic host monitor net collect interval, seconds", 5);
+DEFINE_FLAG_INT32(basic_host_monitor_net_collect_interval, "basic host monitor net collect interval, seconds", 1);
 
 namespace logtail {
 

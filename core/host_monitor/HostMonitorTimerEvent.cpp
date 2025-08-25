@@ -59,16 +59,26 @@ void HostMonitorTimerEvent::CollectContext::CalculateFirstCollectTime(
     SetTime(firstScheduleTime, firstMetricTime);
 }
 
+// System clock can be rolling, so we need to check if the system clock is rolling
 bool HostMonitorTimerEvent::CollectContext::CheckClockRolling() {
     auto steadyClockNow = std::chrono::steady_clock::now();
     auto systemClockNow = std::chrono::system_clock::now();
     auto systemTimeT = std::chrono::system_clock::to_time_t(systemClockNow);
 
-    if (std::chrono::duration_cast<std::chrono::seconds>(mCollectTime.mScheduleTime - steadyClockNow).count()
-        != systemTimeT - mCollectTime.mMetricTime) {
-        LOG_ERROR(sLogger,
-                  ("host monitor system clock rolling",
-                   "will reset collect scheduling")("config", mConfigName)("collector", mCollectorName));
+    // if the difference between the schedule time and the steady clock is more than 60 seconds, it means the system
+    // clock is rolling
+    if (std::abs(std::chrono::duration_cast<std::chrono::seconds>(mCollectTime.mScheduleTime - steadyClockNow).count()
+                 - std::abs(mCollectTime.mMetricTime - systemTimeT))
+        > 60) {
+        LOG_ERROR(
+            sLogger,
+            ("host monitor system clock rolling", "will reset collect scheduling")("config", mConfigName)(
+                "collector", mCollectorName)("original metric time", mCollectTime.mMetricTime)(
+                "original schedule time", mCollectTime.mScheduleTime.time_since_epoch().count())(
+                "current system time", systemTimeT)("current steady time", steadyClockNow.time_since_epoch().count())(
+                "expected diff",
+                std::chrono::duration_cast<std::chrono::seconds>(mCollectTime.mScheduleTime - steadyClockNow).count())(
+                "actual diff", mCollectTime.mMetricTime - systemTimeT));
         AlarmManager::GetInstance()->SendAlarmError(
             HOST_MONITOR_ALARM,
             "host monitor system clock rolling, rolling interval: "
