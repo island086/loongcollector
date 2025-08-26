@@ -51,7 +51,6 @@ protected:
     void TearDown() override {
         bfs::remove_all("./1");
         bfs::remove_all("./stat");
-        this_thread::sleep_for(std::chrono::milliseconds{500}); // wait system interface cache stale
     }
 };
 
@@ -127,7 +126,7 @@ void ProcessEntityCollectorUnittest::TestGetProcessStat() const {
 void ProcessEntityCollectorUnittest::TestGetProcessStatFail() const {
     PROCESS_DIR = "/not_found_dir";
     auto collector = ProcessEntityCollector();
-    auto pid = 1;
+    auto pid = 9999;
     bool isFirstCollect = false;
     auto processStat = collector.GetProcessStat(
         pid, isFirstCollect, HostMonitorTimerEvent::CollectTime{std::chrono::steady_clock::now(), time(nullptr)});
