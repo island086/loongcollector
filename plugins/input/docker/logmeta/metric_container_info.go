@@ -216,8 +216,8 @@ func (idf *InputDockerFile) Description() string {
 func (idf *InputDockerFile) addMappingToLogtail(info *containercenter.DockerInfoDetail, containerInfo ContainerInfoCache, allCmd *DockerFileUpdateCmdAll) {
 	var cmd DockerFileUpdateCmd
 	cmd.ID = info.ContainerInfo.ID
-	cmd.UpperDir = filepath.Clean(containerInfo.UpperDir)
-	cmd.LogPath = filepath.Clean(containerInfo.LogPath)
+	cmd.UpperDir = containerInfo.UpperDir
+	cmd.LogPath = containerInfo.LogPath
 	// tags
 	tags := info.GetExternalTags(idf.ExternalEnvTag, idf.ExternalK8sLabelTag)
 	cmd.Tags = make([]string, 0, len(tags)*2)
@@ -234,8 +234,8 @@ func (idf *InputDockerFile) addMappingToLogtail(info *containercenter.DockerInfo
 	cmd.Mounts = make([]Mount, 0, len(containerInfo.Mounts))
 	for _, mount := range containerInfo.Mounts {
 		cmd.Mounts = append(cmd.Mounts, Mount{
-			Source:      filepath.Clean(mount.Source),
-			Destination: filepath.Clean(mount.Destination),
+			Source:      mount.Source,
+			Destination: mount.Destination,
 		})
 	}
 	cmdBuf, _ := json.Marshal(&cmd)
@@ -246,7 +246,7 @@ func (idf *InputDockerFile) addMappingToLogtail(info *containercenter.DockerInfo
 		return
 	}
 	if err := logtail.ExecuteCMD(configName, PluginDockerUpdateFile, cmdBuf); err != nil {
-		logger.Error(idf.context.GetRuntimeContext(), "DOCKER_FILE_MAPPING_ALARM", "cmdType", PluginDockerUpdateFile, "cmd", cmdBuf, "error", err)
+		logger.Warning(idf.context.GetRuntimeContext(), "DOCKER_FILE_MAPPING_ALARM", "cmdType", PluginDockerUpdateFile, "cmd", cmdBuf, "error", err)
 	}
 }
 
@@ -258,7 +258,7 @@ func (idf *InputDockerFile) deleteMappingFromLogtail(id string) {
 	cmdBuf, _ := json.Marshal(&cmd)
 	configName := idf.context.GetConfigName()
 	if err := logtail.ExecuteCMD(configName, PluginDockerDeleteFile, cmdBuf); err != nil {
-		logger.Error(idf.context.GetRuntimeContext(), "DOCKER_FILE_MAPPING_ALARM", "cmdType", PluginDockerDeleteFile, "cmd", cmdBuf, "error", err)
+		logger.Warning(idf.context.GetRuntimeContext(), "DOCKER_FILE_MAPPING_ALARM", "cmdType", PluginDockerDeleteFile, "cmd", cmdBuf, "error", err)
 	}
 }
 
@@ -270,7 +270,7 @@ func (idf *InputDockerFile) notifyStopToLogtail(id string) {
 	cmdBuf, _ := json.Marshal(&cmd)
 	configName := idf.context.GetConfigName()
 	if err := logtail.ExecuteCMD(configName, PluginDockerStopFile, cmdBuf); err != nil {
-		logger.Error(idf.context.GetRuntimeContext(), "DOCKER_FILE_MAPPING_ALARM", "cmdType", PluginDockerStopFile, "cmd", cmdBuf, "error", err)
+		logger.Warning(idf.context.GetRuntimeContext(), "DOCKER_FILE_MAPPING_ALARM", "cmdType", PluginDockerStopFile, "cmd", cmdBuf, "error", err)
 	}
 }
 
@@ -280,12 +280,12 @@ func (idf *InputDockerFile) updateAll(allCmd *DockerFileUpdateCmdAll) {
 	cmdBuf, _ := json.Marshal(allCmd)
 	configName := idf.context.GetConfigName()
 	if err := logtail.ExecuteCMD(configName, PluginDockerUpdateFileAll, cmdBuf); err != nil {
-		logger.Error(idf.context.GetRuntimeContext(), "DOCKER_FILE_MAPPING_ALARM", "cmdType", PluginDockerUpdateFileAll, "cmd", cmdBuf, "error", err)
+		logger.Warning(idf.context.GetRuntimeContext(), "DOCKER_FILE_MAPPING_ALARM", "cmdType", PluginDockerUpdateFileAll, "cmd", cmdBuf, "error", err)
 	}
 }
 
 func (idf *InputDockerFile) updateMapping(info *containercenter.DockerInfoDetail, allCmd *DockerFileUpdateCmdAll) {
-	logPath := filepath.Clean(info.StdoutPath)
+	logPath := info.StdoutPath
 	id := info.ContainerInfo.ID
 	mounts := info.ContainerInfo.Mounts
 	upperDir := info.DefaultRootPath

@@ -82,9 +82,6 @@ int64_t FTell(FILE* stream);
 // TrimLastSeperator removes last path separator unless @path is equal to '/'.
 void TrimLastSeperator(std::string& path);
 
-long GetPageSize();
-size_t GetBlockSize(const std::filesystem::path& path);
-
 enum class FileReadResult {
     kError = -1, // 发生错误
     kOK = 0, // 文件成功读取完毕
@@ -111,6 +108,7 @@ int GetFileLines(const std::filesystem::path& filename,
 
 // OverwriteFile overwrides @fileName with @content.
 bool OverwriteFile(const std::string& fileName, const std::string& content);
+bool UpdateFileContent(const std::filesystem::path& filepath, const std::string& content, std::string& errMsg);
 
 bool WriteFile(const std::string& fileName, const std::string& content, std::string& errMsg);
 

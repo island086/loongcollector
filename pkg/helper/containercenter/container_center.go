@@ -29,6 +29,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/events"
 
+	"github.com/alibaba/ilogtail/pkg/flags"
 	"github.com/alibaba/ilogtail/pkg/helper"
 	"github.com/alibaba/ilogtail/pkg/logger"
 	"github.com/alibaba/ilogtail/pkg/util"
@@ -342,10 +343,8 @@ func (did *DockerInfoDetail) FindBestMatchedPath(pth string) (sourcePath, contai
 	var bestMatchedMounts types.MountPoint
 	for _, mount := range did.ContainerInfo.Mounts {
 		// logger.Debugf("container(%s-%s) mount: source-%s destination-%s", did.IDPrefix(), did.ContainerInfo.Name, mount.Source, mount.Destination)
-
-		dst := filepath.Clean(mount.Destination)
+		dst := mount.Destination
 		dstSize := len(dst)
-
 		if strings.HasPrefix(pth, dst) &&
 			(pthSize == dstSize || (pthSize > dstSize && isPathSeparator(pth[dstSize]))) &&
 			len(bestMatchedMounts.Destination) < dstSize {
@@ -382,6 +381,7 @@ func (did *DockerInfoDetail) FindAllEnvConfig(envConfigPrefix string, selfConfig
 		return
 	}
 	selfEnvConfig := false
+	envMap := make(map[string]string)
 	for _, env := range did.ContainerInfo.Config.Env {
 		kvPair := strings.SplitN(env, "=", 2)
 		if len(kvPair) != 2 {
@@ -390,17 +390,31 @@ func (did *DockerInfoDetail) FindAllEnvConfig(envConfigPrefix string, selfConfig
 		key := kvPair[0]
 		value := kvPair[1]
 
-		if key == "ALICLOUD_LOG_DOCKER_ENV_CONFIG_SELF" && (value == "true" || value == "TRUE") {
+		if (key == "ALICLOUD_LOG_DOCKER_ENV_CONFIG_SELF" || key == "LOONG_LOG_DOCKER_ENV_CONFIG_SELF") && (value == "true" || value == "TRUE") {
 			logger.Debug(context.Background(), "this container is self env config", did.ContainerInfo.Name)
 			selfEnvConfig = true
 			continue
 		}
-
-		if !strings.HasPrefix(key, envConfigPrefix) {
-			continue
+		logEnvPrefix := envConfigPrefix
+		if !strings.HasPrefix(key, logEnvPrefix) {
+			if strings.HasPrefix(key, flags.LoongcollectorContainerLogEnvPrefix) {
+				logEnvPrefix = flags.LoongcollectorContainerLogEnvPrefix
+			} else {
+				continue
+			}
 		}
-		logger.Debug(context.Background(), "docker env config, name", did.ContainerInfo.Name, "item", key)
-		envKey := key[len(envConfigPrefix):]
+		envKey := key[len(logEnvPrefix):]
+		if _, ok := envMap[envKey]; !ok {
+			envMap[envKey] = value
+		} else if logEnvPrefix == flags.LoongcollectorContainerLogEnvPrefix {
+			// If environment variables with the prefix 'loong_logs_' and 'aliyun_logs_' both exist,
+			// then override the variable with the prefix 'loong_logs_'.
+			envMap[envKey] = value
+		}
+	}
+
+	for envKey, value := range envMap {
+		logger.Debug(context.Background(), "docker env config, name", did.ContainerInfo.Name, "item", envKey)
 		lastIndex := strings.LastIndexByte(envKey, '_')
 		var configName string
 		// end with '_', invalid, just skip
@@ -538,7 +552,9 @@ func (dc *ContainerCenter) getImageName(id, defaultVal string) string {
 		return imageName
 	}
 
-	image, _, err := dc.client.ImageInspectWithRaw(context.Background(), id)
+	ctx, cancel := getContextWithTimeout(defaultContextTimeout)
+	defer cancel()
+	image, _, err := dc.client.ImageInspectWithRaw(ctx, id)
 	logger.Debug(context.Background(), "get image name, id", id, "error", err)
 	if err == nil && len(image.RepoTags) > 0 {
 		dc.imageLock.Lock()
@@ -621,10 +637,7 @@ func (dc *ContainerCenter) CreateInfoDetail(info types.ContainerJSON, envConfigP
 	if len(ip) > 0 {
 		containerNameTag["_container_ip_"] = ip
 	}
-	for i := range info.Mounts {
-		info.Mounts[i].Source = filepath.Clean(info.Mounts[i].Source)
-		info.Mounts[i].Destination = filepath.Clean(info.Mounts[i].Destination)
-	}
+
 	sortMounts := func(mounts []types.MountPoint) {
 		sort.Slice(mounts, func(i, j int) bool {
 			return mounts[i].Source < mounts[j].Source
@@ -658,6 +671,22 @@ func (dc *ContainerCenter) CreateInfoDetail(info types.ContainerJSON, envConfigP
 	return did
 }
 
+func formatContainerJSONPath(info *types.ContainerJSON) {
+	// for inner enterprise stdout scene, if path start with /.. , no format it
+	if !strings.HasPrefix(info.LogPath, "/..") {
+		info.LogPath = filepath.Clean(info.LogPath)
+	}
+	for i := range info.Mounts {
+		info.Mounts[i].Source = filepath.Clean(info.Mounts[i].Source)
+		info.Mounts[i].Destination = filepath.Clean(info.Mounts[i].Destination)
+	}
+	if info.GraphDriver.Data != nil {
+		if rootPath, ok := info.GraphDriver.Data["UpperDir"]; ok {
+			info.GraphDriver.Data["UpperDir"] = filepath.Clean(rootPath)
+		}
+	}
+}
+
 func getContainerCenterInstance() *ContainerCenter {
 	onceDocker.Do(func() {
 		logger.InitLogger()
@@ -668,17 +697,17 @@ func getContainerCenterInstance() *ContainerCenter {
 		}
 		containerCenterInstance.imageCache = make(map[string]string)
 		containerCenterInstance.containerMap = make(map[string]*DockerInfoDetail)
+		containerFindingManager = NewContainerDiscoverManager()
 		// containerFindingManager works in a producer-consumer model
 		// so even manager is not initialized, it will not affect consumers like service_stdout
 		go func() {
 			retryCount := 0
-			containerFindingManager = NewContainerDiscoverManager()
 			for {
 				if containerFindingManager.Init() {
 					break
 				}
 				if retryCount%10 == 0 {
-					logger.Error(context.Background(), "DOCKER_CENTER_ALARM", "docker center init failed", "retry count", retryCount)
+					logger.Critical(context.Background(), "DOCKER_CENTER_ALARM", "docker center init failed", "retry count", retryCount)
 				}
 				retryCount++
 				time.Sleep(time.Second * 1)
@@ -1056,7 +1085,9 @@ func (dc *ContainerCenter) updateContainer(id string, container *DockerInfoDetai
 func (dc *ContainerCenter) fetchAll() error {
 	dc.containerStateLock.Lock()
 	defer dc.containerStateLock.Unlock()
-	containers, err := dc.client.ContainerList(context.Background(), types.ContainerListOptions{All: true})
+	ctx, cancel := getContextWithTimeout(defaultContextTimeout)
+	defer cancel()
+	containers, err := dc.client.ContainerList(ctx, types.ContainerListOptions{All: true})
 	if err != nil {
 		dc.setLastError(err, "list container error")
 		return err
@@ -1067,7 +1098,9 @@ func (dc *ContainerCenter) fetchAll() error {
 	for _, container := range containers {
 		var containerDetail types.ContainerJSON
 		for idx := 0; idx < 3; idx++ {
-			if containerDetail, err = dc.client.ContainerInspect(context.Background(), container.ID); err == nil {
+			ctx, cancel := getContextWithTimeout(defaultContextTimeout)
+			defer cancel()
+			if containerDetail, err = dc.client.ContainerInspect(ctx, container.ID); err == nil {
 				break
 			}
 			time.Sleep(time.Second * 5)
@@ -1076,6 +1109,7 @@ func (dc *ContainerCenter) fetchAll() error {
 			if !dc.containerHelper.ContainerProcessAlive(containerDetail.State.Pid) {
 				continue
 			}
+			formatContainerJSONPath(&containerDetail)
 			containerMap[container.ID] = dc.CreateInfoDetail(containerDetail, envConfigPrefix, false)
 		} else {
 			dc.setLastError(err, "inspect container error "+container.ID)
@@ -1088,7 +1122,9 @@ func (dc *ContainerCenter) fetchAll() error {
 func (dc *ContainerCenter) fetchOne(containerID string, tryFindSandbox bool) error {
 	dc.containerStateLock.Lock()
 	defer dc.containerStateLock.Unlock()
-	containerDetail, err := dc.client.ContainerInspect(context.Background(), containerID)
+	ctx, cancel := getContextWithTimeout(defaultContextTimeout)
+	defer cancel()
+	containerDetail, err := dc.client.ContainerInspect(ctx, containerID)
 	if err != nil {
 		dc.setLastError(err, "inspect container error "+containerID)
 		return err
@@ -1103,7 +1139,9 @@ func (dc *ContainerCenter) fetchOne(containerID string, tryFindSandbox bool) err
 	logger.Debug(context.Background(), "update container", containerID, "detail", containerDetail)
 	if tryFindSandbox && containerDetail.Config != nil {
 		if id := containerDetail.Config.Labels["io.kubernetes.sandbox.id"]; id != "" {
-			containerDetail, err = dc.client.ContainerInspect(context.Background(), id)
+			ctx, cancel := getContextWithTimeout(defaultContextTimeout)
+			defer cancel()
+			containerDetail, err = dc.client.ContainerInspect(ctx, id)
 			if err != nil {
 				dc.setLastError(err, "inspect sandbox container error "+id)
 			} else {
@@ -1179,7 +1217,7 @@ func containerCenterRecover() {
 	if err := recover(); err != nil {
 		trace := make([]byte, 2048)
 		runtime.Stack(trace, true)
-		logger.Error(context.Background(), "PLUGIN_RUNTIME_ALARM", "docker center runtime error", err, "stack", string(trace))
+		logger.Critical(context.Background(), "PLUGIN_RUNTIME_ALARM", "docker center runtime error", err, "stack", string(trace))
 	}
 }
 
@@ -1188,6 +1226,7 @@ func (dc *ContainerCenter) initClient() error {
 	// do not CreateDockerClient multi times
 	if dc.client == nil {
 		if dc.client, err = CreateDockerClient(); err != nil {
+			dc.client = nil
 			dc.setLastError(err, "init docker client from env error")
 			return err
 		}
@@ -1210,7 +1249,7 @@ func (dc *ContainerCenter) eventListener() {
 			select {
 			case event, ok := <-events:
 				if !ok {
-					logger.Errorf(context.Background(), "DOCKER_EVENT_ALARM", "docker event listener stop")
+					logger.Criticalf(context.Background(), "DOCKER_EVENT_ALARM", "docker event listener stop")
 					errorCount++
 					breakFlag = true
 					break
@@ -1237,10 +1276,10 @@ func (dc *ContainerCenter) eventListener() {
 				}
 				dc.eventChanLock.Unlock()
 			case err = <-errors:
-				logger.Error(context.Background(), "DOCKER_EVENT_ALARM", "docker event listener error", err)
+				logger.Warning(context.Background(), "DOCKER_EVENT_ALARM", "docker event listener error", err)
 				breakFlag = true
 			case <-timer.C:
-				logger.Errorf(context.Background(), "DOCKER_EVENT_ALARM", "no docker event in 1 hour. Reset event listener")
+				logger.Warningf(context.Background(), "DOCKER_EVENT_ALARM", "no docker event in 1 hour. Reset event listener")
 				breakFlag = true
 			}
 		}
