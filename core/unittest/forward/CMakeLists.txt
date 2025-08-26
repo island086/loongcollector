@@ -21,6 +21,10 @@ target_link_libraries(grpc_input_manager_unittest ${UT_BASE_TARGET})
 add_executable(loongsuite_forward_service_unittest LoongSuiteForwardServiceUnittest.cpp)
 target_link_libraries(loongsuite_forward_service_unittest ${UT_BASE_TARGET})
 
+# add_executable(loongsuite_grpc_client_unittest LoongSuiteGrpcClientUnittest.cpp)
+# target_link_libraries(loongsuite_grpc_client_unittest ${UT_BASE_TARGET})
+
 include(GoogleTest)
 gtest_discover_tests(grpc_input_manager_unittest)
 gtest_discover_tests(loongsuite_forward_service_unittest)
+# gtest_discover_tests(loongsuite_grpc_client_unittest)

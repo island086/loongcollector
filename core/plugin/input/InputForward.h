@@ -17,6 +17,7 @@
 #pragma once
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "collection_pipeline/plugin/interface/Input.h"
@@ -24,14 +25,9 @@
 namespace logtail {
 
 struct MatchRule {
-    std::string key;
     std::string value;
-
-    bool IsMatch(const std::string& inputKey, const std::string& inputValue) const {
-        return key == inputKey && value == inputValue;
-    }
-
-    bool IsEmpty() const { return key.empty() && value.empty(); }
+    bool IsMatch(const std::string& inputValue) const { return value == inputValue; }
+    bool IsEmpty() const { return value.empty(); }
 };
 
 class InputForward : public Input {
@@ -45,7 +41,7 @@ public:
     bool Stop(bool isPipelineRemoving) override;
     bool SupportAck() const override { return true; }
 
-    std::string mProtocol = "LoongSuite";
+    std::string mProtocol;
     std::string mEndpoint;
     MatchRule mMatchRule;
 

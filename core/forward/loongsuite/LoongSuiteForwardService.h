@@ -30,7 +30,6 @@ namespace logtail {
 
 struct ForwardConfig {
     std::string configName;
-    std::string matchKey;
     std::string matchValue;
     QueueKey queueKey;
     size_t inputIndex;
@@ -95,19 +94,16 @@ private:
     static const std::string sName;
 
 
-    // matchKey -> (matchValue -> configName)
-    // configName -> ForwardConfig
-    std::unordered_map<std::string, std::unordered_map<std::string, std::string>> mMatchIndex;
-    std::unordered_map<std::string, ForwardConfig> mConfigs;
-    mutable std::shared_mutex mConfigsMutex;
+    // matchValue -> ForwardConfig
+    std::unordered_map<std::string, std::shared_ptr<ForwardConfig>> mMatchIndex;
+    mutable std::shared_mutex mMatchIndexMutex;
 
     RetryTimeController mRetryTimeController;
 
-    bool AddToIndex(const std::string& configName, ForwardConfig&& config, std::string& errorMsg);
-    void RemoveFromIndex(const std::string& configName);
-    bool FindMatchingConfig(grpc::CallbackServerContext* context, ForwardConfig& config) const;
+    bool AddToIndex(ForwardConfig&& config, std::string& errorMsg);
+    bool FindMatchingConfig(grpc::CallbackServerContext* context, std::shared_ptr<ForwardConfig>& config) const;
     void ProcessForwardRequest(const LoongSuiteForwardRequest* request,
-                               const ForwardConfig& config,
+                               std::shared_ptr<ForwardConfig> config,
                                int32_t retryTimes,
                                grpc::Status& status);
 #ifdef APSARA_UNIT_TEST_MAIN

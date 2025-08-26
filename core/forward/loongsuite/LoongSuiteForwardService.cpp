@@ -31,6 +31,8 @@
 
 DECLARE_FLAG_INT32(grpc_server_forward_max_retry_times);
 
+const std::string kProtocolMetadataKey = "x-loongsuite-apm-configname";
+
 namespace logtail {
 
 const std::string LoongSuiteForwardServiceImpl::sName = "LoongSuiteForwardService";
@@ -47,17 +49,12 @@ bool LoongSuiteForwardServiceImpl::Update(std::string configName, const Json::Va
     const char* matchRuleKey = "MatchRule";
     const Json::Value* matchRule = config.find(matchRuleKey, matchRuleKey + strlen(matchRuleKey));
     std::string errorMsg;
-    std::string key;
     std::string value;
     if (matchRule && matchRule->isObject()) {
-        if (!GetMandatoryStringParam(*matchRule, "Key", key, errorMsg)) {
-            return false;
-        }
         if (!GetMandatoryStringParam(*matchRule, "Value", value, errorMsg)) {
             return false;
         }
     }
-    forwardConfig.matchKey = key;
     forwardConfig.matchValue = value;
 
     int32_t queueKey = -1;
@@ -71,24 +68,22 @@ bool LoongSuiteForwardServiceImpl::Update(std::string configName, const Json::Va
         return false;
     }
     forwardConfig.inputIndex = static_cast<size_t>(inputIndex);
-    if (!AddToIndex(configName, std::move(forwardConfig), errorMsg)) {
+    if (!AddToIndex(std::move(forwardConfig), errorMsg)) {
         LOG_ERROR(sLogger, ("Update LoongSuite forward match rule failed", configName)("error", errorMsg));
-        AlarmManager::GetInstance()->SendAlarm(
-            LOGTAIL_CONFIG_ALARM, "Update LoongSuite forward match rule failed", errorMsg);
         return false;
     }
     mRetryTimeController.InitRetryTimes(configName, INT32_FLAG(grpc_server_forward_max_retry_times));
 
     LOG_INFO(sLogger,
              ("LoongSuiteForwardServiceImpl config updated",
-              configName)("matchKey", key)("matchValue", value)("queueKey", queueKey)("inputIndex", inputIndex));
+              configName)("matchValue", value)("queueKey", queueKey)("inputIndex", inputIndex));
     return true;
 }
 
 bool LoongSuiteForwardServiceImpl::Remove(std::string configName) {
-    auto it = mConfigs.find(configName);
-    if (it != mConfigs.end()) {
-        RemoveFromIndex(configName);
+    auto it = mMatchIndex.find(configName);
+    if (it != mMatchIndex.end()) {
+        mMatchIndex.erase(it);
         mRetryTimeController.ClearRetryTimes(configName);
         LOG_INFO(sLogger, ("LoongSuiteForwardServiceImpl config removed", configName));
     } else {
@@ -104,17 +99,17 @@ grpc::ServerUnaryReactor* LoongSuiteForwardServiceImpl::Forward(grpc::CallbackSe
     auto* reactor = context->DefaultReactor();
     grpc::Status status(grpc::StatusCode::NOT_FOUND, "No matching config found for forward request");
 
-    ForwardConfig config;
+    std::shared_ptr<ForwardConfig> config;
     if (FindMatchingConfig(context, config)) {
         // config maybe removed, so we need to copy config here
-        int32_t retryTimes = mRetryTimeController.GetRetryTimes(config.configName);
+        int32_t retryTimes = mRetryTimeController.GetRetryTimes(config->configName);
         ProcessForwardRequest(request, config, retryTimes, status);
-    }
 
-    if (status.ok()) {
-        mRetryTimeController.UpRetryTimes(config.configName);
-    } else {
-        mRetryTimeController.DownRetryTimes(config.configName);
+        if (status.ok()) {
+            mRetryTimeController.UpRetryTimes(config->configName);
+        } else {
+            mRetryTimeController.DownRetryTimes(config->configName);
+        }
     }
 
     reactor->Finish(status);
@@ -122,7 +117,7 @@ grpc::ServerUnaryReactor* LoongSuiteForwardServiceImpl::Forward(grpc::CallbackSe
 }
 
 void LoongSuiteForwardServiceImpl::ProcessForwardRequest(const LoongSuiteForwardRequest* request,
-                                                         const ForwardConfig& config,
+                                                         std::shared_ptr<ForwardConfig> config,
                                                          int32_t retryTimes,
                                                          grpc::Status& status) {
     if (!request) {
@@ -142,7 +137,7 @@ void LoongSuiteForwardServiceImpl::ProcessForwardRequest(const LoongSuiteForward
     event->SetTimestamp(time(nullptr), 0);
 
     bool result = ProcessorRunner::GetInstance()->PushQueue(
-        config.queueKey, config.inputIndex, std::move(eventGroup), retryTimes);
+        config->queueKey, config->inputIndex, std::move(eventGroup), retryTimes);
 
     if (!result) {
         status = grpc::Status(grpc::StatusCode::UNAVAILABLE, "Queue is full, please retry later");
@@ -151,61 +146,38 @@ void LoongSuiteForwardServiceImpl::ProcessForwardRequest(const LoongSuiteForward
     }
 }
 
-bool LoongSuiteForwardServiceImpl::AddToIndex(const std::string& configName,
-                                              ForwardConfig&& config,
-                                              std::string& errorMsg) {
+bool LoongSuiteForwardServiceImpl::AddToIndex(ForwardConfig&& config, std::string& errorMsg) {
     errorMsg.clear();
-    std::unique_lock<std::shared_mutex> lock(mConfigsMutex);
-    if (!config.matchKey.empty() && !config.matchValue.empty()) {
+    std::unique_lock<std::shared_mutex> lock(mMatchIndexMutex);
+    if (!config.matchValue.empty()) {
         // check if config already exists
-        auto it = mMatchIndex.find(config.matchKey);
+        auto it = mMatchIndex.find(config.matchValue);
         if (it != mMatchIndex.end()) {
-            auto valueIt = it->second.find(config.matchValue);
-            if (valueIt != it->second.end()) {
-                errorMsg = "The match rule is already exists, conflict with " + valueIt->second;
-                return false;
-            }
+            errorMsg = "The match rule is already exists, conflict with " + it->second->configName;
+            return false;
         }
-        mMatchIndex[config.matchKey][config.matchValue] = configName;
-        mConfigs.emplace(configName, config);
+        mMatchIndex[config.matchValue] = std::make_shared<ForwardConfig>(config);
         return true;
     }
     errorMsg = "Invalid match rule";
     return false;
 }
 
-void LoongSuiteForwardServiceImpl::RemoveFromIndex(const std::string& configName) {
-    std::unique_lock<std::shared_mutex> lock(mConfigsMutex);
-    auto it = mConfigs.find(configName);
-    if (it != mConfigs.end()) {
-        if (!it->second.matchKey.empty() && !it->second.matchValue.empty()) {
-            mMatchIndex[it->second.matchKey].erase(it->second.matchValue);
-            if (mMatchIndex[it->second.matchKey].empty()) {
-                mMatchIndex.erase(it->second.matchKey);
-            }
-        }
-        mConfigs.erase(it);
-    }
-}
 
 bool LoongSuiteForwardServiceImpl::FindMatchingConfig(grpc::CallbackServerContext* context,
-                                                      ForwardConfig& config) const {
-    std::shared_lock<std::shared_mutex> lock(mConfigsMutex);
+                                                      std::shared_ptr<ForwardConfig>& config) const {
+    std::shared_lock<std::shared_mutex> lock(mMatchIndexMutex);
     const auto& metadata = context->client_metadata();
 
     for (const auto& metadataPair : metadata) {
-        std::string key(metadataPair.first.data(), metadataPair.first.size());
+        if (metadataPair.first != kProtocolMetadataKey) {
+            continue;
+        }
         std::string value(metadataPair.second.data(), metadataPair.second.size());
-        auto it = mMatchIndex.find(key);
+        auto it = mMatchIndex.find(value);
         if (it != mMatchIndex.end()) {
-            auto valueIt = it->second.find(value);
-            if (valueIt != it->second.end()) {
-                auto configIt = mConfigs.find(valueIt->second);
-                if (configIt != mConfigs.end()) {
-                    config = configIt->second;
-                    return true;
-                }
-            }
+            config = it->second;
+            return true;
         }
     }
 

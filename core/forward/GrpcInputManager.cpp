@@ -113,7 +113,6 @@ bool GrpcInputManager::AddListenInput(const std::string& configName,
         builder.AddListeningPort(address, grpc::InsecureServerCredentials());
         // TODO: multi-service server is complex and lacks isolation, only support one service per server for now
         builder.RegisterService(service.get());
-        LOG_ERROR(sLogger, ("service", service->Name()));
         auto server = builder.BuildAndStart();
         if (!server) {
             LOG_ERROR(sLogger,

@@ -18,10 +18,13 @@
 
 #include <algorithm>
 
+#include "collection_pipeline/CollectionPipeline.h"
+#include "collection_pipeline/plugin/PluginRegistry.h"
 #include "common/ParamExtractor.h"
 #include "forward/GrpcInputManager.h"
 #include "forward/loongsuite/LoongSuiteForwardService.h"
 #include "logger/Logger.h"
+#include "plugin/processor/inner/ProcessorParseFromPBNative.h"
 
 namespace logtail {
 
@@ -72,17 +75,6 @@ bool InputForward::Init(const Json::Value& config, Json::Value& optionalGoPipeli
     const char* key = "MatchRule";
     const Json::Value* itr = config.find(key, key + strlen(key));
     if (itr && itr->isObject()) {
-        if (!GetMandatoryStringParam(*itr, "Key", mMatchRule.key, errorMsg)) {
-            PARAM_ERROR_RETURN(mContext->GetLogger(),
-                               mContext->GetAlarm(),
-                               errorMsg,
-                               sName,
-                               mContext->GetConfigName(),
-                               mContext->GetProjectName(),
-                               mContext->GetLogstoreName(),
-                               mContext->GetRegion());
-        }
-
         if (!GetMandatoryStringParam(*itr, "Value", mMatchRule.value, errorMsg)) {
             PARAM_ERROR_RETURN(mContext->GetLogger(),
                                mContext->GetAlarm(),
@@ -114,7 +106,6 @@ bool InputForward::Init(const Json::Value& config, Json::Value& optionalGoPipeli
 
 bool InputForward::Start() {
     Json::Value config;
-    config["MatchRule"]["Key"] = mMatchRule.key;
     config["MatchRule"]["Value"] = mMatchRule.value;
     config["QueueKey"] = mContext->GetProcessQueueKey();
     config["InputIndex"] = static_cast<int>(mIndex);
@@ -122,9 +113,16 @@ bool InputForward::Start() {
 
     bool result = false;
 
+    std::unique_ptr<ProcessorInstance> processor;
     if (mProtocol == "LoongSuite") {
         result = GrpcInputManager::GetInstance()->AddListenInput<LoongSuiteForwardServiceImpl>(
             mConfigName, mEndpoint, config);
+        processor = PluginRegistry::GetInstance()->CreateProcessor(ProcessorParseFromPBNative::sName,
+                                                                   mContext->GetPipeline().GenNextPluginMeta(false));
+        if (!processor->Init(config, *mContext)) {
+            return false;
+        }
+        mInnerProcessors.emplace_back(std::move(processor));
     } else {
         LOG_WARNING(sLogger, ("Protocol not fully implemented, should not happen", mProtocol)("config", mConfigName));
     }

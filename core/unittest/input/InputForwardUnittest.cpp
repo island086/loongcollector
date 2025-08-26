@@ -85,7 +85,6 @@ void InputForwardUnittest::OnSuccessfulInit() {
             "Protocol": "LoongSuite",
             "Endpoint": "127.0.0.1:8080",
             "MatchRule": {
-                "Key": "service",
                 "Value": "test-service"
             }
         }
@@ -97,7 +96,6 @@ void InputForwardUnittest::OnSuccessfulInit() {
     APSARA_TEST_TRUE(input->Init(configJson, optionalGoPipeline));
     input->CommitMetricsRecordRef();
 
-    APSARA_TEST_EQUAL("service", input->mMatchRule.key);
     APSARA_TEST_EQUAL("test-service", input->mMatchRule.value);
     APSARA_TEST_FALSE(input->mMatchRule.IsEmpty());
 }
@@ -217,7 +215,7 @@ void InputForwardUnittest::TestMissingMandatoryParams() {
     APSARA_TEST_FALSE(input->Init(configJson, optionalGoPipeline));
     input->CommitMetricsRecordRef();
 
-    // Test empty MatchRule Key
+    // Test empty MatchRule Value
     configStr = R"(
         {
             "Type": "input_forward",
@@ -241,13 +239,12 @@ void InputForwardUnittest::TestEdgeCases() {
 
     // Test MatchRule IsMatch functionality
     MatchRule testRule;
-    testRule.key = "service";
     testRule.value = "test-service";
 
-    APSARA_TEST_TRUE(testRule.IsMatch("service", "test-service"));
-    APSARA_TEST_FALSE(testRule.IsMatch("service", "different-value"));
-    APSARA_TEST_FALSE(testRule.IsMatch("different-key", "test-service"));
-    APSARA_TEST_FALSE(testRule.IsMatch("", ""));
+    APSARA_TEST_TRUE(testRule.IsMatch("test-service"));
+    APSARA_TEST_FALSE(testRule.IsMatch("different-value"));
+    APSARA_TEST_FALSE(testRule.IsMatch("different-key"));
+    APSARA_TEST_FALSE(testRule.IsMatch(""));
 
     // Test empty MatchRule
     MatchRule emptyRule;
@@ -259,14 +256,17 @@ void InputForwardUnittest::TestEdgeCases() {
         {
             "Type": "input_forward",
             "Protocol": "LoongSuite",
-            "Endpoint": "192.168.1.100:8080"
+            "Endpoint": "192.168.1.100:8080",
+            "MatchRule": {
+                "Value": "test-service"
+            }
         }
     )";
     APSARA_TEST_TRUE(ParseJsonTable(configStr, configJson, errorMsg));
     input.reset(new InputForward());
     input->SetContext(ctx);
     input->CreateMetricsRecordRef("test", "11");
-    APSARA_TEST_FALSE(input->Init(configJson, optionalGoPipeline));
+    APSARA_TEST_TRUE(input->Init(configJson, optionalGoPipeline));
 }
 
 UNIT_TEST_CASE(InputForwardUnittest, TestName)
