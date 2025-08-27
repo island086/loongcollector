@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "common/FastFieldParser.h"
+#include "host_monitor/common/FastFieldParser.h"
 
 #include <algorithm>
 

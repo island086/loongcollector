@@ -27,12 +27,6 @@ namespace logtail {
 
 /**
  * @brief 高性能字段解析器 - 零拷贝、按需解析
- *
- * 特性：
- * - 零内存分配：使用 string_view 避免字符串拷贝
- * - 按需解析：只解析到需要的字段就停止
- * - 类型安全：直接解析到目标类型
- * - 高性能：比 boost::split 快 3-5 倍
  */
 class FastFieldParser {
 public:

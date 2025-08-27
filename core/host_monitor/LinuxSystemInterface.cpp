@@ -54,19 +54,6 @@ bool LinuxSystemInterface::GetHostSystemStat(vector<string>& lines, string& erro
     return true;
 }
 
-double ParseMetric(const std::vector<std::string>& cpuMetric, EnumCpuKey key) {
-    if (cpuMetric.size() <= static_cast<size_t>(key)) {
-        return 0.0;
-    }
-    double value = 0.0;
-    if (!StringTo(cpuMetric[static_cast<size_t>(key)], value)) {
-        LOG_WARNING(
-            sLogger,
-            ("failed to parse cpu metric", static_cast<size_t>(key))("value", cpuMetric[static_cast<size_t>(key)]));
-    }
-    return value;
-}
-
 unsigned int Hex2Int(const std::string& s) {
     std::istringstream in(s);
     in >> std::hex;
