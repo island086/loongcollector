@@ -120,6 +120,7 @@ bool InputForward::Start() {
         processor = PluginRegistry::GetInstance()->CreateProcessor(ProcessorParseFromPBNative::sName,
                                                                    mContext->GetPipeline().GenNextPluginMeta(false));
         if (!processor->Init(config, *mContext)) {
+            LOG_ERROR(sLogger, ("InputForward failed to init processor", mProtocol)("config", mConfigName));
             return false;
         }
         mInnerProcessors.emplace_back(std::move(processor));
