@@ -74,8 +74,9 @@ bool InputForward::Init(const Json::Value& config, Json::Value& optionalGoPipeli
 
     const char* key = "MatchRule";
     const Json::Value* itr = config.find(key, key + strlen(key));
+    std::string value;
     if (itr && itr->isObject()) {
-        if (!GetMandatoryStringParam(*itr, "Value", mMatchRule.value, errorMsg)) {
+        if (!GetMandatoryStringParam(*itr, "Value", value, errorMsg)) {
             PARAM_ERROR_RETURN(mContext->GetLogger(),
                                mContext->GetAlarm(),
                                errorMsg,
@@ -97,6 +98,9 @@ bool InputForward::Init(const Json::Value& config, Json::Value& optionalGoPipeli
     }
 
     mConfigName = mContext->GetConfigName();
+    mForwardConfig["MatchRule"]["Value"] = value;
+    mForwardConfig["InputIndex"] = static_cast<int>(mIndex);
+    mForwardConfig["Protocol"] = mProtocol;
 
     LOG_INFO(
         sLogger,
@@ -105,21 +109,16 @@ bool InputForward::Init(const Json::Value& config, Json::Value& optionalGoPipeli
 }
 
 bool InputForward::Start() {
-    Json::Value config;
-    config["MatchRule"]["Value"] = mMatchRule.value;
-    config["QueueKey"] = mContext->GetProcessQueueKey();
-    config["InputIndex"] = static_cast<int>(mIndex);
-    config["Protocol"] = mProtocol;
-
     bool result = false;
+    mForwardConfig["QueueKey"] = mContext->GetProcessQueueKey();
 
     std::unique_ptr<ProcessorInstance> processor;
     if (mProtocol == "LoongSuite") {
         result = GrpcInputManager::GetInstance()->AddListenInput<LoongSuiteForwardServiceImpl>(
-            mConfigName, mEndpoint, config);
+            mConfigName, mEndpoint, mForwardConfig);
         processor = PluginRegistry::GetInstance()->CreateProcessor(ProcessorParseFromPBNative::sName,
                                                                    mContext->GetPipeline().GenNextPluginMeta(false));
-        if (!processor->Init(config, *mContext)) {
+        if (!processor->Init(mForwardConfig, *mContext)) {
             LOG_ERROR(sLogger, ("InputForward failed to init processor", mProtocol)("config", mConfigName));
             return false;
         }
@@ -139,7 +138,7 @@ bool InputForward::Start() {
 }
 
 bool InputForward::Stop(bool isPipelineRemoving) {
-    bool result = GrpcInputManager::GetInstance()->RemoveListenInput(mEndpoint, mConfigName);
+    bool result = GrpcInputManager::GetInstance()->RemoveListenInput(mConfigName, mEndpoint, mForwardConfig);
 
     if (result) {
         LOG_INFO(sLogger, ("InputForward stopped successfully", mEndpoint)("config", mConfigName));

@@ -41,7 +41,7 @@ public:
     void OnFailedStop();
     void TestInvalidProtocol();
     void TestMissingMandatoryParams();
-    void TestEdgeCases();
+    void TestStartMethod();
 
 protected:
     void SetUp() override {
@@ -65,13 +65,13 @@ private:
 
 void InputForwardUnittest::TestName() {
     InputForward input;
-    APSARA_TEST_EQUAL(InputForward::sName, input.Name());
-    APSARA_TEST_EQUAL("input_forward", input.Name());
+    APSARA_TEST_EQUAL_FATAL(InputForward::sName, input.Name());
+    APSARA_TEST_EQUAL_FATAL("input_forward", input.Name());
 }
 
 void InputForwardUnittest::TestSupportAck() {
     InputForward input;
-    APSARA_TEST_TRUE(input.SupportAck());
+    APSARA_TEST_TRUE_FATAL(input.SupportAck());
 }
 
 void InputForwardUnittest::OnSuccessfulInit() {
@@ -89,15 +89,14 @@ void InputForwardUnittest::OnSuccessfulInit() {
             }
         }
     )";
-    APSARA_TEST_TRUE(ParseJsonTable(configStr, configJson, errorMsg));
+    APSARA_TEST_TRUE_FATAL(ParseJsonTable(configStr, configJson, errorMsg));
     input.reset(new InputForward());
     input->SetContext(ctx);
     input->CreateMetricsRecordRef("test", "2");
-    APSARA_TEST_TRUE(input->Init(configJson, optionalGoPipeline));
+    APSARA_TEST_TRUE_FATAL(input->Init(configJson, optionalGoPipeline));
     input->CommitMetricsRecordRef();
 
-    APSARA_TEST_EQUAL("test-service", input->mMatchRule.value);
-    APSARA_TEST_FALSE(input->mMatchRule.IsEmpty());
+    APSARA_TEST_EQUAL_FATAL("test-service", input->mForwardConfig["MatchRule"]["Value"].asString());
 }
 
 void InputForwardUnittest::OnFailedInit() {
@@ -107,11 +106,11 @@ void InputForwardUnittest::OnFailedInit() {
 
     // Test with empty config
     configStr = R"({})";
-    APSARA_TEST_TRUE(ParseJsonTable(configStr, configJson, errorMsg));
+    APSARA_TEST_TRUE_FATAL(ParseJsonTable(configStr, configJson, errorMsg));
     input.reset(new InputForward());
     input->SetContext(ctx);
     input->CreateMetricsRecordRef("test", "3");
-    APSARA_TEST_FALSE(input->Init(configJson, optionalGoPipeline));
+    APSARA_TEST_FALSE_FATAL(input->Init(configJson, optionalGoPipeline));
     input->CommitMetricsRecordRef();
 }
 
@@ -128,11 +127,11 @@ void InputForwardUnittest::TestInvalidProtocol() {
             "Endpoint": "0.0.0.0:9999"
         }
     )";
-    APSARA_TEST_TRUE(ParseJsonTable(configStr, configJson, errorMsg));
+    APSARA_TEST_TRUE_FATAL(ParseJsonTable(configStr, configJson, errorMsg));
     input.reset(new InputForward());
     input->SetContext(ctx);
     input->CreateMetricsRecordRef("test", "4");
-    APSARA_TEST_FALSE(input->Init(configJson, optionalGoPipeline));
+    APSARA_TEST_FALSE_FATAL(input->Init(configJson, optionalGoPipeline));
     input->CommitMetricsRecordRef();
 
     // Test with empty protocol
@@ -143,11 +142,11 @@ void InputForwardUnittest::TestInvalidProtocol() {
             "Endpoint": "0.0.0.0:9999"
         }
     )";
-    APSARA_TEST_TRUE(ParseJsonTable(configStr, configJson, errorMsg));
+    APSARA_TEST_TRUE_FATAL(ParseJsonTable(configStr, configJson, errorMsg));
     input.reset(new InputForward());
     input->SetContext(ctx);
     input->CreateMetricsRecordRef("test", "5");
-    APSARA_TEST_FALSE(input->Init(configJson, optionalGoPipeline));
+    APSARA_TEST_FALSE_FATAL(input->Init(configJson, optionalGoPipeline));
     input->CommitMetricsRecordRef();
 }
 
@@ -163,11 +162,11 @@ void InputForwardUnittest::TestMissingMandatoryParams() {
             "Endpoint": "0.0.0.0:9999"
         }
     )";
-    APSARA_TEST_TRUE(ParseJsonTable(configStr, configJson, errorMsg));
+    APSARA_TEST_TRUE_FATAL(ParseJsonTable(configStr, configJson, errorMsg));
     input.reset(new InputForward());
     input->SetContext(ctx);
     input->CreateMetricsRecordRef("test", "6");
-    APSARA_TEST_FALSE(input->Init(configJson, optionalGoPipeline));
+    APSARA_TEST_FALSE_FATAL(input->Init(configJson, optionalGoPipeline));
     input->CommitMetricsRecordRef();
 
     // Test missing Endpoint
@@ -177,11 +176,11 @@ void InputForwardUnittest::TestMissingMandatoryParams() {
             "Protocol": "LoongSuite"
         }
     )";
-    APSARA_TEST_TRUE(ParseJsonTable(configStr, configJson, errorMsg));
+    APSARA_TEST_TRUE_FATAL(ParseJsonTable(configStr, configJson, errorMsg));
     input.reset(new InputForward());
     input->SetContext(ctx);
     input->CreateMetricsRecordRef("test", "7");
-    APSARA_TEST_FALSE(input->Init(configJson, optionalGoPipeline));
+    APSARA_TEST_FALSE_FATAL(input->Init(configJson, optionalGoPipeline));
     input->CommitMetricsRecordRef();
 
     // Test empty Endpoint
@@ -192,13 +191,13 @@ void InputForwardUnittest::TestMissingMandatoryParams() {
             "Endpoint": ""
         }
     )";
-    APSARA_TEST_TRUE(ParseJsonTable(configStr, configJson, errorMsg));
+    APSARA_TEST_TRUE_FATAL(ParseJsonTable(configStr, configJson, errorMsg));
     input.reset(new InputForward());
     input->SetContext(ctx);
     input->CreateMetricsRecordRef("test", "8");
-    APSARA_TEST_FALSE(input->Init(configJson, optionalGoPipeline));
+    APSARA_TEST_FALSE_FATAL(input->Init(configJson, optionalGoPipeline));
     input->CommitMetricsRecordRef();
-    APSARA_TEST_EQUAL("", input->mEndpoint);
+    APSARA_TEST_EQUAL_FATAL("", input->mEndpoint);
 
     // Test missing MatchRule
     configStr = R"(
@@ -208,11 +207,11 @@ void InputForwardUnittest::TestMissingMandatoryParams() {
             "Endpoint": "0.0.0.0:9999"
         }
     )";
-    APSARA_TEST_TRUE(ParseJsonTable(configStr, configJson, errorMsg));
+    APSARA_TEST_TRUE_FATAL(ParseJsonTable(configStr, configJson, errorMsg));
     input.reset(new InputForward());
     input->SetContext(ctx);
     input->CreateMetricsRecordRef("test", "9");
-    APSARA_TEST_FALSE(input->Init(configJson, optionalGoPipeline));
+    APSARA_TEST_FALSE_FATAL(input->Init(configJson, optionalGoPipeline));
     input->CommitMetricsRecordRef();
 
     // Test empty MatchRule Value
@@ -224,49 +223,41 @@ void InputForwardUnittest::TestMissingMandatoryParams() {
             "MatchRule": {}
         }
     )";
-    APSARA_TEST_TRUE(ParseJsonTable(configStr, configJson, errorMsg));
+    APSARA_TEST_TRUE_FATAL(ParseJsonTable(configStr, configJson, errorMsg));
     input.reset(new InputForward());
     input->SetContext(ctx);
     input->CreateMetricsRecordRef("test", "10");
-    APSARA_TEST_FALSE(input->Init(configJson, optionalGoPipeline));
+    APSARA_TEST_FALSE_FATAL(input->Init(configJson, optionalGoPipeline));
     input->CommitMetricsRecordRef();
 }
 
-void InputForwardUnittest::TestEdgeCases() {
+void InputForwardUnittest::TestStartMethod() {
     unique_ptr<InputForward> input;
     Json::Value configJson, optionalGoPipeline;
     string configStr, errorMsg;
 
-    // Test MatchRule IsMatch functionality
-    MatchRule testRule;
-    testRule.value = "test-service";
-
-    APSARA_TEST_TRUE(testRule.IsMatch("test-service"));
-    APSARA_TEST_FALSE(testRule.IsMatch("different-value"));
-    APSARA_TEST_FALSE(testRule.IsMatch("different-key"));
-    APSARA_TEST_FALSE(testRule.IsMatch(""));
-
-    // Test empty MatchRule
-    MatchRule emptyRule;
-    APSARA_TEST_TRUE(emptyRule.IsEmpty());
-    APSARA_TEST_FALSE(testRule.IsEmpty());
-
-    // Test with numeric endpoint formats
+    // Create and initialize input first
     configStr = R"(
         {
             "Type": "input_forward",
             "Protocol": "LoongSuite",
-            "Endpoint": "192.168.1.100:8080",
+            "Endpoint": "127.0.0.1:18080",
             "MatchRule": {
-                "Value": "test-service"
+                "Value": "start-test-service"
             }
         }
     )";
-    APSARA_TEST_TRUE(ParseJsonTable(configStr, configJson, errorMsg));
+    APSARA_TEST_TRUE_FATAL(ParseJsonTable(configStr, configJson, errorMsg));
     input.reset(new InputForward());
     input->SetContext(ctx);
-    input->CreateMetricsRecordRef("test", "11");
-    APSARA_TEST_TRUE(input->Init(configJson, optionalGoPipeline));
+    input->CreateMetricsRecordRef("test", "12");
+    APSARA_TEST_TRUE_FATAL(input->Init(configJson, optionalGoPipeline));
+
+    // Test Start method
+    bool startResult = input->Start();
+    APSARA_TEST_TRUE_FATAL(startResult);
+
+    input->CommitMetricsRecordRef();
 }
 
 UNIT_TEST_CASE(InputForwardUnittest, TestName)
@@ -275,7 +266,7 @@ UNIT_TEST_CASE(InputForwardUnittest, OnSuccessfulInit)
 UNIT_TEST_CASE(InputForwardUnittest, OnFailedInit)
 UNIT_TEST_CASE(InputForwardUnittest, TestInvalidProtocol)
 UNIT_TEST_CASE(InputForwardUnittest, TestMissingMandatoryParams)
-UNIT_TEST_CASE(InputForwardUnittest, TestEdgeCases)
+UNIT_TEST_CASE(InputForwardUnittest, TestStartMethod)
 
 } // namespace logtail
 

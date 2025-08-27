@@ -45,6 +45,15 @@ public:
     void TestRetryTimeController();
     void TestConcurrentAccess();
     void TestProcessorRunnerIntegration();
+    void TestForwardMethod();
+    void TestProcessForwardRequest();
+    void TestFindMatchingConfig();
+    void TestForwardWithValidRequest();
+    void TestForwardWithInvalidRequest();
+    void TestForwardWithEmptyData();
+    void TestAddToIndexEdgeCases();
+    void TestRetryTimeControllerEdgeCases();
+    void TestConfigConflicts();
 
 protected:
     void SetUp() override {
@@ -70,7 +79,7 @@ private:
 };
 
 void LoongSuiteForwardServiceUnittest::TestServiceName() {
-    APSARA_TEST_EQUAL("LoongSuiteForwardService", service->Name());
+    APSARA_TEST_EQUAL_FATAL("LoongSuiteForwardService", service->Name());
 }
 
 void LoongSuiteForwardServiceUnittest::TestUpdateConfig() {
@@ -82,14 +91,14 @@ void LoongSuiteForwardServiceUnittest::TestUpdateConfig() {
     config["QueueKey"] = 1;
     config["InputIndex"] = 0;
 
-    APSARA_TEST_TRUE(service->Update(configName, config));
+    APSARA_TEST_TRUE_FATAL(service->Update(configName, config));
     // Check that config is stored in mMatchIndex with matchValue as key
     auto it = service->mMatchIndex.find("test-service");
-    APSARA_TEST_TRUE(it != service->mMatchIndex.end());
-    APSARA_TEST_EQUAL("test_config", it->second->configName);
-    APSARA_TEST_EQUAL("test-service", it->second->matchValue);
-    APSARA_TEST_EQUAL(1, it->second->queueKey);
-    APSARA_TEST_EQUAL(0, it->second->inputIndex);
+    APSARA_TEST_TRUE_FATAL(it != service->mMatchIndex.end());
+    APSARA_TEST_EQUAL_FATAL("test_config", it->second->configName);
+    APSARA_TEST_EQUAL_FATAL("test-service", it->second->matchValue);
+    APSARA_TEST_EQUAL_FATAL(1, it->second->queueKey);
+    APSARA_TEST_EQUAL_FATAL(0, it->second->inputIndex);
 
     // Test same match rule (should fail due to duplicate matchValue)
     Json::Value configNoMatch;
@@ -97,7 +106,7 @@ void LoongSuiteForwardServiceUnittest::TestUpdateConfig() {
     configNoMatch["QueueKey"] = 2;
     configNoMatch["InputIndex"] = 1;
     std::string configName2 = "test_config_2";
-    APSARA_TEST_FALSE(service->Update(configName2, configNoMatch));
+    APSARA_TEST_FALSE_FATAL(service->Update(configName2, configNoMatch));
 }
 
 void LoongSuiteForwardServiceUnittest::TestUpdateConfigWithInvalidParams() {
@@ -107,13 +116,13 @@ void LoongSuiteForwardServiceUnittest::TestUpdateConfigWithInvalidParams() {
     // Test missing QueueKey
     config["MatchRule"]["Value"] = "test-service";
     config["InputIndex"] = 0;
-    APSARA_TEST_FALSE(service->Update(configName, config));
+    APSARA_TEST_FALSE_FATAL(service->Update(configName, config));
 
     // Test missing InputIndex
     config.clear();
     config["QueueKey"] = 1;
     config["MatchRule"]["Value"] = "test-service";
-    APSARA_TEST_FALSE(service->Update(configName, config));
+    APSARA_TEST_FALSE_FATAL(service->Update(configName, config));
 
     // Test with invalid MatchRule structure (missing Value)
     config.clear();
@@ -121,14 +130,14 @@ void LoongSuiteForwardServiceUnittest::TestUpdateConfigWithInvalidParams() {
     config["InputIndex"] = 0;
     config["MatchRule"] = Json::Value(Json::objectValue);
     // Missing Value in MatchRule should fail
-    APSARA_TEST_FALSE(service->Update(configName, config));
+    APSARA_TEST_FALSE_FATAL(service->Update(configName, config));
 
     // Test with empty MatchRule Value
     config.clear();
     config["QueueKey"] = 1;
     config["InputIndex"] = 0;
     config["MatchRule"]["Value"] = "";
-    APSARA_TEST_FALSE(service->Update(configName, config));
+    APSARA_TEST_FALSE_FATAL(service->Update(configName, config));
 }
 
 void LoongSuiteForwardServiceUnittest::TestRemoveConfig() {
@@ -139,30 +148,24 @@ void LoongSuiteForwardServiceUnittest::TestRemoveConfig() {
     config["MatchRule"]["Value"] = "remove-test-service";
     config["QueueKey"] = 1;
     config["InputIndex"] = 0;
-    APSARA_TEST_TRUE(service->Update(configName, config));
+    APSARA_TEST_TRUE_FATAL(service->Update(configName, config));
 
     // Verify config exists
     auto it = service->mMatchIndex.find("remove-test-service");
-    APSARA_TEST_TRUE(it != service->mMatchIndex.end());
+    APSARA_TEST_TRUE_FATAL(it != service->mMatchIndex.end());
 
-    // Then remove it - Note: The current implementation has a bug - it searches by configName but should search by
-    // matchValue For now, test the current behavior
-    APSARA_TEST_TRUE(service->Remove(configName));
+    APSARA_TEST_TRUE_FATAL(service->Remove(configName, config));
 
-    // The config will NOT be removed because Remove searches for configName in mMatchIndex which uses matchValue as key
-    // This is a bug in the implementation, but we test the current behavior
     it = service->mMatchIndex.find("remove-test-service");
-    APSARA_TEST_TRUE(it != service->mMatchIndex.end()); // Config still exists due to implementation bug
-
-    // Remove should always return true even for duplicate calls
-    APSARA_TEST_TRUE(service->Remove(configName));
+    APSARA_TEST_TRUE_FATAL(it == service->mMatchIndex.end());
 }
 
 void LoongSuiteForwardServiceUnittest::TestRemoveNonExistentConfig() {
     std::string nonExistentConfig = "non_existent_config";
+    Json::Value config;
+    config["MatchRule"]["Value"] = "non-existent-service";
 
-    // Should not fail when removing non-existent config
-    APSARA_TEST_TRUE(service->Remove(nonExistentConfig));
+    APSARA_TEST_TRUE_FATAL(service->Remove(nonExistentConfig, config));
 }
 
 void LoongSuiteForwardServiceUnittest::TestRetryTimeController() {
@@ -171,33 +174,33 @@ void LoongSuiteForwardServiceUnittest::TestRetryTimeController() {
 
     // Test initialization
     controller.InitRetryTimes(configName, 50);
-    APSARA_TEST_EQUAL(50, controller.GetRetryTimes(configName));
+    APSARA_TEST_EQUAL_FATAL(50, controller.GetRetryTimes(configName));
 
     // Test up retry times
     controller.UpRetryTimes(configName);
-    APSARA_TEST_EQUAL(51, controller.GetRetryTimes(configName));
+    APSARA_TEST_EQUAL_FATAL(51, controller.GetRetryTimes(configName));
 
     // Test down retry times
     controller.DownRetryTimes(configName);
-    APSARA_TEST_EQUAL(25, controller.GetRetryTimes(configName)); // max(51 >> 1, 1) = max(25, 1) = 25
+    APSARA_TEST_EQUAL_FATAL(25, controller.GetRetryTimes(configName)); // max(51 >> 1, 1) = max(25, 1) = 25
 
     // Test down with smaller value
     controller.DownRetryTimes(configName);
-    APSARA_TEST_EQUAL(12, controller.GetRetryTimes(configName)); // max(25 >> 1, 1) = max(12, 1) = 12
+    APSARA_TEST_EQUAL_FATAL(12, controller.GetRetryTimes(configName)); // max(25 >> 1, 1) = max(12, 1) = 12
 
     // Test down to minimum value
     for (int i = 0; i < 10; i++) {
         controller.DownRetryTimes(configName);
     }
-    APSARA_TEST_EQUAL(1, controller.GetRetryTimes(configName)); // Should never go below 1
+    APSARA_TEST_EQUAL_FATAL(1, controller.GetRetryTimes(configName)); // Should never go below 1
 
     // Test clear retry times
     controller.ClearRetryTimes(configName);
-    APSARA_TEST_EQUAL(0, controller.GetRetryTimes(configName)); // After clear, returns 0
+    APSARA_TEST_EQUAL_FATAL(0, controller.GetRetryTimes(configName)); // After clear, returns 0
 
     // Test get for non-existent config
     std::string nonExistentConfig = "non_existent";
-    APSARA_TEST_EQUAL(0, controller.GetRetryTimes(nonExistentConfig));
+    APSARA_TEST_EQUAL_FATAL(0, controller.GetRetryTimes(nonExistentConfig));
 }
 
 void LoongSuiteForwardServiceUnittest::TestConfigMatching() {
@@ -209,20 +212,20 @@ void LoongSuiteForwardServiceUnittest::TestConfigMatching() {
     config1["MatchRule"]["Value"] = "service1";
     config1["QueueKey"] = 1;
     config1["InputIndex"] = 0;
-    APSARA_TEST_TRUE(service->Update(configName1, config1));
+    APSARA_TEST_TRUE_FATAL(service->Update(configName1, config1));
 
     config2["MatchRule"]["Value"] = "service2";
     config2["QueueKey"] = 2;
     config2["InputIndex"] = 1;
-    APSARA_TEST_TRUE(service->Update(configName2, config2));
+    APSARA_TEST_TRUE_FATAL(service->Update(configName2, config2));
 
     // Verify both configs exist in the index
     auto it1 = service->mMatchIndex.find("service1");
     auto it2 = service->mMatchIndex.find("service2");
-    APSARA_TEST_TRUE(it1 != service->mMatchIndex.end());
-    APSARA_TEST_TRUE(it2 != service->mMatchIndex.end());
-    APSARA_TEST_EQUAL("config1", it1->second->configName);
-    APSARA_TEST_EQUAL("config2", it2->second->configName);
+    APSARA_TEST_TRUE_FATAL(it1 != service->mMatchIndex.end());
+    APSARA_TEST_TRUE_FATAL(it2 != service->mMatchIndex.end());
+    APSARA_TEST_EQUAL_FATAL("config1", it1->second->configName);
+    APSARA_TEST_EQUAL_FATAL("config2", it2->second->configName);
 }
 
 void LoongSuiteForwardServiceUnittest::TestConfigMatchingEdgeCases() {
@@ -233,11 +236,11 @@ void LoongSuiteForwardServiceUnittest::TestConfigMatchingEdgeCases() {
     config["MatchRule"]["Value"] = "service-with-special-chars_123!@#";
     config["QueueKey"] = 1;
     config["InputIndex"] = 0;
-    APSARA_TEST_TRUE(service->Update(configName, config));
+    APSARA_TEST_TRUE_FATAL(service->Update(configName, config));
 
     auto it = service->mMatchIndex.find("service-with-special-chars_123!@#");
-    APSARA_TEST_TRUE(it != service->mMatchIndex.end());
-    APSARA_TEST_EQUAL(configName, it->second->configName);
+    APSARA_TEST_TRUE_FATAL(it != service->mMatchIndex.end());
+    APSARA_TEST_EQUAL_FATAL(configName, it->second->configName);
 }
 
 void LoongSuiteForwardServiceUnittest::TestIndexManagement() {
@@ -248,16 +251,15 @@ void LoongSuiteForwardServiceUnittest::TestIndexManagement() {
     config["MatchRule"]["Value"] = "index-test-service";
     config["QueueKey"] = 1;
     config["InputIndex"] = 0;
-    APSARA_TEST_TRUE(service->Update(configName, config));
+    APSARA_TEST_TRUE_FATAL(service->Update(configName, config));
 
     // Verify config is in index
-    APSARA_TEST_EQUAL(1, service->mMatchIndex.size());
+    APSARA_TEST_EQUAL_FATAL(1, service->mMatchIndex.size());
 
-    // Test removing config from index (note: current implementation has a bug)
-    service->Remove(configName);
+    // Test removing config from index
+    service->Remove(configName, config);
 
-    // Due to the bug in Remove implementation, config will still be there
-    APSARA_TEST_EQUAL(1, service->mMatchIndex.size());
+    APSARA_TEST_EQUAL_FATAL(0, service->mMatchIndex.size());
 }
 
 void LoongSuiteForwardServiceUnittest::TestConcurrentAccess() {
@@ -271,12 +273,12 @@ void LoongSuiteForwardServiceUnittest::TestConcurrentAccess() {
     config["InputIndex"] = 0;
 
     // Test basic operations that should be thread-safe
-    APSARA_TEST_TRUE(service->Update(configName, config));
+    APSARA_TEST_TRUE_FATAL(service->Update(configName, config));
 
     auto it = service->mMatchIndex.find("concurrent-test-service");
-    APSARA_TEST_TRUE(it != service->mMatchIndex.end());
+    APSARA_TEST_TRUE_FATAL(it != service->mMatchIndex.end());
 
-    service->Remove(configName);
+    service->Remove(configName, config);
     // TODO: Add actual multi-threading test when needed
 }
 
@@ -284,7 +286,205 @@ void LoongSuiteForwardServiceUnittest::TestProcessorRunnerIntegration() {
     // This test would verify integration with ProcessorRunner
     // For now, just verify that ProcessorRunner is initialized in SetUp
     // TODO: Add more comprehensive integration testing
-    APSARA_TEST_TRUE(ProcessorRunner::GetInstance() != nullptr);
+    APSARA_TEST_TRUE_FATAL(ProcessorRunner::GetInstance() != nullptr);
+}
+
+void LoongSuiteForwardServiceUnittest::TestForwardMethod() {
+    // Setup a config first
+    Json::Value config;
+    std::string configName = "forward_test_config";
+    config["MatchRule"]["Value"] = "forward-test-service";
+    config["QueueKey"] = 1;
+    config["InputIndex"] = 0;
+    APSARA_TEST_TRUE_FATAL(service->Update(configName, config));
+
+    // Create a mock gRPC context and request
+    grpc::CallbackServerContext context;
+    LoongSuiteForwardRequest request;
+    LoongSuiteForwardResponse response;
+
+    // Test Forward method without proper metadata (should return NOT_FOUND)
+    auto reactor = service->Forward(&context, &request, &response);
+    APSARA_TEST_TRUE_FATAL(reactor != nullptr);
+}
+
+void LoongSuiteForwardServiceUnittest::TestProcessForwardRequest() {
+    // Setup config
+    auto config = std::make_shared<ForwardConfig>();
+    config->configName = "test_config";
+    config->queueKey = 1;
+    config->inputIndex = 0;
+
+    LoongSuiteForwardRequest request;
+    grpc::Status status;
+
+    // Test with null request
+    service->ProcessForwardRequest(nullptr, config, 1, status);
+    APSARA_TEST_EQUAL_FATAL(grpc::StatusCode::INVALID_ARGUMENT, status.error_code());
+    APSARA_TEST_EQUAL_FATAL("Invalid request", status.error_message());
+
+    // Test with empty data
+    request.set_data("");
+    status = grpc::Status::OK; // Reset status
+    service->ProcessForwardRequest(&request, config, 1, status);
+    APSARA_TEST_EQUAL_FATAL(grpc::StatusCode::INVALID_ARGUMENT, status.error_code());
+    APSARA_TEST_EQUAL_FATAL("Empty data in forward request", status.error_message());
+
+    // Test with valid data
+    request.set_data("test data");
+    status = grpc::Status::OK;
+    service->ProcessForwardRequest(&request, config, 1, status);
+    APSARA_TEST_EQUAL_FATAL(grpc::StatusCode::UNAVAILABLE, status.error_code());
+}
+
+void LoongSuiteForwardServiceUnittest::TestFindMatchingConfig() {
+    // Setup config first
+    Json::Value config;
+    std::string configName = "find_match_test_config";
+    config["MatchRule"]["Value"] = "find-match-service";
+    config["QueueKey"] = 1;
+    config["InputIndex"] = 0;
+    APSARA_TEST_TRUE_FATAL(service->Update(configName, config));
+
+    // Create a mock context - unfortunately we can't easily add metadata to the context
+    // without more complex mocking infrastructure, so this test is limited
+    grpc::CallbackServerContext context;
+    std::shared_ptr<ForwardConfig> foundConfig;
+
+    // Test finding config without proper metadata (should return false)
+    bool found = service->FindMatchingConfig(&context, foundConfig);
+    APSARA_TEST_FALSE_FATAL(found);
+    APSARA_TEST_TRUE_FATAL(foundConfig == nullptr);
+}
+
+void LoongSuiteForwardServiceUnittest::TestForwardWithValidRequest() {
+    // This is a more comprehensive test of the Forward workflow
+    Json::Value config;
+    std::string configName = "valid_forward_test";
+    config["MatchRule"]["Value"] = "valid-service";
+    config["QueueKey"] = 1;
+    config["InputIndex"] = 0;
+    APSARA_TEST_TRUE_FATAL(service->Update(configName, config));
+
+    // Create request with data
+    LoongSuiteForwardRequest request;
+    request.set_data("valid test data");
+    LoongSuiteForwardResponse response;
+    grpc::CallbackServerContext context;
+
+    auto reactor = service->Forward(&context, &request, &response);
+    APSARA_TEST_TRUE_FATAL(reactor != nullptr);
+}
+
+void LoongSuiteForwardServiceUnittest::TestForwardWithInvalidRequest() {
+    // Test Forward with null request - this tests the parameter validation
+    LoongSuiteForwardResponse response;
+    grpc::CallbackServerContext context;
+
+    auto reactor = service->Forward(&context, nullptr, &response);
+    APSARA_TEST_TRUE_FATAL(reactor != nullptr);
+}
+
+void LoongSuiteForwardServiceUnittest::TestForwardWithEmptyData() {
+    // Setup config
+    Json::Value config;
+    std::string configName = "empty_data_test";
+    config["MatchRule"]["Value"] = "empty-data-service";
+    config["QueueKey"] = 1;
+    config["InputIndex"] = 0;
+    APSARA_TEST_TRUE_FATAL(service->Update(configName, config));
+
+    // Create request with empty data
+    LoongSuiteForwardRequest request;
+    request.set_data("");
+    LoongSuiteForwardResponse response;
+    grpc::CallbackServerContext context;
+
+    auto reactor = service->Forward(&context, &request, &response);
+    APSARA_TEST_TRUE_FATAL(reactor != nullptr);
+}
+
+void LoongSuiteForwardServiceUnittest::TestAddToIndexEdgeCases() {
+    // Test AddToIndex method directly through public Update method
+
+    // Test with empty match value
+    Json::Value config;
+    std::string configName = "empty_match_test";
+    config["MatchRule"]["Value"] = "";
+    config["QueueKey"] = 1;
+    config["InputIndex"] = 0;
+    APSARA_TEST_FALSE_FATAL(service->Update(configName, config));
+
+    // Test with duplicate match value conflict
+    config["MatchRule"]["Value"] = "duplicate-service";
+    std::string configName1 = "duplicate_test_1";
+    std::string configName2 = "duplicate_test_2";
+
+    APSARA_TEST_TRUE_FATAL(service->Update(configName1, config));
+    APSARA_TEST_FALSE_FATAL(service->Update(configName2, config)); // Should fail due to duplicate
+
+    // Verify only first config exists
+    auto it = service->mMatchIndex.find("duplicate-service");
+    APSARA_TEST_TRUE_FATAL(it != service->mMatchIndex.end());
+    APSARA_TEST_EQUAL_FATAL(configName1, it->second->configName);
+}
+
+void LoongSuiteForwardServiceUnittest::TestRetryTimeControllerEdgeCases() {
+    RetryTimeController controller;
+    std::string configName = "edge_case_config";
+
+    // Test GetRetryTimes for non-existent config (should return 0)
+    APSARA_TEST_EQUAL_FATAL(0, controller.GetRetryTimes(configName));
+
+    // Test UpRetryTimes and DownRetryTimes on non-existent config
+    controller.UpRetryTimes(configName);
+    APSARA_TEST_EQUAL_FATAL(1, controller.GetRetryTimes(configName)); // Should create with 1
+
+    controller.DownRetryTimes(configName);
+    APSARA_TEST_EQUAL_FATAL(1, controller.GetRetryTimes(configName)); // Should not go below 1
+
+    // Test with max retry times boundary
+    controller.InitRetryTimes(configName, INT32_FLAG(grpc_server_forward_max_retry_times));
+    int32_t maxRetry = controller.GetRetryTimes(configName);
+
+    controller.UpRetryTimes(configName); // Should not exceed max
+    APSARA_TEST_EQUAL_FATAL(maxRetry, controller.GetRetryTimes(configName));
+
+    // Test ClearRetryTimes multiple times
+    controller.ClearRetryTimes(configName);
+    controller.ClearRetryTimes(configName); // Should not crash
+    APSARA_TEST_EQUAL_FATAL(0, controller.GetRetryTimes(configName));
+}
+
+void LoongSuiteForwardServiceUnittest::TestConfigConflicts() {
+    Json::Value config1, config2;
+    std::string configName1 = "conflict_test_1";
+    std::string configName2 = "conflict_test_2";
+
+    // Test adding configs with same match value but different config names
+    config1["MatchRule"]["Value"] = "conflict-service";
+    config1["QueueKey"] = 1;
+    config1["InputIndex"] = 0;
+
+    config2["MatchRule"]["Value"] = "conflict-service"; // Same match value
+    config2["QueueKey"] = 2;
+    config2["InputIndex"] = 1;
+
+    // First config should succeed
+    APSARA_TEST_TRUE_FATAL(service->Update(configName1, config1));
+
+    // Second config with same match value should fail
+    APSARA_TEST_FALSE_FATAL(service->Update(configName2, config2));
+
+    // Verify only first config exists
+    auto it = service->mMatchIndex.find("conflict-service");
+    APSARA_TEST_TRUE_FATAL(it != service->mMatchIndex.end());
+    APSARA_TEST_EQUAL_FATAL(configName1, it->second->configName);
+    APSARA_TEST_EQUAL_FATAL(1, it->second->queueKey);
+
+    // Test updating the existing config (should delete first then update)
+    config1["QueueKey"] = 10;
+    APSARA_TEST_FALSE_FATAL(service->Update(configName1, config1));
 }
 
 UNIT_TEST_CASE(LoongSuiteForwardServiceUnittest, TestServiceName)
@@ -298,7 +498,15 @@ UNIT_TEST_CASE(LoongSuiteForwardServiceUnittest, TestConfigMatchingEdgeCases)
 UNIT_TEST_CASE(LoongSuiteForwardServiceUnittest, TestIndexManagement)
 UNIT_TEST_CASE(LoongSuiteForwardServiceUnittest, TestConcurrentAccess)
 UNIT_TEST_CASE(LoongSuiteForwardServiceUnittest, TestProcessorRunnerIntegration)
-
+UNIT_TEST_CASE(LoongSuiteForwardServiceUnittest, TestForwardMethod)
+UNIT_TEST_CASE(LoongSuiteForwardServiceUnittest, TestProcessForwardRequest)
+UNIT_TEST_CASE(LoongSuiteForwardServiceUnittest, TestFindMatchingConfig)
+UNIT_TEST_CASE(LoongSuiteForwardServiceUnittest, TestForwardWithValidRequest)
+UNIT_TEST_CASE(LoongSuiteForwardServiceUnittest, TestForwardWithInvalidRequest)
+UNIT_TEST_CASE(LoongSuiteForwardServiceUnittest, TestForwardWithEmptyData)
+UNIT_TEST_CASE(LoongSuiteForwardServiceUnittest, TestAddToIndexEdgeCases)
+UNIT_TEST_CASE(LoongSuiteForwardServiceUnittest, TestRetryTimeControllerEdgeCases)
+UNIT_TEST_CASE(LoongSuiteForwardServiceUnittest, TestConfigConflicts)
 } // namespace logtail
 
 UNIT_TEST_MAIN

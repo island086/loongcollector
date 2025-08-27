@@ -24,12 +24,6 @@
 
 namespace logtail {
 
-struct MatchRule {
-    std::string value;
-    bool IsMatch(const std::string& inputValue) const { return value == inputValue; }
-    bool IsEmpty() const { return value.empty(); }
-};
-
 class InputForward : public Input {
 public:
     static const std::string sName;
@@ -41,12 +35,11 @@ public:
     bool Stop(bool isPipelineRemoving) override;
     bool SupportAck() const override { return true; }
 
-    std::string mProtocol;
-    std::string mEndpoint;
-    MatchRule mMatchRule;
-
 private:
     std::string mConfigName;
+    std::string mProtocol;
+    std::string mEndpoint;
+    Json::Value mForwardConfig;
 
 #ifdef APSARA_UNIT_TEST_MAIN
     friend class InputForwardUnittest;

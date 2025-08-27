@@ -83,7 +83,7 @@ public:
     ~LoongSuiteForwardServiceImpl() override = default;
 
     bool Update(std::string configName, const Json::Value& config) override;
-    bool Remove(std::string configName) override;
+    bool Remove(std::string configName, const Json::Value& config) override;
     [[nodiscard]] const std::string& Name() const override { return sName; };
 
     grpc::ServerUnaryReactor* Forward(grpc::CallbackServerContext* context,

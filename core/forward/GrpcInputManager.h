@@ -106,7 +106,7 @@ public:
 
     template <typename T>
     bool AddListenInput(const std::string& configName, const std::string& address, const Json::Value& config);
-    bool RemoveListenInput(const std::string& address, const std::string& configName);
+    bool RemoveListenInput(const std::string& configName, const std::string& address, const Json::Value& config);
 
 private:
     GrpcInputManager() = default;

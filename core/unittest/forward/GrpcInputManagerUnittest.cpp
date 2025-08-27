@@ -122,7 +122,7 @@ void GrpcInputManagerUnittest::TestRemoveListenInputNormalRemove() const {
     config["test"] = 1;
     const std::string address = "0.0.0.0:50054";
     runner->AddListenInput<MockServiceImpl>("configA", address, config);
-    bool ret = runner->RemoveListenInput(address, "configA");
+    bool ret = runner->RemoveListenInput("configA", address, config);
     APSARA_TEST_TRUE_FATAL(ret);
     APSARA_TEST_FALSE_FATAL(runner->HasRegisteredPlugins());
     runner->Stop();
@@ -131,8 +131,10 @@ void GrpcInputManagerUnittest::TestRemoveListenInputNormalRemove() const {
 void GrpcInputManagerUnittest::TestRemoveListenInputAddressNotFoundError() const {
     auto* runner = GrpcInputManager::GetInstance();
     runner->Init();
+    Json::Value config;
+    config["test"] = 1;
     const std::string address = "0.0.0.0:50055";
-    bool ret = runner->RemoveListenInput(address, "configA");
+    bool ret = runner->RemoveListenInput("configA", address, config);
     APSARA_TEST_FALSE_FATAL(ret);
     APSARA_TEST_FALSE_FATAL(runner->HasRegisteredPlugins());
     runner->Stop();
@@ -154,7 +156,7 @@ void GrpcInputManagerUnittest::TestRemoveListenInputAddressWithMultipleConfigs()
     APSARA_TEST_TRUE_FATAL(runner->mListenAddressToInputMap[address].mReferenceCount == 2);
     APSARA_TEST_TRUE_FATAL(runner->mListenAddressToInputMap[address].mServer);
 
-    bool ret = runner->RemoveListenInput(address, "configA");
+    bool ret = runner->RemoveListenInput("configA", address, config);
     APSARA_TEST_TRUE_FATAL(ret);
     APSARA_TEST_TRUE_FATAL(runner->HasRegisteredPlugins());
     APSARA_TEST_TRUE_FATAL(runner->mListenAddressToInputMap.size() == 1);

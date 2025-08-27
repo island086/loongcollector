@@ -80,16 +80,25 @@ bool LoongSuiteForwardServiceImpl::Update(std::string configName, const Json::Va
     return true;
 }
 
-bool LoongSuiteForwardServiceImpl::Remove(std::string configName) {
-    auto it = mMatchIndex.find(configName);
+bool LoongSuiteForwardServiceImpl::Remove(std::string configName, const Json::Value& config) {
+    const char* matchRuleKey = "MatchRule";
+    const Json::Value* matchRule = config.find(matchRuleKey, matchRuleKey + strlen(matchRuleKey));
+    std::string errorMsg;
+    std::string value;
+    if (matchRule && matchRule->isObject()) {
+        if (!GetMandatoryStringParam(*matchRule, "Value", value, errorMsg)) {
+            return false;
+        }
+    }
+
+    std::unique_lock<std::shared_mutex> lock(mMatchIndexMutex);
+    auto it = mMatchIndex.find(value);
     if (it != mMatchIndex.end()) {
         mMatchIndex.erase(it);
         mRetryTimeController.ClearRetryTimes(configName);
         LOG_INFO(sLogger, ("LoongSuiteForwardServiceImpl config removed", configName));
-    } else {
-        LOG_WARNING(sLogger, ("Config not found for removal", configName));
     }
-
+    LOG_WARNING(sLogger, ("Config not found for removal", value)("configName", configName));
     return true;
 }
 
