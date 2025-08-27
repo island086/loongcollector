@@ -44,12 +44,12 @@ public:
     RetryTimeController(RetryTimeController&&) = delete;
     RetryTimeController& operator=(RetryTimeController&&) = delete;
 
-    void InitRetryTimes(std::string& configName, int32_t retryTimes) {
+    void InitRetryTimes(const std::string& configName, int32_t retryTimes) {
         std::unique_lock<std::shared_mutex> lock(mRetryTimesMutex);
         mRetryTimes[configName] = retryTimes;
     }
 
-    int32_t GetRetryTimes(std::string& configName) const {
+    int32_t GetRetryTimes(const std::string& configName) const {
         std::shared_lock<std::shared_mutex> lock(mRetryTimesMutex);
         auto it = mRetryTimes.find(configName);
         if (it != mRetryTimes.end()) {
@@ -58,20 +58,20 @@ public:
         return 0;
     }
 
-    void UpRetryTimes(std::string& configName);
+    void UpRetryTimes(const std::string& configName);
 
-    void DownRetryTimes(std::string& configName) {
+    void DownRetryTimes(const std::string& configName) {
         std::unique_lock<std::shared_mutex> lock(mRetryTimesMutex);
         mRetryTimes[configName] = std::max(mRetryTimes[configName] >> 1, 1);
     }
 
-    void ClearRetryTimes(std::string& configName) {
+    void ClearRetryTimes(const std::string& configName) {
         std::unique_lock<std::shared_mutex> lock(mRetryTimesMutex);
         mRetryTimes.erase(configName);
     }
 
 private:
-    int32_t mMaxRetryTimes;
+    int32_t mMaxRetryTimes = 0;
 
     std::unordered_map<std::string, int32_t> mRetryTimes;
     mutable std::shared_mutex mRetryTimesMutex;

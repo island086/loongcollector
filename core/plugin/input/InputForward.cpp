@@ -30,7 +30,7 @@ namespace logtail {
 
 const std::string InputForward::sName = "input_forward";
 
-const std::vector<std::string> InputForward::sSupportedProtocols = {
+const std::unordered_set<std::string> InputForward::sSupportedProtocols = {
     "LoongSuite",
     // TODO: add more protocols here
 };
@@ -49,8 +49,7 @@ bool InputForward::Init(const Json::Value& config, Json::Value& optionalGoPipeli
                            mContext->GetRegion());
     }
 
-    auto it = std::find(sSupportedProtocols.begin(), sSupportedProtocols.end(), mProtocol);
-    if (it == sSupportedProtocols.end()) {
+    if (sSupportedProtocols.find(mProtocol) == sSupportedProtocols.end()) {
         PARAM_ERROR_RETURN(mContext->GetLogger(),
                            mContext->GetAlarm(),
                            "Unsupported protocol '" + mProtocol,

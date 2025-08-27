@@ -37,7 +37,7 @@ namespace logtail {
 
 const std::string LoongSuiteForwardServiceImpl::sName = "LoongSuiteForwardService";
 
-void RetryTimeController::UpRetryTimes(std::string& configName) {
+void RetryTimeController::UpRetryTimes(const std::string& configName) {
     std::unique_lock<std::shared_mutex> lock(mRetryTimesMutex);
     mRetryTimes[configName] = std::min(mRetryTimes[configName] + 1, INT32_FLAG(grpc_server_forward_max_retry_times));
 }
@@ -97,8 +97,9 @@ bool LoongSuiteForwardServiceImpl::Remove(std::string configName, const Json::Va
         mMatchIndex.erase(it);
         mRetryTimeController.ClearRetryTimes(configName);
         LOG_INFO(sLogger, ("LoongSuiteForwardServiceImpl config removed", configName));
+    } else {
+        LOG_WARNING(sLogger, ("Config not found for removal", value)("configName", configName));
     }
-    LOG_WARNING(sLogger, ("Config not found for removal", value)("configName", configName));
     return true;
 }
 

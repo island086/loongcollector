@@ -17,8 +17,7 @@
 #pragma once
 
 #include <string>
-#include <unordered_map>
-#include <vector>
+#include <unordered_set>
 
 #include "collection_pipeline/plugin/interface/Input.h"
 
@@ -27,7 +26,7 @@ namespace logtail {
 class InputForward : public Input {
 public:
     static const std::string sName;
-    static const std::vector<std::string> sSupportedProtocols;
+    static const std::unordered_set<std::string> sSupportedProtocols;
 
     const std::string& Name() const override { return sName; }
     bool Init(const Json::Value& config, Json::Value& optionalGoPipeline) override;
