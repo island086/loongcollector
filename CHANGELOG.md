@@ -40,5 +40,10 @@ your changes, such as:
 
 See [changes/v3.1.4.md](changes/v3.1.4.md) for details.
 
+
+## [3.1.4] - 2025-08-28
+
+See [changes/v3.1.4.md](changes/v3.1.4.md) for details.
+
 ## [Unreleased]
 
