@@ -36,6 +36,7 @@ public:
     static ContainerManager* GetInstance();
     void Init();
     void Run();
+    void Stop();
     void DoUpdateContainerPaths();
     bool CheckContainerUpdate();
     bool CheckConfigContainerUpdate(FileDiscoveryOptions* options, const CollectionPipelineContext* ctx);
@@ -59,7 +60,8 @@ private:
     
     uint32_t mLastUpdateTime = 0;
     ThreadPtr mThread;
-    bool mIsRunning = false;
+
+    std::atomic<bool> mIsRunning{false};
     friend class ContainerManagerUnittest;
 };
 

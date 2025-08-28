@@ -342,7 +342,7 @@ bool FileDiscoveryOptions::Init(const Json::Value& config,
                               ctx.GetLogstoreName(),
                               ctx.GetRegion());
     }
-
+    mFullContainerList = std::make_shared<std::set<std::string>>();
     return true;
 }
 

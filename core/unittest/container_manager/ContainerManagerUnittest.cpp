@@ -76,8 +76,8 @@ void ContainerManagerUnittest::TestGetMatchedContainersInfo() const {
         ContainerDiff diff;
         containerManager.GetMatchedContainersInfo(fullList, diff, matchList, filters);
         EXPECT_EQ(fullList.size(), 2);
-        EXPECT_EQ(matchList.size(), 1);
-        EXPECT_EQ(matchList.find("123") != matchList.end(), true);
+        EXPECT_EQ(diff.mAdded.size(), 1);
+        EXPECT_EQ(diff.mAdded[0]->mID, "123");
     }   
 
     {
@@ -108,8 +108,8 @@ void ContainerManagerUnittest::TestGetMatchedContainersInfo() const {
         ContainerDiff diff;
         containerManager.GetMatchedContainersInfo(fullList, diff, matchList, filters);
         EXPECT_EQ(fullList.size(), 2);
-        EXPECT_EQ(matchList.size(), 1);
-        EXPECT_EQ(matchList.find("123") != matchList.end(), true);
+        EXPECT_EQ(diff.mAdded.size(), 1);
+        EXPECT_EQ(diff.mAdded[0]->mID, "123");
     }
 }
 

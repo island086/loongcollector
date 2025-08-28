@@ -21,6 +21,8 @@
 
 #include <string>
 #include <vector>
+#include <sstream>
+#include <memory>
 
 #include "file_server/ContainerInfo.h"
 
@@ -32,6 +34,23 @@ struct ContainerDiff {
     std::vector<std::string> mRemoved;
 
     bool IsEmpty() { return mRemoved.empty() && mAdded.empty() && mModified.empty(); }
+
+    std::string ToString() const {
+        std::stringstream ss;
+        ss << "Added: ";
+        for (const auto& container : mAdded) {
+            ss <<  container->mID << " ";
+        }
+        ss << "Modified: ";
+        for (const auto& container : mModified) {
+            ss << container->mID << " ";
+        }
+        ss << "Removed: ";
+        for (const auto& container : mRemoved) {
+            ss << container << " ";
+        }
+        return ss.str();
+    }
 };
 
 } // namespace logtail

@@ -298,20 +298,20 @@ int LogtailPlugin::ExecPluginCmd(
 
     switch (cmdType) {
         case PLUGIN_DOCKER_UPDATE_FILE: {
-            ConfigContainerInfoUpdateCmd* cmd = new ConfigContainerInfoUpdateCmd(configNameStr, false, jsonParams);
-            ConfigManager::GetInstance()->UpdateContainerPath(cmd);
+            //ConfigContainerInfoUpdateCmd* cmd = new ConfigContainerInfoUpdateCmd(configNameStr, false, jsonParams);
+            //ConfigManager::GetInstance()->UpdateContainerPath(cmd);
         } break;
         case PLUGIN_DOCKER_STOP_FILE: {
-            ConfigContainerInfoUpdateCmd* cmd = new ConfigContainerInfoUpdateCmd(configNameStr, true, jsonParams);
-            ConfigManager::GetInstance()->UpdateContainerStopped(cmd);
+            //ConfigContainerInfoUpdateCmd* cmd = new ConfigContainerInfoUpdateCmd(configNameStr, true, jsonParams);
+            //ConfigManager::GetInstance()->UpdateContainerStopped(cmd);
         } break;
         case PLUGIN_DOCKER_REMOVE_FILE: {
-            ConfigContainerInfoUpdateCmd* cmd = new ConfigContainerInfoUpdateCmd(configNameStr, true, jsonParams);
-            ConfigManager::GetInstance()->UpdateContainerPath(cmd);
+            //ConfigContainerInfoUpdateCmd* cmd = new ConfigContainerInfoUpdateCmd(configNameStr, true, jsonParams);
+            //ConfigManager::GetInstance()->UpdateContainerPath(cmd);
         } break;
         case PLUGIN_DOCKER_UPDATE_FILE_ALL: {
-            ConfigContainerInfoUpdateCmd* cmd = new ConfigContainerInfoUpdateCmd(configNameStr, false, jsonParams);
-            ConfigManager::GetInstance()->UpdateContainerPath(cmd);
+            //ConfigContainerInfoUpdateCmd* cmd = new ConfigContainerInfoUpdateCmd(configNameStr, false, jsonParams);
+            //ConfigManager::GetInstance()->UpdateContainerPath(cmd);
         } break;
         default:
             LOG_ERROR(sLogger, ("unknown cmd", cmdType));
@@ -601,7 +601,7 @@ std::string LogtailPlugin::GetAllContainersMeta() {
         free(res);
         return cppString;
     }
-    return "";
+    return "{}";
 #else
     return LogtailPluginMock::GetInstance()->GetAllContainersMeta();
 #endif

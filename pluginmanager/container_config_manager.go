@@ -16,8 +16,6 @@ package pluginmanager
 
 import (
 	"context"
-	"encoding/json"
-	"path/filepath"
 	"time"
 
 	"github.com/alibaba/ilogtail/pkg/helper/containercenter"
@@ -34,68 +32,6 @@ var k8sLabelSet map[string]struct{}
 
 var cachedFullList map[string]struct{}
 var lastFetchAllTime time.Time
-
-type Mount struct {
-	Source      string
-	Destination string
-}
-
-type DockerFileUpdateCmd struct {
-	ID        string
-	MetaDatas []string // 容器信息
-	Mounts    []Mount  // 容器挂载路径
-	UpperDir  string   // 容器默认路径
-	LogPath   string   // 标准输出路径
-}
-
-type DockerFileUpdateCmdAll struct {
-	AllCmd []DockerFileUpdateCmd
-}
-
-type DiffCmd struct {
-	Update []DockerFileUpdateCmd
-	Delete []string
-	Stop   []string
-}
-
-func convertDockerInfos(info *containercenter.DockerInfoDetail, allCmd *DockerFileUpdateCmdAll) {
-	var cmd DockerFileUpdateCmd
-	cmd.ID = info.ContainerInfo.ID
-
-	cmd.UpperDir = filepath.Clean(info.DefaultRootPath)
-	cmd.LogPath = filepath.Clean(info.StdoutPath)
-
-	// info.ContainerNameTag
-	cmd.MetaDatas = make([]string, 0, len(info.ContainerNameTag)*2)
-	for key, val := range info.ContainerNameTag {
-		cmd.MetaDatas = append(cmd.MetaDatas, key)
-		cmd.MetaDatas = append(cmd.MetaDatas, val)
-	}
-	cmd.Mounts = make([]Mount, 0, len(info.ContainerInfo.Mounts))
-	for _, mount := range info.ContainerInfo.Mounts {
-		cmd.Mounts = append(cmd.Mounts, Mount{
-			Source:      filepath.Clean(mount.Source),
-			Destination: filepath.Clean(mount.Destination),
-		})
-	}
-	if allCmd != nil {
-		allCmd.AllCmd = append(allCmd.AllCmd, cmd)
-	}
-}
-
-func GetAllContainers() string {
-	allCmd := new(DockerFileUpdateCmdAll)
-	infos := containercenter.GetAllContainerToRecord(envSet, containerLabelSet, k8sLabelSet, make(map[string]struct{}))
-	for _, info := range infos {
-		convertDockerInfos(info.Detail, allCmd)
-	}
-	cmdBuf, _ := json.Marshal(allCmd)
-	return string(cmdBuf)
-}
-func GetDiffContainers() string {
-
-	return ""
-}
 
 func CollectContainers(logGroup *protocol.LogGroup) {
 	if isCollectContainers() {

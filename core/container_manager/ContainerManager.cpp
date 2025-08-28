@@ -6,10 +6,7 @@
 #include "go_pipeline/LogtailPlugin.h"
 #include "json/json.h"
 #include "common/JsonUtil.h"
-
-
-
-
+#include "common/StringTools.h"
 
 namespace logtail {
 
@@ -31,11 +28,27 @@ namespace logtail {
         mThread = CreateThread([this]() { Run(); });
     }
 
+    void ContainerManager::Stop() {
+        if (!mIsRunning) {
+            return;
+        }
+        mIsRunning = false;
+        if (mThread != NULL) {
+            try {
+                mThread->Wait(5 * 1000000);
+            } catch (...) {
+                LOG_ERROR(sLogger, ("stop polling modify thread failed", ToString((int)mThread->GetState())));
+            }
+        }
+    }
 
     void ContainerManager::Run() {
         time_t lastUpdateAllTime = 0;
         time_t lastUpdateDiffTime = 0;
         while (true) {
+            if (!mIsRunning) {
+                break;
+            }
             time_t now = time(nullptr);
             if (now - lastUpdateAllTime >= 100) {
                 UpdateAllContainers();
@@ -72,6 +85,9 @@ namespace logtail {
 
 
     bool ContainerManager::CheckContainerUpdate() {
+        if (!mIsRunning) {
+            return false;
+        }
         bool isUpdate = false;
         auto nameConfigMap = FileServer::GetInstance()->GetAllFileDiscoveryConfigs();
         for (auto itr = nameConfigMap.begin(); itr != nameConfigMap.end(); ++itr) {
@@ -101,12 +117,15 @@ namespace logtail {
         if (diff.IsEmpty()) {
             return false;
         }
+        LOG_INFO(sLogger, ("diff", diff.ToString()));
         mConfigContainerDiffMap[ctx->GetConfigName()] = std::make_shared<ContainerDiff>(diff);
         return true;
     } 
 
     void ContainerManager::UpdateDiffContainers() {
         std::string diffContainersMeta = LogtailPlugin::GetInstance()->GetDiffContainersMeta();
+        LOG_INFO(sLogger, ("diffContainersMeta", diffContainersMeta));
+
         Json::Value jsonParams;
         std::string errorMsg;
         if (!ParseJsonTable(diffContainersMeta, jsonParams, errorMsg)) {
@@ -179,6 +198,10 @@ namespace logtail {
         std::vector<std::string> stoppedContainerIDs;
         stoppedContainerIDs.swap(mStoppedContainerIDs);
         mStoppedContainerIDsMutex.unlock();
+        if  (stoppedContainerIDs.empty()) {
+            return;
+        }
+        LOG_INFO(sLogger, ("stoppedContainerIDs",  ToString(stoppedContainerIDs)));
 
         for (const auto& containerId : stoppedContainerIDs) {
             Event* pStoppedEvent = new Event(containerId, "", EVENT_ISDIR | EVENT_CONTAINER_STOPPED, -1, 0);
@@ -303,8 +326,6 @@ void ContainerManager::GetMatchedContainersInfo(
                 if (*pair.second != *it->second) {
                     diff.mModified.push_back(it->second);
                 }
-            } else {
-                std::cerr << "Matched container not in Docker center: " << pair.first << std::endl;
             }
         }
 

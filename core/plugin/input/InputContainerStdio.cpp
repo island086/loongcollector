@@ -242,17 +242,18 @@ bool InputContainerStdio::DeduceAndSetContainerBaseDir(ContainerInfo& containerI
     if (!containerInfo.mRealBaseDir.empty()) {
         return true;
     }
+    
     // ParseByJSONObj 确保 mLogPath不会以\或者/ 结尾
-    std::string realPath = TryGetRealPath(STRING_FLAG(default_container_host_path) + containerInfo.mLogPath);
+    std::string realPath = TryGetRealPath(STRING_FLAG(default_container_host_path) + containerInfo.mRawContainerInfo->mLogPath);
     if (realPath.empty()) {
         LOG_ERROR(
             sLogger,
             ("failed to set container base dir", "container log path not existed")("container id", containerInfo.mID)(
-                "container log path", containerInfo.mLogPath)("input", sName)("config", ctx->GetPipeline().Name()));
+                "container log path", containerInfo.mRawContainerInfo->mLogPath)("input", sName)("config", ctx->GetPipeline().Name()));
         ctx->GetAlarm().SendAlarmWarning(
             INVALID_CONTAINER_PATH_ALARM,
             "failed to set container base dir: container log path not existed\tcontainer id: "
-                + ToString(containerInfo.mID) + "\tcontainer log path: " + containerInfo.mLogPath
+                + ToString(containerInfo.mRawContainerInfo->mID) + "\tcontainer log path: " + containerInfo.mRawContainerInfo->mLogPath
                 + "\tconfig: " + ctx->GetPipeline().Name(),
             ctx->GetRegion(),
             ctx->GetProjectName(),
@@ -269,7 +270,7 @@ bool InputContainerStdio::DeduceAndSetContainerBaseDir(ContainerInfo& containerI
     }
     LOG_INFO(sLogger,
              ("set container base dir",
-              containerInfo.mRealBaseDir)("container id", containerInfo.mID)("config", ctx->GetPipeline().Name()));
+              containerInfo.mRealBaseDir)("container id", containerInfo.mRawContainerInfo->mID)("raw log path", containerInfo.mRawContainerInfo->mLogPath)("config", ctx->GetPipeline().Name()));
     return true;
 }
 
