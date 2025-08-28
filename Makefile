@@ -127,8 +127,8 @@ core: clean import_plugins
 .PHONY: plugin
 plugin: clean import_plugins
 	./scripts/gen_build_scripts.sh plugin "$(GENERATED_HOME)" "$(VERSION)" "$(BUILD_REPOSITORY)" "$(OUT_DIR)" "$(DOCKER_BUILD_EXPORT_GO_ENVS)" "$(DOCKER_BUILD_COPY_GIT_CONFIGS)" "$(PLUGINS_CONFIG_FILE)" "$(GO_MOD_FILE)"
-	./scripts/docker_build.sh build "$(GENERATED_HOME)" "$(VERSION)" "$(BUILD_REPOSITORY)" false "$(DOCKER_BUILD_USE_BUILDKIT)"
-	./$(GENERATED_HOME)/gen_copy_docker.sh
+#	./scripts/docker_build.sh build "$(GENERATED_HOME)" "$(VERSION)" "$(BUILD_REPOSITORY)" false "$(DOCKER_BUILD_USE_BUILDKIT)"
+#	./$(GENERATED_HOME)/gen_copy_docker.sh
 
 .PHONY: upgrade_adapter_lib
 upgrade_adapter_lib:
@@ -185,7 +185,6 @@ unittest_e2e_engine: clean
 
 .PHONY: unittest_plugin
 unittest_plugin: clean import_plugins
-	cp pkg/logtail/libGoPluginAdapter.so ./plugins/input/docker/logmeta
 	cp pkg/logtail/libGoPluginAdapter.so ./plugin_main
 	cp pkg/logtail/GoPluginAdapter.dll ./plugin_main
 	mv ./plugins/input/prometheus/input_prometheus.go ./plugins/input/prometheus/input_prometheus.go.bak
@@ -199,7 +198,6 @@ unittest_plugin_clean:
 	rm -rf./plugins/input/command/conf
 	rm ./plugins/input/command/VGVzdFNjcmlwdFN0b3JhZ2U=.sh
 	rm -rf .testCoverage.txt
-	rm -rf plugins/input/docker/logmeta/libGoPluginAdapter.so
 	rm -rf plugin_main/libGoPluginAdapter.so
 	rm -rf plugin_main/GoPluginAdapter.dll
 	rm -rf plugins/input/jmxfetch/test/
