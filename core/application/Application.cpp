@@ -340,7 +340,7 @@ void Application::Start() { // GCOVR_EXCL_START
         // 过渡使用
         EventDispatcher::GetInstance()->DumpCheckPointPeriod(curTime);
 
-        if (ContainerManager::GetInstance()->CheckContainerUpdate()) {
+        if (ContainerManager::GetInstance()->CheckContainerDiffForAllConfig()) {
             FileServer::GetInstance()->Pause();
             FileServer::GetInstance()->Resume();
         }

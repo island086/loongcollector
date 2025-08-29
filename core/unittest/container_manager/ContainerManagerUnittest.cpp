@@ -30,13 +30,13 @@ namespace logtail {
 
 class ContainerManagerUnittest : public testing::Test {
 public:
-    void TestGetMatchedContainersInfo() const;
-    void TestUpdateAllContainers() const;
-    void TestUpdateDiffContainers() const;
+    void TestComputeMatchedContainersDiff() const;
+    void TestRefreshAllContainersSnapshot() const;
+    void TestIncrementallyUpdateContainersSnapshot() const;
     void TestSaveLoadContainerInfo() const;
 };
 
-void ContainerManagerUnittest::TestGetMatchedContainersInfo() const {
+void ContainerManagerUnittest::TestComputeMatchedContainersDiff() const {
     ContainerManager containerManager;
     
     std::set<std::string> fullList;
@@ -47,7 +47,7 @@ void ContainerManagerUnittest::TestGetMatchedContainersInfo() const {
         // test empty filter
         ContainerFilters filters;
         ContainerDiff diff;
-        containerManager.GetMatchedContainersInfo(fullList, matchList, filters, diff);
+        containerManager.ComputeMatchedContainersDiff(fullList, matchList, filters, diff);
         EXPECT_EQ(fullList.size(), 0);
         EXPECT_EQ(matchList.size(), 0);
     }
@@ -71,7 +71,7 @@ void ContainerManagerUnittest::TestGetMatchedContainersInfo() const {
         containerManager.mContainerMap["mod1"] = std::make_shared<RawContainerInfo>(newInfo);
 
         ContainerDiff diff;
-        containerManager.GetMatchedContainersInfo(fullList2, matchList2, filters, diff);
+        containerManager.ComputeMatchedContainersDiff(fullList2, matchList2, filters, diff);
         EXPECT_EQ(diff.mModified.size(), 1);
         EXPECT_EQ(diff.mModified[0]->mLogPath, std::string("/var/lib/docker/containers/mod1/new-logs"));
     }
@@ -92,7 +92,7 @@ void ContainerManagerUnittest::TestGetMatchedContainersInfo() const {
         containerManager.mContainerMap.erase("gone1");
 
         ContainerDiff diff;
-        containerManager.GetMatchedContainersInfo(fullList3, matchList3, filters, diff);
+        containerManager.ComputeMatchedContainersDiff(fullList3, matchList3, filters, diff);
         EXPECT_EQ(std::count(diff.mRemoved.begin(), diff.mRemoved.end(), std::string("gone1")), 1);
         EXPECT_EQ(fullList3.count("gone1"), 0);
     }
@@ -118,7 +118,7 @@ void ContainerManagerUnittest::TestGetMatchedContainersInfo() const {
 
         filters.mEnvFilter.mIncludeFields.mFieldsMap["test"] = "test";
         ContainerDiff diff;
-        containerManager.GetMatchedContainersInfo(fullList, matchList, filters, diff);
+        containerManager.ComputeMatchedContainersDiff(fullList, matchList, filters, diff);
         EXPECT_EQ(fullList.size(), 2);
         EXPECT_EQ(diff.mAdded.size(), 1);
         EXPECT_EQ(diff.mAdded[0]->mID, "123");
@@ -133,7 +133,7 @@ void ContainerManagerUnittest::TestGetMatchedContainersInfo() const {
         // exclude key "test" with value "test" so only 1234 is added
         filters.mEnvFilter.mExcludeFields.mFieldsMap["test"] = "test";
         ContainerDiff diff;
-        containerManager.GetMatchedContainersInfo(fullList, matchList, filters, diff);
+        containerManager.ComputeMatchedContainersDiff(fullList, matchList, filters, diff);
         EXPECT_EQ(fullList.size(), 2);
         EXPECT_EQ(diff.mAdded.size(), 1);
         EXPECT_EQ(diff.mAdded[0]->mID, "1234");
@@ -147,7 +147,7 @@ void ContainerManagerUnittest::TestGetMatchedContainersInfo() const {
 
         filters.mEnvFilter.mIncludeFields.mFieldsRegMap["test"] = std::make_shared<boost::regex>("^test2$");
         ContainerDiff diff;
-        containerManager.GetMatchedContainersInfo(fullList, matchList, filters, diff);
+        containerManager.ComputeMatchedContainersDiff(fullList, matchList, filters, diff);
         EXPECT_EQ(fullList.size(), 2);
         EXPECT_EQ(diff.mAdded.size(), 1);
         EXPECT_EQ(diff.mAdded[0]->mID, "1234");
@@ -161,7 +161,7 @@ void ContainerManagerUnittest::TestGetMatchedContainersInfo() const {
 
         filters.mEnvFilter.mExcludeFields.mFieldsRegMap["test"] = std::make_shared<boost::regex>("^test2$");
         ContainerDiff diff;
-        containerManager.GetMatchedContainersInfo(fullList, matchList, filters, diff);
+        containerManager.ComputeMatchedContainersDiff(fullList, matchList, filters, diff);
         EXPECT_EQ(fullList.size(), 2);
         EXPECT_EQ(diff.mAdded.size(), 1);
         EXPECT_EQ(diff.mAdded[0]->mID, "123");
@@ -194,7 +194,7 @@ void ContainerManagerUnittest::TestGetMatchedContainersInfo() const {
         filters.mK8SFilter.mNamespaceReg = std::make_shared<boost::regex>("namespace1");
         filters.mK8SFilter.mContainerReg = std::make_shared<boost::regex>("container1");
         ContainerDiff diff;
-        containerManager.GetMatchedContainersInfo(fullList, matchList, filters, diff);
+        containerManager.ComputeMatchedContainersDiff(fullList, matchList, filters, diff);
         EXPECT_EQ(fullList.size(), 2);
         EXPECT_EQ(diff.mAdded.size(), 1);
         EXPECT_EQ(diff.mAdded[0]->mID, "123");
@@ -222,7 +222,7 @@ void ContainerManagerUnittest::TestGetMatchedContainersInfo() const {
         // include label
         filters.mK8SFilter.mK8sLabelFilter.mIncludeFields.mFieldsMap["tier"] = "frontend";
         ContainerDiff diff1;
-        containerManager.GetMatchedContainersInfo(fullList, matchList, filters, diff1);
+        containerManager.ComputeMatchedContainersDiff(fullList, matchList, filters, diff1);
         EXPECT_EQ(fullList.count("k8s1") + fullList.count("k8s2"), 2);
         EXPECT_EQ(diff1.mAdded.size(), 1);
         EXPECT_EQ(diff1.mAdded[0]->mID, "k8s1");
@@ -233,7 +233,7 @@ void ContainerManagerUnittest::TestGetMatchedContainersInfo() const {
         ContainerFilters filters2;
         filters2.mK8SFilter.mK8sLabelFilter.mExcludeFields.mFieldsMap["tier"] = "backend";
         ContainerDiff diff2;
-        containerManager.GetMatchedContainersInfo(fullList, matchList, filters2, diff2);
+        containerManager.ComputeMatchedContainersDiff(fullList, matchList, filters2, diff2);
         EXPECT_EQ(fullList.count("k8s1") + fullList.count("k8s2"), 2);
         EXPECT_EQ(diff2.mAdded.size(), 1);
         EXPECT_EQ(diff2.mAdded[0]->mID, "k8s1");
@@ -245,7 +245,7 @@ void ContainerManagerUnittest::TestGetMatchedContainersInfo() const {
         filters3.mK8SFilter.mK8sLabelFilter.mIncludeFields.mFieldsRegMap["tier"]
             = std::make_shared<boost::regex>("^front.*$");
         ContainerDiff diff3;
-        containerManager.GetMatchedContainersInfo(fullList, matchList, filters3, diff3);
+        containerManager.ComputeMatchedContainersDiff(fullList, matchList, filters3, diff3);
         EXPECT_EQ(diff3.mAdded.size(), 1);
         EXPECT_EQ(diff3.mAdded[0]->mID, "k8s1");
     }
@@ -272,7 +272,7 @@ void ContainerManagerUnittest::TestGetMatchedContainersInfo() const {
         // include map
         filters.mContainerLabelFilter.mIncludeFields.mFieldsMap["app"] = "nginx";
         ContainerDiff diff1;
-        containerManager.GetMatchedContainersInfo(fullList, matchList, filters, diff1);
+        containerManager.ComputeMatchedContainersDiff(fullList, matchList, filters, diff1);
         EXPECT_EQ(diff1.mAdded.size(), 1);
         EXPECT_EQ(diff1.mAdded[0]->mID, "cl1");
 
@@ -282,7 +282,7 @@ void ContainerManagerUnittest::TestGetMatchedContainersInfo() const {
         ContainerFilters filters2;
         filters2.mContainerLabelFilter.mExcludeFields.mFieldsMap["app"] = "nginx";
         ContainerDiff diff2;
-        containerManager.GetMatchedContainersInfo(fullList, matchList, filters2, diff2);
+        containerManager.ComputeMatchedContainersDiff(fullList, matchList, filters2, diff2);
         EXPECT_EQ(diff2.mAdded.size(), 1);
         EXPECT_EQ(diff2.mAdded[0]->mID, "cl2");
 
@@ -293,7 +293,7 @@ void ContainerManagerUnittest::TestGetMatchedContainersInfo() const {
         filters3.mContainerLabelFilter.mIncludeFields.mFieldsRegMap["app"]
             = std::make_shared<boost::regex>("^ng.*");
         ContainerDiff diff3;
-        containerManager.GetMatchedContainersInfo(fullList, matchList, filters3, diff3);
+        containerManager.ComputeMatchedContainersDiff(fullList, matchList, filters3, diff3);
         EXPECT_EQ(diff3.mAdded.size(), 1);
         EXPECT_EQ(diff3.mAdded[0]->mID, "cl1");
 
@@ -304,7 +304,7 @@ void ContainerManagerUnittest::TestGetMatchedContainersInfo() const {
         filters4.mContainerLabelFilter.mExcludeFields.mFieldsRegMap["app"]
             = std::make_shared<boost::regex>("^re.*");
         ContainerDiff diff4;
-        containerManager.GetMatchedContainersInfo(fullList, matchList, filters4, diff4);
+        containerManager.ComputeMatchedContainersDiff(fullList, matchList, filters4, diff4);
         EXPECT_EQ(diff4.mAdded.size(), 1);
         EXPECT_EQ(diff4.mAdded[0]->mID, "cl1");
     }
@@ -346,18 +346,18 @@ void ContainerManagerUnittest::TestGetMatchedContainersInfo() const {
         filters.mK8SFilter.mK8sLabelFilter.mIncludeFields.mFieldsMap["tier"] = "frontend";
 
         ContainerDiff diff;
-        containerManager.GetMatchedContainersInfo(fullList, matchList, filters, diff);
+        containerManager.ComputeMatchedContainersDiff(fullList, matchList, filters, diff);
         EXPECT_EQ(diff.mAdded.size(), 1);
         EXPECT_EQ(diff.mAdded[0]->mID, "combo1");
     }
 }
 
-void ContainerManagerUnittest::TestUpdateAllContainers() const {
+void ContainerManagerUnittest::TestRefreshAllContainersSnapshot() const {
     {
         // test empty containers meta
         LogtailPluginMock::GetInstance()->SetUpContainersMeta("");
         ContainerManager containerManager;
-        containerManager.UpdateAllContainers();
+        containerManager.RefreshAllContainersSnapshot();
         EXPECT_EQ(containerManager.mContainerMap.size(), 0);
     }
     {
@@ -413,17 +413,17 @@ void ContainerManagerUnittest::TestUpdateAllContainers() const {
 	}]
 })");
         ContainerManager containerManager;
-        containerManager.UpdateAllContainers();
+        containerManager.RefreshAllContainersSnapshot();
         EXPECT_EQ(containerManager.mContainerMap.size(), 1);
     }
 }
 
-void ContainerManagerUnittest::TestUpdateDiffContainers() const {
+void ContainerManagerUnittest::TestIncrementallyUpdateContainersSnapshot() const {
     {
         // test empty diff containers meta
         LogtailPluginMock::GetInstance()->SetUpDiffContainersMeta("");
         ContainerManager containerManager;
-        containerManager.UpdateDiffContainers();
+        containerManager.IncrementallyUpdateContainersSnapshot();
         EXPECT_EQ(containerManager.mContainerMap.size(), 0);
         EXPECT_EQ(containerManager.mStoppedContainerIDs.size(), 0);
     }
@@ -448,7 +448,7 @@ void ContainerManagerUnittest::TestUpdateDiffContainers() const {
             }
         })");
         ContainerManager containerManager;
-        containerManager.UpdateDiffContainers();
+        containerManager.IncrementallyUpdateContainersSnapshot();
         EXPECT_EQ(containerManager.mContainerMap.size(), 1);
         EXPECT_EQ(containerManager.mStoppedContainerIDs.size(), 1);
         EXPECT_EQ(containerManager.mStoppedContainerIDs[0], "123");
@@ -489,9 +489,9 @@ void ContainerManagerUnittest::TestSaveLoadContainerInfo() const {
     EXPECT_EQ(it2->second->mUpperDir, std::string("/upper/save2"));
 }
 
-UNIT_TEST_CASE(ContainerManagerUnittest, TestGetMatchedContainersInfo)
-UNIT_TEST_CASE(ContainerManagerUnittest, TestUpdateAllContainers)
-UNIT_TEST_CASE(ContainerManagerUnittest, TestUpdateDiffContainers)
+UNIT_TEST_CASE(ContainerManagerUnittest, TestComputeMatchedContainersDiff)
+UNIT_TEST_CASE(ContainerManagerUnittest, TestRefreshAllContainersSnapshot)
+UNIT_TEST_CASE(ContainerManagerUnittest, TestIncrementallyUpdateContainersSnapshot)
 UNIT_TEST_CASE(ContainerManagerUnittest, TestSaveLoadContainerInfo)
 
 } // namespace logtail

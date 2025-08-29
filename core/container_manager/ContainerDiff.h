@@ -19,10 +19,10 @@
 
 #pragma once
 
+#include <memory>
+#include <sstream>
 #include <string>
 #include <vector>
-#include <sstream>
-#include <memory>
 
 #include "file_server/ContainerInfo.h"
 
@@ -39,7 +39,7 @@ struct ContainerDiff {
         std::stringstream ss;
         ss << "Added: ";
         for (const auto& container : mAdded) {
-            ss <<  container->mID << " ";
+            ss << container->mID << " ";
         }
         ss << "Modified: ";
         for (const auto& container : mModified) {

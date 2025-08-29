@@ -19,12 +19,13 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "file_server/ContainerInfo.h"
-#include "container_manager/ContainerDiscoveryOptions.h"
-#include "file_server/FileDiscoveryOptions.h"
+
 #include "common/Thread.h"
-#include "file_server/event/Event.h"
 #include "container_manager/ContainerDiff.h"
+#include "container_manager/ContainerDiscoveryOptions.h"
+#include "file_server/ContainerInfo.h"
+#include "file_server/FileDiscoveryOptions.h"
+#include "file_server/event/Event.h"
 
 
 namespace logtail {
@@ -35,32 +36,35 @@ public:
     ~ContainerManager();
     static ContainerManager* GetInstance();
     void Init();
-    void Run();
     void Stop();
-    void DoUpdateContainerPaths();
-    bool CheckContainerUpdate();
-    bool CheckConfigContainerUpdate(FileDiscoveryOptions* options, const CollectionPipelineContext* ctx);
-    void UpdateAllContainers();
-    void UpdateDiffContainers();
+
+    void ApplyContainerDiffs();
+    bool CheckContainerDiffForAllConfig();
 
     void GetContainerStoppedEvents(std::vector<Event*>& eventVec);
     // Persist/restore container runtime state
     void SaveContainerInfo();
     void LoadContainerInfo();
-    
-    void GetMatchedContainersInfo(
-        std::set<std::string>& fullContainerIDList,
-        const std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>>& matchList,
-        const ContainerFilters& filters,
-        ContainerDiff& diff);
+
 
 private:
+    void Run();
+    void RefreshAllContainersSnapshot();
+    void IncrementallyUpdateContainersSnapshot();
+
+    bool CheckContainerDiffForOneConfig(FileDiscoveryOptions* options, const CollectionPipelineContext* ctx);
+    void
+    ComputeMatchedContainersDiff(std::set<std::string>& fullContainerIDList,
+                                 const std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>>& matchList,
+                                 const ContainerFilters& filters,
+                                 ContainerDiff& diff);
+
     std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>> mContainerMap;
     std::unordered_map<std::string, std::shared_ptr<ContainerDiff>> mConfigContainerDiffMap;
     std::mutex mContainerMapMutex;
     std::vector<std::string> mStoppedContainerIDs;
     std::mutex mStoppedContainerIDsMutex;
-    
+
     uint32_t mLastUpdateTime = 0;
     ThreadPtr mThread;
 
@@ -68,4 +72,4 @@ private:
     friend class ContainerManagerUnittest;
 };
 
-}
+} // namespace logtail
