@@ -52,7 +52,7 @@ void ContainerManager::Stop() {
     }
 }
 
-void ContainerManager::Run() {
+void ContainerManager::pollingLoop() {
     time_t lastUpdateAllTime = 0;
     time_t lastUpdateDiffTime = 0;
     while (true) {
@@ -61,10 +61,10 @@ void ContainerManager::Run() {
         }
         time_t now = time(nullptr);
         if (now - lastUpdateAllTime >= 100) {
-            RefreshAllContainersSnapshot();
+            refreshAllContainersSnapshot();
             lastUpdateAllTime = now;
         } else if (now - lastUpdateDiffTime >= 10) {
-            IncrementallyUpdateContainersSnapshot();
+            incrementallyUpdateContainersSnapshot();
             lastUpdateDiffTime = now;
         }
         std::this_thread::sleep_for(std::chrono::seconds(3));
@@ -106,7 +106,7 @@ bool ContainerManager::CheckContainerDiffForAllConfig() {
     for (auto itr = nameConfigMap.begin(); itr != nameConfigMap.end(); ++itr) {
         FileDiscoveryOptions* options = itr->second.first;
         if (options->IsContainerDiscoveryEnabled()) {
-            bool isCurrentConfigUpdate = CheckContainerDiffForOneConfig(options, itr->second.second);
+            bool isCurrentConfigUpdate = checkContainerDiffForOneConfig(options, itr->second.second);
             if (isCurrentConfigUpdate) {
                 isUpdate = true;
             }
@@ -115,7 +115,7 @@ bool ContainerManager::CheckContainerDiffForAllConfig() {
     return isUpdate;
 }
 
-bool ContainerManager::CheckContainerDiffForOneConfig(FileDiscoveryOptions* options,
+bool ContainerManager::checkContainerDiffForOneConfig(FileDiscoveryOptions* options,
                                                       const CollectionPipelineContext* ctx) {
     std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>> containerInfoMap;
     const auto& containerInfos = options->GetContainerInfo();
@@ -127,7 +127,7 @@ bool ContainerManager::CheckContainerDiffForOneConfig(FileDiscoveryOptions* opti
     std::vector<std::string> removedList;
     std::vector<std::string> matchAddedList;
     ContainerDiff diff;
-    ComputeMatchedContainersDiff(*(options->GetFullContainerList()),
+    computeMatchedContainersDiff(*(options->GetFullContainerList()),
                                  containerInfoMap,
                                  options->GetContainerDiscoveryOptions().mContainerFilters,
                                  diff);
@@ -139,7 +139,7 @@ bool ContainerManager::CheckContainerDiffForOneConfig(FileDiscoveryOptions* opti
     return true;
 }
 
-void ContainerManager::IncrementallyUpdateContainersSnapshot() {
+void ContainerManager::incrementallyUpdateContainersSnapshot() {
     std::string diffContainersMeta = LogtailPlugin::GetInstance()->GetDiffContainersMeta();
     LOG_INFO(sLogger, ("diffContainersMeta", diffContainersMeta));
 
@@ -175,7 +175,7 @@ void ContainerManager::IncrementallyUpdateContainersSnapshot() {
     }
 }
 
-void ContainerManager::RefreshAllContainersSnapshot() {
+void ContainerManager::refreshAllContainersSnapshot() {
     std::string allContainersMeta = LogtailPlugin::GetInstance()->GetAllContainersMeta();
     LOG_INFO(sLogger, ("allContainersMeta", allContainersMeta));
     // cmd 解析json
@@ -301,7 +301,7 @@ bool IsK8sFilterMatch(const K8sFilter& filter, const K8sInfo& k8sInfo) {
 }
 
 
-void ContainerManager::ComputeMatchedContainersDiff(
+void ContainerManager::computeMatchedContainersDiff(
     std::set<std::string>& fullContainerIDList,
     const std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>>& matchList,
     const ContainerFilters& filters,

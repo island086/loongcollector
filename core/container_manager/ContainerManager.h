@@ -48,13 +48,13 @@ public:
 
 
 private:
-    void Run();
-    void RefreshAllContainersSnapshot();
-    void IncrementallyUpdateContainersSnapshot();
+    void pollingLoop();
+    void refreshAllContainersSnapshot();
+    void incrementallyUpdateContainersSnapshot();
 
-    bool CheckContainerDiffForOneConfig(FileDiscoveryOptions* options, const CollectionPipelineContext* ctx);
+    bool checkContainerDiffForOneConfig(FileDiscoveryOptions* options, const CollectionPipelineContext* ctx);
     void
-    ComputeMatchedContainersDiff(std::set<std::string>& fullContainerIDList,
+    computeMatchedContainersDiff(std::set<std::string>& fullContainerIDList,
                                  const std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>>& matchList,
                                  const ContainerFilters& filters,
                                  ContainerDiff& diff);
