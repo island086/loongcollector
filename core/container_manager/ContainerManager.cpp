@@ -35,7 +35,7 @@ void ContainerManager::Init() {
     }
     mIsRunning = true;
     LOG_INFO(sLogger, ("ContainerManager", "init"));
-    mThread = CreateThread([this]() { Run(); });
+    mThread = CreateThread([this]() { pollingLoop(); });
 }
 
 void ContainerManager::Stop() {
