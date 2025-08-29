@@ -248,7 +248,7 @@ bool InputContainerStdio::DeduceAndSetContainerBaseDir(ContainerInfo& containerI
     if (realPath.empty()) {
         LOG_ERROR(
             sLogger,
-            ("failed to set container base dir", "container log path not existed")("container id", containerInfo.mID)(
+            ("failed to set container base dir", "container log path not existed")("container id", containerInfo.mRawContainerInfo->mID)(
                 "container log path", containerInfo.mRawContainerInfo->mLogPath)("input", sName)("config", ctx->GetPipeline().Name()));
         ctx->GetAlarm().SendAlarmWarning(
             INVALID_CONTAINER_PATH_ALARM,

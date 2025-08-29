@@ -19,6 +19,7 @@
 #include <cstdint>
 
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -71,9 +72,6 @@ public:
     bool UpdateRawContainerInfo(const std::shared_ptr<RawContainerInfo>& rawContainerInfo, const CollectionPipelineContext*);
     bool DeleteRawContainerInfo(const std::string& containerID);
 
-    bool IsSameContainerInfo(const Json::Value& paramsJSON, const CollectionPipelineContext*);
-    bool UpdateContainerInfo(const Json::Value& paramsJSON, const CollectionPipelineContext*);
-    bool DeleteContainerInfo(const Json::Value& paramsJSON);
     ContainerInfo* GetContainerPathByLogPath(const std::string& logPath) const;
     // 过渡使用
     bool IsTailingAllMatchedFiles() const { return mTailingAllMatchedFiles; }
@@ -124,7 +122,7 @@ private:
 
     bool mEnableContainerDiscovery = false;
 
-    std::shared_ptr<std::set<std::string>> mFullContainerList;
+    std::shared_ptr<std::set<std::string>> mFullContainerList = std::make_shared<std::set<std::string>>();
     std::shared_ptr<std::vector<ContainerInfo>> mContainerInfos; // must not be null if container discovery is enabled
     ContainerDiscoveryOptions mContainerDiscovery;
     bool (*mDeduceAndSetContainerBaseDirFunc)(ContainerInfo& containerInfo,

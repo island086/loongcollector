@@ -59,6 +59,8 @@ struct RawContainerInfo {
     // 容器标签信息
     std::unordered_map<std::string, std::string> mContainerLabels;
 
+    bool mStopped = false;
+
     bool operator==(const RawContainerInfo& rhs) const {
         if (mID != rhs.mID) {
             return false;
@@ -119,79 +121,16 @@ struct ContainerInfo {
     // 原始容器信息
     std::shared_ptr<RawContainerInfo> mRawContainerInfo;
 
-    std::string mID; // id of this container
     // container path for this config's path. eg, config path '/home/admin', container path
     // '/host_all/var/lib/xxxxxx/upper/home/admin' if config is wildcard, this will mapping to config->mWildcardPaths[0]
     std::string mRealBaseDir;
 
-    std::string mLogPath;
-    std::string mUpperDir;
-    std::vector<Mount> mMounts; // mounts of this container
     std::vector<std::pair<std::string, std::string>> mTags; // ExternalEnvTag and ExternalK8sLabelTag.
     std::vector<std::pair<TagKey, std::string>> mMetadatas; //  ContainerNameTag which is reserved and can be processed
     std::vector<std::pair<std::string, std::string>>
         mCustomMetadatas; //  ContainerNameTag which is custom, e.g. env config tag
 
-    Json::Value mJson; // this obj's json, for saving to local file
-    bool mStopped = false; // whether this container is stopped
-
-
-    K8sInfo mK8sInfo;
-    std::unordered_map<std::string, std::string> mEnv;
-    std::unordered_map<std::string, std::string> mContainerLabels;
-
-    static bool ParseAllByJSONObj(const Json::Value& paramsAll,
-                                      std::unordered_map<std::string, ContainerInfo>& containerInfoMap,
-                                      std::string& errorMsg);
-    static bool ParseByJSONObj(const Json::Value& params, ContainerInfo& containerInfo, std::string& errorMsg);
     void AddMetadata(const std::string& key, const std::string& value);
-
-    bool operator==(const ContainerInfo& rhs) const {
-        if (mID != rhs.mID) {
-            return false;
-        }
-        if (mRealBaseDir != rhs.mRealBaseDir) {
-            return false;
-        }
-        if (mLogPath != rhs.mLogPath) {
-            return false;
-        }
-        if (mUpperDir != rhs.mUpperDir) {
-            return false;
-        }
-        if (mMounts.size() != rhs.mMounts.size()) {
-            return false;
-        }
-        for (size_t idx = 0; idx < mMounts.size(); ++idx) {
-            const auto& lhsMount = mMounts[idx];
-            const auto& rhsMount = rhs.mMounts[idx];
-            if (lhsMount.mSource != rhsMount.mSource || lhsMount.mDestination != rhsMount.mDestination) {
-                return false;
-            }
-        }
-        if (mMetadatas.size() != rhs.mMetadatas.size()) {
-            return false;
-        }
-        for (size_t idx = 0; idx < mMetadatas.size(); ++idx) {
-            const auto& lhsTag = mMetadatas[idx];
-            const auto& rhsTag = rhs.mMetadatas[idx];
-            if (lhsTag.first != rhsTag.first || lhsTag.second != rhsTag.second) {
-                return false;
-            }
-        }
-        if (mTags.size() != rhs.mTags.size()) {
-            return false;
-        }
-        for (size_t idx = 0; idx < mTags.size(); ++idx) {
-            const auto& lhsTag = mTags[idx];
-            const auto& rhsTag = rhs.mTags[idx];
-            if (lhsTag.first != rhsTag.first || lhsTag.second != rhsTag.second) {
-                return false;
-            }
-        }
-        return true;
-    }
-    bool operator!=(const ContainerInfo& rhs) const { return !(*this == rhs); }
 
 private:
 };

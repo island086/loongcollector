@@ -7,8 +7,14 @@
 #include "json/json.h"
 #include "common/JsonUtil.h"
 #include "common/StringTools.h"
+#include "app_config/AppConfig.h"
+#include "common/FileSystemUtil.h"
 
 namespace logtail {
+
+    // Forward declarations for helpers used across this file
+    static Json::Value SerializeRawContainerInfo(const std::shared_ptr<RawContainerInfo>& info);
+    static std::shared_ptr<RawContainerInfo> DeserializeRawContainerInfo(const Json::Value& v);
 
     ContainerManager::ContainerManager() = default;
     
@@ -107,7 +113,7 @@ namespace logtail {
         const auto& containerInfos = options->GetContainerInfo();
         if (containerInfos) {
             for (const auto& info : *containerInfos) {
-                containerInfoMap[info.mID] = info.mRawContainerInfo;
+                containerInfoMap[info.mRawContainerInfo->mID] = info.mRawContainerInfo;
             }
         }
         std::vector<std::string> removedList;
@@ -138,17 +144,11 @@ namespace logtail {
         Json::Value stopContainers = diffContainers["Stop"];
 
         for (const auto& container : updateContainers) {
-            std::string containerId = container["ID"].asString();
-            std::string containerUpperDir = container["UpperDir"].asString();
-            std::string containerLogPath = container["LogPath"].asString();
-
-            std::shared_ptr<RawContainerInfo> containerInfo = std::make_shared<RawContainerInfo>();
-            containerInfo->mID = containerId;
-            containerInfo->mUpperDir = containerUpperDir;
-            containerInfo->mLogPath = containerLogPath;
-
-            std::lock_guard<std::mutex> lock(mContainerMapMutex);
-            mContainerMap[containerId] = containerInfo;
+            auto containerInfo = DeserializeRawContainerInfo(container);
+            if (containerInfo && !containerInfo->mID.empty()) {
+                std::lock_guard<std::mutex> lock(mContainerMapMutex);
+                mContainerMap[containerInfo->mID] = containerInfo;
+            }
         }
 
         for (const auto& container : deleteContainers) {
@@ -177,15 +177,10 @@ namespace logtail {
         std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>> tmpContainerMap; 
         Json::Value allContainers = jsonParams["AllCmd"];
         for (const auto& container : allContainers) {
-            std::string containerId = container["ID"].asString();
-            std::string containerUpperDir = container["UpperDir"].asString();
-            std::string containerLogPath = container["LogPath"].asString();
-
-            std::shared_ptr<RawContainerInfo> containerInfo = std::make_shared<RawContainerInfo>();
-            containerInfo->mID = containerId;
-            containerInfo->mUpperDir = containerUpperDir;
-            containerInfo->mLogPath = containerLogPath;
-            tmpContainerMap[containerId] = containerInfo;
+            auto containerInfo = DeserializeRawContainerInfo(container);
+            if (containerInfo && !containerInfo->mID.empty()) {
+                tmpContainerMap[containerInfo->mID] = containerInfo;
+            }
         }
         std::lock_guard<std::mutex> lock(mContainerMapMutex);
         mContainerMap = tmpContainerMap;
@@ -211,8 +206,8 @@ namespace logtail {
                     const auto& containerInfos = options->GetContainerInfo();
                     if (containerInfos) {
                         for (auto& info : *containerInfos) {
-                            if (info.mID == containerId) {
-                                info.mStopped = true;
+                            if (info.mRawContainerInfo->mID == containerId) {
+                                info.mRawContainerInfo->mStopped = true;
                                 pStoppedEvent->SetConfigName(itr->first);
                                 break;
                             }
@@ -343,5 +338,169 @@ void ContainerManager::GetMatchedContainersInfo(
                 }
             }
         }
+    }
+
+    // Serialize RawContainerInfo (complete fields)
+    static Json::Value SerializeRawContainerInfo(const std::shared_ptr<RawContainerInfo>& info) {
+        Json::Value v(Json::objectValue);
+        // basic
+        v["ID"] = Json::Value(info->mID);
+        v["UpperDir"] = Json::Value(info->mUpperDir);
+        v["LogPath"] = Json::Value(info->mLogPath);
+        v["Stopped"] = Json::Value(info->mStopped);
+
+        // mounts
+        Json::Value mounts(Json::arrayValue);
+        for (const auto& m : info->mMounts) {
+            Json::Value mObj(Json::objectValue);
+            mObj["Source"] = Json::Value(m.mSource);
+            mObj["Destination"] = Json::Value(m.mDestination);
+            mounts.append(mObj);
+        }
+        v["Mounts"] = mounts;
+
+        // k8s
+        Json::Value k8s(Json::objectValue);
+        k8s["Namespace"] = Json::Value(info->mK8sInfo.mNamespace);
+        k8s["Pod"] = Json::Value(info->mK8sInfo.mPod);
+        k8s["ContainerName"] = Json::Value(info->mK8sInfo.mContainerName);
+        k8s["PausedContainer"] = Json::Value(info->mK8sInfo.mPausedContainer);
+        Json::Value k8sLabels(Json::objectValue);
+        for (const auto& p : info->mK8sInfo.mLabels) {
+            k8sLabels[p.first] = Json::Value(p.second);
+        }
+        k8s["Labels"] = k8sLabels;
+        v["K8s"] = k8s;
+
+        // env
+        Json::Value env(Json::objectValue);
+        for (const auto& p : info->mEnv) {
+            env[p.first] = Json::Value(p.second);
+        }
+        v["Env"] = env;
+
+        // container labels
+        Json::Value cl(Json::objectValue);
+        for (const auto& p : info->mContainerLabels) {
+            cl[p.first] = Json::Value(p.second);
+        }
+        v["ContainerLabels"] = cl;
+
+        return v;
+    }
+
+    // Deserialize RawContainerInfo (complete fields)
+    static std::shared_ptr<RawContainerInfo> DeserializeRawContainerInfo(const Json::Value& v) {
+        auto info = std::make_shared<RawContainerInfo>();
+        // basic
+        if (v.isMember("ID") && v["ID"].isString()) {
+            info->mID = v["ID"].asString();
+        }
+        if (v.isMember("UpperDir") && v["UpperDir"].isString()) {
+            info->mUpperDir = v["UpperDir"].asString();
+        }
+        if (v.isMember("LogPath") && v["LogPath"].isString()) {
+            info->mLogPath = v["LogPath"].asString();
+        }
+        if (v.isMember("Stopped") && v["Stopped"].isBool()) {
+            info->mStopped = v["Stopped"].asBool();
+        }
+
+        // mounts
+        if (v.isMember("Mounts") && v["Mounts"].isArray()) {
+            const auto& mounts = v["Mounts"];
+            for (Json::ArrayIndex i = 0; i < mounts.size(); ++i) {
+                const auto& m = mounts[i];
+                if (m.isObject()) {
+                    Mount mt;
+                    if (m.isMember("Source") && m["Source"].isString()) mt.mSource = m["Source"].asString();
+                    if (m.isMember("Destination") && m["Destination"].isString()) mt.mDestination = m["Destination"].asString();
+                    info->mMounts.emplace_back(std::move(mt));
+                }
+            }
+        }
+
+        // k8s
+        if (v.isMember("K8s") && v["K8s"].isObject()) {
+            const auto& k8s = v["K8s"];
+            if (k8s.isMember("Namespace") && k8s["Namespace"].isString())
+                info->mK8sInfo.mNamespace = k8s["Namespace"].asString();
+            if (k8s.isMember("Pod") && k8s["Pod"].isString())
+                info->mK8sInfo.mPod = k8s["Pod"].asString();
+            if (k8s.isMember("ContainerName") && k8s["ContainerName"].isString())
+                info->mK8sInfo.mContainerName = k8s["ContainerName"].asString();
+            if (k8s.isMember("PausedContainer") && k8s["PausedContainer"].isBool())
+                info->mK8sInfo.mPausedContainer = k8s["PausedContainer"].asBool();
+            if (k8s.isMember("Labels") && k8s["Labels"].isObject()) {
+                const auto& lbs = k8s["Labels"];
+                auto names = lbs.getMemberNames();
+                for (const auto& key : names) {
+                    if (lbs[key].isString()) info->mK8sInfo.mLabels[key] = lbs[key].asString();
+                }
+            }
+        }
+
+        // env
+        if (v.isMember("Env") && v["Env"].isObject()) {
+            const auto& env = v["Env"];
+            auto names = env.getMemberNames();
+            for (const auto& key : names) {
+                if (env[key].isString()) info->mEnv[key] = env[key].asString();
+            }
+        }
+
+        // container labels
+        if (v.isMember("ContainerLabels") && v["ContainerLabels"].isObject()) {
+            const auto& cl = v["ContainerLabels"];
+            auto names = cl.getMemberNames();
+            for (const auto& key : names) {
+                if (cl[key].isString()) info->mContainerLabels[key] = cl[key].asString();
+            }
+        }
+
+        return info;
+    }
+
+    void ContainerManager::SaveContainerInfo() {
+        Json::Value root(Json::objectValue);
+        Json::Value arr(Json::arrayValue);
+        {
+            std::lock_guard<std::mutex> lock(mContainerMapMutex);
+            for (const auto& kv : mContainerMap) {
+                arr.append(SerializeRawContainerInfo(kv.second));
+            }
+        }
+        root["Containers"] = arr;
+        std::string statePath = PathJoin(GetAgentDataDir(), "container_state.json");
+        OverwriteFile(statePath, root.toStyledString());
+        LOG_INFO(sLogger, ("save container state", statePath));
+    }
+
+    void ContainerManager::LoadContainerInfo() {
+        std::string statePath = PathJoin(GetAgentDataDir(), "container_state.json");
+        std::string content;
+        if (FileReadResult::kOK != ReadFileContent(statePath, content)) {
+            return;
+        }
+        Json::Value root;
+        std::string err;
+        if (!ParseJsonTable(content, root, err)) {
+            LOG_WARNING(sLogger, ("invalid container state json", err));
+            return;
+        }
+
+        if (root.isMember("Containers") && root["Containers"].isArray()) {
+            std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>> tmp;
+            const auto& arr = root["Containers"];
+            for (Json::ArrayIndex i = 0; i < arr.size(); ++i) {
+                auto info = DeserializeRawContainerInfo(arr[i]);
+                if (!info->mID.empty()) {
+                    tmp[info->mID] = info;
+                }
+            }
+            std::lock_guard<std::mutex> lock(mContainerMapMutex);
+            mContainerMap.swap(tmp);
+        }        
+        LOG_INFO(sLogger, ("load container state", statePath));
     }
 }

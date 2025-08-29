@@ -893,81 +893,11 @@ void ConfigManager::GetContainerStoppedEvents(std::vector<Event*>& eventVec) {
 }
 
 void ConfigManager::SaveDockerConfig() {
-    string dockerPathConfigName = AppConfig::GetInstance()->GetDockerFilePathConfig();
-    Json::Value dockerPathValueRoot;
-    dockerPathValueRoot["version"] = Json::Value(STRING_FLAG(ilogtail_docker_path_version));
-    Json::Value dockerPathValueDetail;
-    mContainerInfoCmdLock.lock();
-    const auto& nameConfigMap = FileServer::GetInstance()->GetAllFileDiscoveryConfigs();
-    for (auto it = nameConfigMap.begin(); it != nameConfigMap.end(); ++it) {
-        if (it->second.first->GetContainerInfo()) {
-            std::vector<ContainerInfo>& containerPathVec = *(it->second.first->GetContainerInfo());
-            for (size_t i = 0; i < containerPathVec.size(); ++i) {
-                Json::Value dockerPathValue;
-                dockerPathValue["config_name"] = Json::Value(it->first);
-                dockerPathValue["container_id"] = Json::Value(containerPathVec[i].mID);
-                containerPathVec[i].mJson["Path"] = Json::Value(containerPathVec[i].mRealBaseDir);
-                dockerPathValue["params"] = Json::Value(containerPathVec[i].mJson.toStyledString());
-                dockerPathValueDetail.append(dockerPathValue);
-            }
-        }
-    }
-    mContainerInfoCmdLock.unlock();
-    dockerPathValueRoot["detail"] = dockerPathValueDetail;
-    string dockerInfo = dockerPathValueRoot.toStyledString();
-    OverwriteFile(dockerPathConfigName, dockerInfo);
-    LOG_INFO(sLogger, ("dump docker path info", dockerPathConfigName));
+    
 }
 
 void ConfigManager::LoadDockerConfig() {
-    string dockerPathConfigName = AppConfig::GetInstance()->GetDockerFilePathConfig();
-    Json::Value dockerPathValueRoot;
-    ParseConfResult rst = ParseConfig(dockerPathConfigName, dockerPathValueRoot);
-    if (rst == CONFIG_INVALID_FORMAT) {
-        LOG_ERROR(sLogger, ("invalid docker config json", rst)("file path", dockerPathConfigName));
-    }
-    if (rst != CONFIG_OK) {
-        return;
-    }
-    if (!dockerPathValueRoot.isMember("detail")) {
-        return;
-    }
-    Json::Value dockerPathValueDetail = dockerPathValueRoot["detail"];
-    if (!dockerPathValueDetail.isArray()) {
-        return;
-    }
-    std::vector<ConfigContainerInfoUpdateCmd*> localPaths;
-    for (Json::Value::iterator iter = dockerPathValueDetail.begin(); iter != dockerPathValueDetail.end(); ++iter) {
-        const Json::Value& dockerPathItem = *iter;
-        string configName = dockerPathItem.isMember("config_name") && dockerPathItem["config_name"].isString()
-            ? dockerPathItem["config_name"].asString()
-            : string();
-        string containerID = dockerPathItem.isMember("container_id") && dockerPathItem["container_id"].isString()
-            ? dockerPathItem["container_id"].asString()
-            : string();
-        string params = dockerPathItem.isMember("params") && dockerPathItem["params"].isString()
-            ? dockerPathItem["params"].asString()
-            : string();
-        LOG_INFO(sLogger, ("load docker path, config", configName)("container id", containerID)("params", params));
-        if (configName.empty() || containerID.empty() || params.empty()) {
-            continue;
-        }
-
-        // cmd 解析json
-        Json::Value jsonParams;
-        std::string errorMsg;
-        if (params.size() < (size_t)5 || !ParseJsonTable(params, jsonParams, errorMsg)) {
-            LOG_ERROR(sLogger, ("invalid docker container params", params)("errorMsg", errorMsg));
-            continue;
-        }
-        ConfigContainerInfoUpdateCmd* cmd = new ConfigContainerInfoUpdateCmd(configName, false, jsonParams);
-        localPaths.push_back(cmd);
-    }
-    mContainerInfoCmdLock.lock();
-    localPaths.insert(localPaths.end(), mContainerInfoCmdVec.begin(), mContainerInfoCmdVec.end());
-    mContainerInfoCmdVec = localPaths;
-    mContainerInfoCmdLock.unlock();
-
+    
 }
 
 void ConfigManager::ClearFilePipelineMatchCache() {

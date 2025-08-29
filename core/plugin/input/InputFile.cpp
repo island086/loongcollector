@@ -288,7 +288,7 @@ bool InputFile::SetContainerBaseDir(ContainerInfo& containerInfo, const string& 
     } else {
         containerInfo.mRealBaseDir = STRING_FLAG(default_container_host_path) + containerInfo.mRawContainerInfo->mUpperDir + logPath;
     }
-    LOG_INFO(sLogger, ("set container base dir", containerInfo.mRealBaseDir)("container id", containerInfo.mID));
+    LOG_INFO(sLogger, ("set container base dir", containerInfo.mRealBaseDir)("container id", containerInfo.mRawContainerInfo->mID));
     return true;
 }
 

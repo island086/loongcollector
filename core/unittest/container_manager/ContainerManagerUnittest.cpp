@@ -32,6 +32,7 @@ public:
     void TestGetMatchedContainersInfo() const;
     void TestUpdateAllContainers() const;
     void TestUpdateDiffContainers() const;
+    void TestSaveLoadContainerInfo() const;
 
 private:
     const string pluginType = "test";
@@ -216,9 +217,44 @@ void ContainerManagerUnittest::TestUpdateDiffContainers() const {
     }
 }
 
+void ContainerManagerUnittest::TestSaveLoadContainerInfo() const {
+    ContainerManager containerManager;
+
+    // prepare two containers
+    RawContainerInfo containerInfo1;
+    containerInfo1.mID = "save1";
+    containerInfo1.mUpperDir = "/upper/save1";
+    containerInfo1.mLogPath = "/log/save1";
+    containerManager.mContainerMap["save1"] = std::make_shared<RawContainerInfo>(containerInfo1);
+
+    RawContainerInfo containerInfo2;
+    containerInfo2.mID = "save2";
+    containerInfo2.mUpperDir = "/upper/save2";
+    containerInfo2.mLogPath = "/log/save2";
+    containerManager.mContainerMap["save2"] = std::make_shared<RawContainerInfo>(containerInfo2);
+
+    // save to file
+    containerManager.SaveContainerInfo();
+
+    // clear and reload
+    containerManager.mContainerMap.clear();
+    EXPECT_EQ(containerManager.mContainerMap.size(), 0);
+
+    containerManager.LoadContainerInfo();
+
+    EXPECT_EQ(containerManager.mContainerMap.size(), 2);
+    auto it1 = containerManager.mContainerMap.find("save1");
+    auto it2 = containerManager.mContainerMap.find("save2");
+    EXPECT_EQ(it1 != containerManager.mContainerMap.end(), true);
+    EXPECT_EQ(it2 != containerManager.mContainerMap.end(), true);
+    EXPECT_EQ(it1->second->mLogPath, std::string("/log/save1"));
+    EXPECT_EQ(it2->second->mUpperDir, std::string("/upper/save2"));
+}
+
 UNIT_TEST_CASE(ContainerManagerUnittest, TestGetMatchedContainersInfo)
 UNIT_TEST_CASE(ContainerManagerUnittest, TestUpdateAllContainers)
 UNIT_TEST_CASE(ContainerManagerUnittest, TestUpdateDiffContainers)
+UNIT_TEST_CASE(ContainerManagerUnittest, TestSaveLoadContainerInfo)
 
 } // namespace logtail
 

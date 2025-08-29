@@ -103,7 +103,6 @@ void FileServer::Resume(bool isConfigUpdate) {
     if (isConfigUpdate) {
         ClearContainerInfo();
         ContainerManager::GetInstance()->DoUpdateContainerPaths();
-        //ConfigManager::GetInstance()->DoUpdateContainerPaths();
         ConfigManager::GetInstance()->SaveDockerConfig();
     }
 

@@ -44,6 +44,9 @@ public:
     void UpdateDiffContainers();
 
     void GetContainerStoppedEvents(std::vector<Event*>& eventVec);
+    // Persist/restore container runtime state
+    void SaveContainerInfo();
+    void LoadContainerInfo();
     
     void GetMatchedContainersInfo(
         std::set<std::string>& fullList,
