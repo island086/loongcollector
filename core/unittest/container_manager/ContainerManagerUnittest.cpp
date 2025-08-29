@@ -14,11 +14,12 @@
 
 #include <memory>
 #include <string>
-
-#include "json/json.h"
-
-#include "collection_pipeline/CollectionPipelineContext.h"
-#include "common/JsonUtil.h"
+#include <algorithm>
+#include <vector>
+#include <set>
+#include <unordered_map>
+#include <boost/regex.hpp>
+#include "gtest/gtest.h"
 #include "container_manager/ContainerManager.h"
 #include "unittest/Unittest.h"
 #include "unittest/pipeline/LogtailPluginMock.h"
@@ -33,10 +34,6 @@ public:
     void TestUpdateAllContainers() const;
     void TestUpdateDiffContainers() const;
     void TestSaveLoadContainerInfo() const;
-
-private:
-    const string pluginType = "test";
-    CollectionPipelineContext ctx;
 };
 
 void ContainerManagerUnittest::TestGetMatchedContainersInfo() const {
@@ -50,13 +47,59 @@ void ContainerManagerUnittest::TestGetMatchedContainersInfo() const {
         // test empty filter
         ContainerFilters filters;
         ContainerDiff diff;
-        containerManager.GetMatchedContainersInfo(fullList, diff, matchList, filters);
+        containerManager.GetMatchedContainersInfo(fullList, matchList, filters, diff);
         EXPECT_EQ(fullList.size(), 0);
         EXPECT_EQ(matchList.size(), 0);
     }
 
     {
+        // test modified containers: existing in matchList and fullList, info changed -> mModified
+        containerManager.mContainerMap.clear();
+        std::set<std::string> fullList2;
+        std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>> matchList2;
+        ContainerFilters filters;
+
+        RawContainerInfo oldInfo;
+        oldInfo.mID = "mod1";
+        oldInfo.mLogPath = "/var/lib/docker/containers/mod1/logs";
+        matchList2["mod1"] = std::make_shared<RawContainerInfo>(oldInfo);
+        fullList2.insert("mod1");
+
+        RawContainerInfo newInfo;
+        newInfo.mID = "mod1";
+        newInfo.mLogPath = "/var/lib/docker/containers/mod1/new-logs"; // changed
+        containerManager.mContainerMap["mod1"] = std::make_shared<RawContainerInfo>(newInfo);
+
+        ContainerDiff diff;
+        containerManager.GetMatchedContainersInfo(fullList2, matchList2, filters, diff);
+        EXPECT_EQ(diff.mModified.size(), 1);
+        EXPECT_EQ(diff.mModified[0]->mLogPath, std::string("/var/lib/docker/containers/mod1/new-logs"));
+    }
+
+    {
+        // test removed containers: id not in mContainerMap but present in fullList & matchList -> mRemoved
+        containerManager.mContainerMap.clear();
+        std::set<std::string> fullList3;
+        std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>> matchList3;
+        ContainerFilters filters;
+
+        RawContainerInfo info;
+        info.mID = "gone1";
+        info.mLogPath = "/var/lib/docker/containers/gone1/logs";
+        matchList3["gone1"] = std::make_shared<RawContainerInfo>(info);
+        fullList3.insert("gone1");
+        // ensure it's not in mContainerMap
+        containerManager.mContainerMap.erase("gone1");
+
+        ContainerDiff diff;
+        containerManager.GetMatchedContainersInfo(fullList3, matchList3, filters, diff);
+        EXPECT_EQ(std::count(diff.mRemoved.begin(), diff.mRemoved.end(), std::string("gone1")), 1);
+        EXPECT_EQ(fullList3.count("gone1"), 0);
+    }
+
+    {
         // test env filter
+        containerManager.mContainerMap.clear();
         ContainerFilters filters;
         RawContainerInfo containerInfo1;
         containerInfo1.mID = "123";
@@ -75,14 +118,58 @@ void ContainerManagerUnittest::TestGetMatchedContainersInfo() const {
 
         filters.mEnvFilter.mIncludeFields.mFieldsMap["test"] = "test";
         ContainerDiff diff;
-        containerManager.GetMatchedContainersInfo(fullList, diff, matchList, filters);
+        containerManager.GetMatchedContainersInfo(fullList, matchList, filters, diff);
         EXPECT_EQ(fullList.size(), 2);
         EXPECT_EQ(diff.mAdded.size(), 1);
         EXPECT_EQ(diff.mAdded[0]->mID, "123");
     }   
 
     {
+        // test env exclude filter (exclude key=value)
+        ContainerFilters filters;
+        matchList.clear();
+        fullList.clear();
+
+        // exclude key "test" with value "test" so only 1234 is added
+        filters.mEnvFilter.mExcludeFields.mFieldsMap["test"] = "test";
+        ContainerDiff diff;
+        containerManager.GetMatchedContainersInfo(fullList, matchList, filters, diff);
+        EXPECT_EQ(fullList.size(), 2);
+        EXPECT_EQ(diff.mAdded.size(), 1);
+        EXPECT_EQ(diff.mAdded[0]->mID, "1234");
+    }
+
+    {
+        // test env include regex
+        ContainerFilters filters;
+        matchList.clear();
+        fullList.clear();
+
+        filters.mEnvFilter.mIncludeFields.mFieldsRegMap["test"] = std::make_shared<boost::regex>("^test2$");
+        ContainerDiff diff;
+        containerManager.GetMatchedContainersInfo(fullList, matchList, filters, diff);
+        EXPECT_EQ(fullList.size(), 2);
+        EXPECT_EQ(diff.mAdded.size(), 1);
+        EXPECT_EQ(diff.mAdded[0]->mID, "1234");
+    }
+
+    {
+        // test env exclude regex
+        ContainerFilters filters;
+        matchList.clear();
+        fullList.clear();
+
+        filters.mEnvFilter.mExcludeFields.mFieldsRegMap["test"] = std::make_shared<boost::regex>("^test2$");
+        ContainerDiff diff;
+        containerManager.GetMatchedContainersInfo(fullList, matchList, filters, diff);
+        EXPECT_EQ(fullList.size(), 2);
+        EXPECT_EQ(diff.mAdded.size(), 1);
+        EXPECT_EQ(diff.mAdded[0]->mID, "123");
+    }
+
+    {
         // test k8s filter
+        containerManager.mContainerMap.clear();
         ContainerFilters filters;
         RawContainerInfo containerInfo1;
         containerInfo1.mID = "123";
@@ -107,10 +194,161 @@ void ContainerManagerUnittest::TestGetMatchedContainersInfo() const {
         filters.mK8SFilter.mNamespaceReg = std::make_shared<boost::regex>("namespace1");
         filters.mK8SFilter.mContainerReg = std::make_shared<boost::regex>("container1");
         ContainerDiff diff;
-        containerManager.GetMatchedContainersInfo(fullList, diff, matchList, filters);
+        containerManager.GetMatchedContainersInfo(fullList, matchList, filters, diff);
         EXPECT_EQ(fullList.size(), 2);
         EXPECT_EQ(diff.mAdded.size(), 1);
         EXPECT_EQ(diff.mAdded[0]->mID, "123");
+    }
+
+    {
+        // test k8s label include/exclude
+        containerManager.mContainerMap.clear();
+        ContainerFilters filters;
+        RawContainerInfo k8s1;
+        k8s1.mID = "k8s1";
+        k8s1.mLogPath = "/var/lib/docker/containers/k8s1/logs";
+        k8s1.mK8sInfo.mLabels["tier"] = "frontend";
+        containerManager.mContainerMap["k8s1"] = std::make_shared<RawContainerInfo>(k8s1);
+
+        RawContainerInfo k8s2;
+        k8s2.mID = "k8s2";
+        k8s2.mLogPath = "/var/lib/docker/containers/k8s2/logs";
+        k8s2.mK8sInfo.mLabels["tier"] = "backend";
+        containerManager.mContainerMap["k8s2"] = std::make_shared<RawContainerInfo>(k8s2);
+
+        matchList.clear();
+        fullList.clear();
+
+        // include label
+        filters.mK8SFilter.mK8sLabelFilter.mIncludeFields.mFieldsMap["tier"] = "frontend";
+        ContainerDiff diff1;
+        containerManager.GetMatchedContainersInfo(fullList, matchList, filters, diff1);
+        EXPECT_EQ(fullList.count("k8s1") + fullList.count("k8s2"), 2);
+        EXPECT_EQ(diff1.mAdded.size(), 1);
+        EXPECT_EQ(diff1.mAdded[0]->mID, "k8s1");
+
+        // exclude label
+        matchList.clear();
+        fullList.clear();
+        ContainerFilters filters2;
+        filters2.mK8SFilter.mK8sLabelFilter.mExcludeFields.mFieldsMap["tier"] = "backend";
+        ContainerDiff diff2;
+        containerManager.GetMatchedContainersInfo(fullList, matchList, filters2, diff2);
+        EXPECT_EQ(fullList.count("k8s1") + fullList.count("k8s2"), 2);
+        EXPECT_EQ(diff2.mAdded.size(), 1);
+        EXPECT_EQ(diff2.mAdded[0]->mID, "k8s1");
+
+        // include regex
+        matchList.clear();
+        fullList.clear();
+        ContainerFilters filters3;
+        filters3.mK8SFilter.mK8sLabelFilter.mIncludeFields.mFieldsRegMap["tier"]
+            = std::make_shared<boost::regex>("^front.*$");
+        ContainerDiff diff3;
+        containerManager.GetMatchedContainersInfo(fullList, matchList, filters3, diff3);
+        EXPECT_EQ(diff3.mAdded.size(), 1);
+        EXPECT_EQ(diff3.mAdded[0]->mID, "k8s1");
+    }
+
+    {
+        // test container label filters include/exclude and regex
+        containerManager.mContainerMap.clear();
+        ContainerFilters filters;
+        RawContainerInfo cl1;
+        cl1.mID = "cl1";
+        cl1.mLogPath = "/var/lib/docker/containers/cl1/logs";
+        cl1.mContainerLabels["app"] = "nginx";
+        containerManager.mContainerMap["cl1"] = std::make_shared<RawContainerInfo>(cl1);
+
+        RawContainerInfo cl2;
+        cl2.mID = "cl2";
+        cl2.mLogPath = "/var/lib/docker/containers/cl2/logs";
+        cl2.mContainerLabels["app"] = "redis";
+        containerManager.mContainerMap["cl2"] = std::make_shared<RawContainerInfo>(cl2);
+
+        matchList.clear();
+        fullList.clear();
+
+        // include map
+        filters.mContainerLabelFilter.mIncludeFields.mFieldsMap["app"] = "nginx";
+        ContainerDiff diff1;
+        containerManager.GetMatchedContainersInfo(fullList, matchList, filters, diff1);
+        EXPECT_EQ(diff1.mAdded.size(), 1);
+        EXPECT_EQ(diff1.mAdded[0]->mID, "cl1");
+
+        // exclude map
+        matchList.clear();
+        fullList.clear();
+        ContainerFilters filters2;
+        filters2.mContainerLabelFilter.mExcludeFields.mFieldsMap["app"] = "nginx";
+        ContainerDiff diff2;
+        containerManager.GetMatchedContainersInfo(fullList, matchList, filters2, diff2);
+        EXPECT_EQ(diff2.mAdded.size(), 1);
+        EXPECT_EQ(diff2.mAdded[0]->mID, "cl2");
+
+        // include regex
+        matchList.clear();
+        fullList.clear();
+        ContainerFilters filters3;
+        filters3.mContainerLabelFilter.mIncludeFields.mFieldsRegMap["app"]
+            = std::make_shared<boost::regex>("^ng.*");
+        ContainerDiff diff3;
+        containerManager.GetMatchedContainersInfo(fullList, matchList, filters3, diff3);
+        EXPECT_EQ(diff3.mAdded.size(), 1);
+        EXPECT_EQ(diff3.mAdded[0]->mID, "cl1");
+
+        // exclude regex
+        matchList.clear();
+        fullList.clear();
+        ContainerFilters filters4;
+        filters4.mContainerLabelFilter.mExcludeFields.mFieldsRegMap["app"]
+            = std::make_shared<boost::regex>("^re.*");
+        ContainerDiff diff4;
+        containerManager.GetMatchedContainersInfo(fullList, matchList, filters4, diff4);
+        EXPECT_EQ(diff4.mAdded.size(), 1);
+        EXPECT_EQ(diff4.mAdded[0]->mID, "cl1");
+    }
+
+    {
+        // test combined filters: env + container label + k8s (namespace/pod/container + labels)
+        containerManager.mContainerMap.clear();
+        ContainerFilters filters;
+        RawContainerInfo combo1;
+        combo1.mID = "combo1";
+        combo1.mLogPath = "/var/lib/docker/containers/combo1/logs";
+        combo1.mEnv["env"] = "prod";
+        combo1.mContainerLabels["app"] = "nginx";
+        combo1.mK8sInfo.mNamespace = "ns1";
+        combo1.mK8sInfo.mPod = "pod1";
+        combo1.mK8sInfo.mContainerName = "c1";
+        combo1.mK8sInfo.mLabels["tier"] = "frontend";
+        containerManager.mContainerMap["combo1"] = std::make_shared<RawContainerInfo>(combo1);
+
+        RawContainerInfo combo2;
+        combo2.mID = "combo2";
+        combo2.mLogPath = "/var/lib/docker/containers/combo2/logs";
+        combo2.mEnv["env"] = "dev";
+        combo2.mContainerLabels["app"] = "nginx";
+        combo2.mK8sInfo.mNamespace = "ns1";
+        combo2.mK8sInfo.mPod = "pod1";
+        combo2.mK8sInfo.mContainerName = "c1";
+        combo2.mK8sInfo.mLabels["tier"] = "frontend";
+        containerManager.mContainerMap["combo2"] = std::make_shared<RawContainerInfo>(combo2);
+
+        matchList.clear();
+        fullList.clear();
+
+        filters.mEnvFilter.mIncludeFields.mFieldsMap["env"] = "prod";
+        filters.mContainerLabelFilter.mIncludeFields.mFieldsMap["app"] = "nginx";
+        filters.mK8SFilter.mNamespaceReg = std::make_shared<boost::regex>("^ns1$");
+        filters.mK8SFilter.mPodReg = std::make_shared<boost::regex>("^pod1$");
+        filters.mK8SFilter.mContainerReg = std::make_shared<boost::regex>("^c1$");
+        filters.mK8SFilter.mK8sLabelFilter.mIncludeFields.mFieldsMap["tier"] = "frontend";
+
+        ContainerDiff diff;
+        containerManager.GetMatchedContainersInfo(fullList, matchList, filters, diff);
+        EXPECT_EQ(diff.mAdded.size(), 1);
+        EXPECT_EQ(diff.mAdded[0]->mID, "combo1");
     }
 }
 

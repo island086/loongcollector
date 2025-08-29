@@ -85,6 +85,9 @@ namespace logtail {
             for (const auto& container : diff->mModified) {
                 options->UpdateRawContainerInfo(container, ctx);
             }
+            for (const auto& container : diff->mRemoved) {
+                options->DeleteRawContainerInfo(container);
+            }
         }
         mConfigContainerDiffMap.clear();
     }
@@ -119,7 +122,7 @@ namespace logtail {
         std::vector<std::string> removedList;
         std::vector<std::string> matchAddedList;
         ContainerDiff diff;
-        GetMatchedContainersInfo(*(options->GetFullContainerList()), diff, containerInfoMap, options->GetContainerDiscoveryOptions().mContainerFilters);
+        GetMatchedContainersInfo(*(options->GetFullContainerList()), containerInfoMap, options->GetContainerDiscoveryOptions().mContainerFilters, diff);
         if (diff.IsEmpty()) {
             return false;
         }
@@ -291,19 +294,19 @@ bool IsK8sFilterMatch(const K8sFilter& filter, const K8sInfo& k8sInfo) {
 
 
 void ContainerManager::GetMatchedContainersInfo(
-        std::set<std::string>& fullList,
-        ContainerDiff& diff,
+        std::set<std::string>& fullContainerIDList,
         const std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>>& matchList,
-        const ContainerFilters& filters
+        const ContainerFilters& filters,
+        ContainerDiff& diff
     ) {
         int newCount = 0;
         int delCount = 0;
 
         // 移除已删除的容器
-        for (auto it = fullList.begin(); it != fullList.end();) {
+        for (auto it = fullContainerIDList.begin(); it != fullContainerIDList.end();) {
             if (mContainerMap.find(*it) == mContainerMap.end()) {
-                const std::string& id = *it;
-                it = fullList.erase(it); // 删除元素并移到下一个
+                std::string id = *it; // 复制一份，避免 erase 后引用失效
+                it = fullContainerIDList.erase(it); // 删除元素并移到下一个
                 if (matchList.find(id) != matchList.end()) {
                     diff.mRemoved.push_back(id);
                     //matchList.erase(id);
@@ -326,9 +329,9 @@ void ContainerManager::GetMatchedContainersInfo(
 
         // 添加新容器
         for (const auto& pair : mContainerMap) {
-            // 如果 fullList 中不存在该 id
-            if (fullList.find(pair.first) == fullList.end()) {
-                fullList.insert(pair.first); // 加入到 fullList
+            // 如果 fullContainerIDList 中不存在该 id
+            if (fullContainerIDList.find(pair.first) == fullContainerIDList.end()) {
+                fullContainerIDList.insert(pair.first); // 加入到 fullContainerIDList
                 // 检查标签和环境匹配
                 if (IsMapLabelsMatch(filters.mContainerLabelFilter, pair.second->mContainerLabels) &&
                     IsMapLabelsMatch(filters.mEnvFilter, pair.second->mEnv) &&

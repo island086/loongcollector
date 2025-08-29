@@ -49,10 +49,10 @@ public:
     void LoadContainerInfo();
     
     void GetMatchedContainersInfo(
-        std::set<std::string>& fullList,
-        ContainerDiff& diff,
+        std::set<std::string>& fullContainerIDList,
         const std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>>& matchList,
-        const ContainerFilters& filters);
+        const ContainerFilters& filters,
+        ContainerDiff& diff);
 
 private:
     std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>> mContainerMap;
