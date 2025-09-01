@@ -17,13 +17,13 @@
 #include "plugin/processor/ProcessorParseJsonNative.h"
 
 #include "rapidjson/document.h"
+#include "rapidjson/stringbuffer.h"
+#include "rapidjson/writer.h"
+
 #if defined(__INCLUDE_SSE4_2__)
 #include <cinttypes>
 #include <cstdio>
 #include <plugin/processor/simdjson.h>
-#else
-#include "rapidjson/stringbuffer.h"
-#include "rapidjson/writer.h"
 #endif
 
 #include "collection_pipeline/plugin/instance/ProcessorInstance.h"
@@ -55,19 +55,24 @@ bool ProcessorParseJsonNative::Init(const Json::Value& config) {
         return false;
     }
 
+    // Runtime check for SIMD support
+    mUseSimdJson = false;
 #if defined(__INCLUDE_SSE4_2__)
     auto my_implementation = simdjson::get_available_implementations()["westmere"];
-    if (!my_implementation) {
-        exit(1);
+    if (my_implementation && my_implementation->supported_by_runtime_system()) {
+        mUseSimdJson = true;
+        simdjson::get_active_implementation() = my_implementation;
+        LOG_INFO(sLogger, ("simdjson active implementation : ", simdjson::get_active_implementation()->name()));
+    } else {
+        LOG_INFO(sLogger, ("westmere not supported", "fallback to rapidjson"));
     }
-    if (!my_implementation->supported_by_runtime_system()) {
-        exit(1);
-    }
-    simdjson::get_active_implementation() = my_implementation;
-    LOG_INFO(sLogger, ("simdjson active implementation : ", simdjson::get_active_implementation()->name()));
 #else
-    LOG_INFO(sLogger, ("active implementation : ", "rapidjson"));
+    LOG_INFO(sLogger, ("simdjson not available at compile time", "using rapidjson"));
 #endif
+
+    if (!mUseSimdJson) {
+        LOG_INFO(sLogger, ("active implementation : ", "rapidjson"));
+    }
 
     mDiscardedEventsTotal = GetMetricsRecordRef().CreateCounter(METRIC_PLUGIN_DISCARDED_EVENTS_TOTAL);
     mOutFailedEventsTotal = GetMetricsRecordRef().CreateCounter(METRIC_PLUGIN_OUT_FAILED_EVENTS_TOTAL);
@@ -114,7 +119,12 @@ bool ProcessorParseJsonNative::ProcessEvent(const StringView& logPath,
     auto rawContent = sourceEvent.GetContent(mSourceKey);
 
     bool sourceKeyOverwritten = false;
-    bool parseSuccess = JsonLogLineParser(sourceEvent, logPath, e, sourceKeyOverwritten);
+    bool parseSuccess;
+    if (mUseSimdJson) {
+        parseSuccess = JsonLogLineParserSimdJson(sourceEvent, logPath, e, sourceKeyOverwritten);
+    } else {
+        parseSuccess = JsonLogLineParserRapidJson(sourceEvent, logPath, e, sourceKeyOverwritten);
+    }
 
     if (!parseSuccess || !sourceKeyOverwritten) {
         sourceEvent.DelContent(mSourceKey);
@@ -172,7 +182,9 @@ ProcessNumberValueOptimized(simdjson::ondemand::value& value, LogEvent& sourceEv
     // Return empty buffer on error
     return sourceEvent.GetSourceBuffer()->CopyString("", 0);
 }
+#endif
 
+#if defined(__INCLUDE_SSE4_2__)
 // Optimized value to StringBuffer conversion function
 static StringBuffer
 OptimizedValueToStringBuffer(simdjson::ondemand::value& value, LogEvent& sourceEvent, bool& success) {
@@ -223,11 +235,24 @@ OptimizedValueToStringBuffer(simdjson::ondemand::value& value, LogEvent& sourceE
     // Return empty buffer on error
     return sourceEvent.GetSourceBuffer()->CopyString("", 0);
 }
+#endif
 
 bool ProcessorParseJsonNative::JsonLogLineParser(LogEvent& sourceEvent,
                                                  const StringView& logPath,
                                                  PipelineEventPtr& e,
                                                  bool& sourceKeyOverwritten) {
+    if (mUseSimdJson) {
+        return JsonLogLineParserSimdJson(sourceEvent, logPath, e, sourceKeyOverwritten);
+    } else {
+        return JsonLogLineParserRapidJson(sourceEvent, logPath, e, sourceKeyOverwritten);
+    }
+}
+
+bool ProcessorParseJsonNative::JsonLogLineParserSimdJson(LogEvent& sourceEvent,
+                                                         const StringView& logPath,
+                                                         PipelineEventPtr& e,
+                                                         bool& sourceKeyOverwritten) {
+#if defined(__INCLUDE_SSE4_2__)
     StringView buffer = sourceEvent.GetContent(mSourceKey);
 
     if (buffer.empty())
@@ -344,9 +369,12 @@ bool ProcessorParseJsonNative::JsonLogLineParser(LogEvent& sourceEvent,
         AddLog(field.first, field.second, sourceEvent);
     }
     return true;
-}
-
 #else
+    // If SIMD not supported at compile time, this function should not be called
+    // But we provide a fallback to ensure compilation
+    return false;
+#endif
+}
 
 static std::string RapidjsonValueToString(const rapidjson::Value& value) {
     if (value.IsString())
@@ -374,10 +402,10 @@ static std::string RapidjsonValueToString(const rapidjson::Value& value) {
     }
 }
 
-bool ProcessorParseJsonNative::JsonLogLineParser(LogEvent& sourceEvent,
-                                                 const StringView& logPath,
-                                                 PipelineEventPtr& e,
-                                                 bool& sourceKeyOverwritten) {
+bool ProcessorParseJsonNative::JsonLogLineParserRapidJson(LogEvent& sourceEvent,
+                                                          const StringView& logPath,
+                                                          PipelineEventPtr& e,
+                                                          bool& sourceKeyOverwritten) {
     StringView buffer = sourceEvent.GetContent(mSourceKey);
 
     if (buffer.empty())
@@ -437,9 +465,6 @@ bool ProcessorParseJsonNative::JsonLogLineParser(LogEvent& sourceEvent,
     }
     return true;
 }
-
-#endif
-
 
 void ProcessorParseJsonNative::AddLog(const StringView& key,
                                       const StringView& value,
