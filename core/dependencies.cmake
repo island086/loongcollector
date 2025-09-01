@@ -55,6 +55,7 @@ set(DEP_NAME_LIST
         protobuf
         rapidjson               # header-only
         re2
+        simdjson
         spdlog                  # header-only
         ssl                     # openssl
         unwind                  # google breakpad on Windows
@@ -717,6 +718,19 @@ macro(link_grpc target_name)
         endif()
     endif()
 endmacro()
+
+
+macro(link_simdjson target_name)
+    if (UNIX)
+        find_library(SIMDJSON_LIB libsimdjson.a PATHS "${simdjson_${LIBRARY_DIR_SUFFIX}}" NO_DEFAULT_PATH)
+        if(SIMDJSON_LIB)
+            target_link_libraries(${target_name} "${SIMDJSON_LIB}")
+        else()
+            message(FATAL_ERROR "Could not find simdjson library")
+        endif()
+    endif ()
+endmacro()
+
 
 macro(link_spl target_name)
     logtail_define(spl_${target_name} "" "")

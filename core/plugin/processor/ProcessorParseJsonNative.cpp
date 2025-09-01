@@ -23,7 +23,7 @@
 #if defined(__INCLUDE_SSE4_2__)
 #include <cinttypes>
 #include <cstdio>
-#include <plugin/processor/simdjson.h>
+#include "simdjson/simdjson.h"
 
 // Constants for boolean string conversion
 static constexpr std::string_view TRUE_STR = "true";

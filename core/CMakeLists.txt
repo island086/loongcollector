@@ -264,7 +264,7 @@ endif()
 # Link libraries.
 if(BUILD_LOGTAIL OR BUILD_LOGTAIL_SHARED_LIBRARY)
     input_link(${LOGTAIL_TARGET})
-    processor_link(${LOGTAIL_TARGET} ${WITHSPL})
+    processor_link(${LOGTAIL_TARGET} ${WITHSPL} ${WITHSPL})
     flusher_link(${LOGTAIL_TARGET})
     all_link(${LOGTAIL_TARGET})
     common_link(${LOGTAIL_TARGET})
