@@ -24,6 +24,10 @@
 #include <cinttypes>
 #include <cstdio>
 #include <plugin/processor/simdjson.h>
+
+// Constants for boolean string conversion
+static constexpr std::string_view TRUE_STR = "true";
+static constexpr std::string_view FALSE_STR = "false";
 #endif
 
 #include "collection_pipeline/plugin/instance/ProcessorInstance.h"
@@ -62,17 +66,13 @@ bool ProcessorParseJsonNative::Init(const Json::Value& config) {
     if (my_implementation && my_implementation->supported_by_runtime_system()) {
         mUseSimdJson = true;
         simdjson::get_active_implementation() = my_implementation;
-        LOG_INFO(sLogger, ("simdjson active implementation : ", simdjson::get_active_implementation()->name()));
+        LOG_DEBUG(sLogger, ("simdjson active implementation : ", simdjson::get_active_implementation()->name()));
     } else {
-        LOG_INFO(sLogger, ("westmere not supported", "fallback to rapidjson"));
+        LOG_DEBUG(sLogger, ("westmere not supported", "fallback to rapidjson"));
     }
-#else
-    LOG_INFO(sLogger, ("simdjson not available at compile time", "using rapidjson"));
 #endif
 
-    if (!mUseSimdJson) {
-        LOG_INFO(sLogger, ("active implementation : ", "rapidjson"));
-    }
+    LOG_DEBUG(sLogger, ("use simdjson: ", mUseSimdJson));
 
     mDiscardedEventsTotal = GetMetricsRecordRef().CreateCounter(METRIC_PLUGIN_DISCARDED_EVENTS_TOTAL);
     mOutFailedEventsTotal = GetMetricsRecordRef().CreateCounter(METRIC_PLUGIN_OUT_FAILED_EVENTS_TOTAL);
@@ -198,10 +198,10 @@ OptimizedValueToStringBuffer(simdjson::ondemand::value& value, LogEvent& sourceE
         case simdjson::ondemand::json_type::boolean: {
             auto bool_result = value.get_bool();
             if (!bool_result.error()) {
-                const char* boolStr = bool_result.value() ? "true" : "false";
-                size_t len = bool_result.value() ? 4 : 5;
+                const bool boolValue = bool_result.value();
+                const auto& boolStr = boolValue ? TRUE_STR : FALSE_STR;
                 success = true;
-                return sourceEvent.GetSourceBuffer()->CopyString(boolStr, len);
+                return sourceEvent.GetSourceBuffer()->CopyString(boolStr.data(), boolStr.size());
             }
             break;
         }
