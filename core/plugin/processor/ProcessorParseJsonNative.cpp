@@ -23,6 +23,7 @@
 #if defined(__INCLUDE_SSE4_2__)
 #include <cinttypes>
 #include <cstdio>
+
 #include "simdjson/simdjson.h"
 
 // Constants for boolean string conversion
