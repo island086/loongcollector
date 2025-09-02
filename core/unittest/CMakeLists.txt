@@ -105,7 +105,6 @@ if (UNIX)
             # add spl subdir
             set(UT_BASE_TARGET "unittest_base_withspl")
             add_library(${UT_BASE_TARGET} STATIC ${SOURCE_FILES_CORE_WITHSPL})
-            message("SOURCE_FILES_CORE_WITHSPL contains: ${SOURCE_FILES_CORE_WITHSPL}")
             target_compile_options(${UT_BASE_TARGET} PRIVATE -Werror)
             target_compile_definitions(${UT_BASE_TARGET} PRIVATE __INCLUDE_SSE4_2__)
             add_spl_subdir()
