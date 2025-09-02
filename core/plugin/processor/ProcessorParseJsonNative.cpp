@@ -370,11 +370,10 @@ bool ProcessorParseJsonNative::JsonLogLineParserSimdJson(LogEvent& sourceEvent,
         AddLog(field.first, field.second, sourceEvent);
     }
     return true;
-#else
+#endif
     // If SIMD not supported at compile time, this function should not be called
     // But we provide a fallback to ensure compilation
     return false;
-#endif
 }
 
 static std::string RapidjsonValueToString(const rapidjson::Value& value) {
