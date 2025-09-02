@@ -15,13 +15,13 @@
 #include <chrono>
 #include <memory>
 
-#include "HostMonitorInputRunner.h"
-#include "HostMonitorTimerEvent.h"
 #include "ProcessQueueItem.h"
 #include "ProcessQueueManager.h"
 #include "QueueKey.h"
 #include "QueueKeyManager.h"
 #include "common/timer/Timer.h"
+#include "host_monitor/HostMonitorContext.h"
+#include "host_monitor/HostMonitorInputRunner.h"
 #include "unittest/Unittest.h"
 #include "unittest/host_monitor/MockCollector.h"
 
@@ -53,8 +53,8 @@ void HostMonitorInputRunnerUnittest::TestUpdateAndRemoveCollector() const {
     runner->Init();
     std::string configName = "test";
     runner->UpdateCollector(
-        configName, {MockCollector::sName}, {60}, {HostMonitorCollectType::kMultiValue}, QueueKey{}, 0);
-    auto startTime = runner->mRegisteredCollectorMap.at({configName, MockCollector::sName}).mStartTime;
+        configName, {{MockCollector::sName, 60, HostMonitorCollectType::kMultiValue}}, QueueKey{}, 0);
+    auto startTime = runner->mRegisteredStartTime.at({configName, MockCollector::sName});
     APSARA_TEST_TRUE_FATAL(runner->IsCollectTaskValid(startTime, configName, MockCollector::sName));
     APSARA_TEST_FALSE_FATAL(
         runner->IsCollectTaskValid(startTime - std::chrono::seconds(60), configName, MockCollector::sName));
@@ -72,20 +72,43 @@ void HostMonitorInputRunnerUnittest::TestScheduleOnce() const {
     runner->Init();
     runner->mThreadPool->Start();
     std::string configName = "test";
-    // 先添加测试收集器配置
+    // 先添加测试收集器配置，这会添加第一个定时器事件
     runner->UpdateCollector(
-        configName, {MockCollector::sName}, {1}, {HostMonitorCollectType::kMultiValue}, QueueKey{}, 0);
+        configName, {{MockCollector::sName, 1, HostMonitorCollectType::kMultiValue}}, QueueKey{}, 0);
+    // UpdateCollector会添加一个定时器事件
+    APSARA_TEST_EQUAL_FATAL(1, Timer::GetInstance()->mQueue.size());
     auto queueKey = QueueKeyManager::GetInstance()->GetKey(configName);
     auto ctx = CollectionPipelineContext();
     ctx.SetConfigName(configName);
     ProcessQueueManager::GetInstance()->CreateOrUpdateBoundedQueue(queueKey, 0, ctx);
 
-    HostMonitorTimerEvent::CollectContext collectContext(
-        configName, MockCollector::sName, queueKey, 0, std::chrono::seconds(60));
-    collectContext.SetTime(std::chrono::steady_clock::now(), 0);
+    auto mockCollector = std::make_unique<MockCollector>();
+    auto collectContext = std::make_shared<CollectContext>(configName,
+                                                           MockCollector::sName,
+                                                           queueKey,
+                                                           0,
+                                                           std::chrono::seconds(60),
+                                                           CollectorInstance(std::move(mockCollector)));
+    collectContext->SetTime(std::chrono::steady_clock::now(), 0);
+    // 第一次ScheduleOnce不会立即添加TimerEvent，而是添加任务到线程池
     runner->ScheduleOnce(collectContext);
     std::this_thread::sleep_for(std::chrono::seconds(1));
+    // second schedule once should be cancelled, because start time is not the same
+    APSARA_TEST_EQUAL_FATAL(1, Timer::GetInstance()->mQueue.size());
+
+    auto mockCollector2 = std::make_unique<MockCollector>();
+    auto collectContext2 = std::make_shared<CollectContext>(configName,
+                                                            MockCollector::sName,
+                                                            queueKey,
+                                                            0,
+                                                            std::chrono::seconds(60),
+                                                            CollectorInstance(std::move(mockCollector2)));
+    collectContext2->mStartTime
+        = HostMonitorInputRunner::GetInstance()->mRegisteredStartTime.at({configName, MockCollector::sName});
+    runner->ScheduleOnce(collectContext2);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     APSARA_TEST_EQUAL_FATAL(2, Timer::GetInstance()->mQueue.size());
+
     auto item = std::make_unique<ProcessQueueItem>(std::make_shared<SourceBuffer>(), 0);
     ProcessQueueManager::GetInstance()->EnablePop(configName);
     APSARA_TEST_TRUE_FATAL(ProcessQueueManager::GetInstance()->PopItem(0, item, configName));
@@ -97,7 +120,9 @@ void HostMonitorInputRunnerUnittest::TestScheduleOnce() const {
 
 void HostMonitorInputRunnerUnittest::TestReset() const {
     { // case 1: between two points
-        HostMonitorTimerEvent::CollectContext collectContext("test", "test", QueueKey{}, 0, std::chrono::seconds(15));
+        auto mockCollector = std::make_unique<MockCollector>();
+        CollectContext collectContext(
+            "test", "test", QueueKey{}, 0, std::chrono::seconds(15), CollectorInstance(std::move(mockCollector)));
         auto steadyClockNow = std::chrono::steady_clock::now();
         collectContext.SetTime(steadyClockNow, 1);
         collectContext.mCollectInterval = std::chrono::seconds(5);
@@ -108,7 +133,9 @@ void HostMonitorInputRunnerUnittest::TestReset() const {
         APSARA_TEST_EQUAL_FATAL(collectContext.GetScheduleTime(), steadyClockNow + std::chrono::seconds(14 + 5));
     }
     { // case 2: at the edge of the collect interval
-        HostMonitorTimerEvent::CollectContext collectContext("test", "test", QueueKey{}, 0, std::chrono::seconds(15));
+        auto mockCollector = std::make_unique<MockCollector>();
+        CollectContext collectContext(
+            "test", "test", QueueKey{}, 0, std::chrono::seconds(15), CollectorInstance(std::move(mockCollector)));
         auto steadyClockNow = std::chrono::steady_clock::now();
         collectContext.SetTime(steadyClockNow, 5);
         collectContext.mCollectInterval = std::chrono::seconds(5);
@@ -119,7 +146,9 @@ void HostMonitorInputRunnerUnittest::TestReset() const {
         APSARA_TEST_EQUAL_FATAL(collectContext.GetScheduleTime(), steadyClockNow + std::chrono::seconds(15));
     }
     { // case 3: at the edge of the report interval
-        HostMonitorTimerEvent::CollectContext collectContext("test", "test", QueueKey{}, 0, std::chrono::seconds(15));
+        auto mockCollector = std::make_unique<MockCollector>();
+        CollectContext collectContext(
+            "test", "test", QueueKey{}, 0, std::chrono::seconds(15), CollectorInstance(std::move(mockCollector)));
         auto steadyClockNow = std::chrono::steady_clock::now();
         collectContext.SetTime(steadyClockNow, 15);
         collectContext.mCollectInterval = std::chrono::seconds(5);

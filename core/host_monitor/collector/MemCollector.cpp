@@ -25,6 +25,7 @@
 #include "MetricValue.h"
 #include "common/StringTools.h"
 #include "host_monitor/Constants.h"
+#include "host_monitor/HostMonitorContext.h"
 #include "host_monitor/LinuxSystemInterface.h"
 #include "host_monitor/SystemInterface.h"
 #include "logger/Logger.h"
@@ -35,7 +36,7 @@ namespace logtail {
 
 const std::string MemCollector::sName = "memory";
 
-bool MemCollector::Collect(HostMonitorTimerEvent::CollectContext& collectContext, PipelineEventGroup* group) {
+bool MemCollector::Collect(CollectContext& collectContext, PipelineEventGroup* group) {
     if (group == nullptr) {
         return false;
     }

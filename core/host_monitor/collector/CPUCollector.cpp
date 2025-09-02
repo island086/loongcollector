@@ -21,6 +21,7 @@
 #include <string>
 
 #include "Flags.h"
+#include "host_monitor/HostMonitorContext.h"
 #include "host_monitor/SystemInterface.h"
 
 DEFINE_FLAG_INT32(basic_host_monitor_cpu_collect_interval, "basic host monitor cpu collect interval, seconds", 1);
@@ -28,7 +29,7 @@ namespace logtail {
 
 const std::string CPUCollector::sName = "cpu";
 
-bool CPUCollector::Collect(HostMonitorTimerEvent::CollectContext& collectContext, PipelineEventGroup* group) {
+bool CPUCollector::Collect(CollectContext& collectContext, PipelineEventGroup* group) {
     if (group == nullptr) {
         LOG_ERROR(sLogger, ("PipelineEventGroup got nullptr", "skip"));
         return false;

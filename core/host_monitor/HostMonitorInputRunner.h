@@ -30,32 +30,16 @@
 
 #include "collection_pipeline/queue/QueueKey.h"
 #include "common/ThreadPool.h"
-#include "host_monitor/HostMonitorTimerEvent.h"
+#include "host_monitor/HostMonitorContext.h"
 #include "host_monitor/collector/BaseCollector.h"
 #include "runner/InputRunner.h"
 
 namespace logtail {
 
-class CollectorInstance {
-public:
-    CollectorInstance(std::unique_ptr<BaseCollector>&& collector) : mCollector(std::move(collector)) {}
-
-    bool Init(HostMonitorTimerEvent::CollectContext& collectContext) {
-        mStartTime = collectContext.mStartTime;
-        return mCollector->Init(collectContext);
-    }
-
-    bool Collect(HostMonitorTimerEvent::CollectContext& collectContext, PipelineEventGroup* group) {
-        return mCollector->Collect(collectContext, group);
-    }
-
-    bool IsValidEvent(const std::chrono::steady_clock::time_point& startTime) const { return startTime == mStartTime; }
-
-    std::chrono::seconds GetCollectInterval() const { return mCollector->GetCollectInterval(); }
-
-private:
-    std::chrono::steady_clock::time_point mStartTime;
-    std::unique_ptr<BaseCollector> mCollector;
+struct CollectorInfo {
+    std::string name;
+    uint32_t interval;
+    HostMonitorCollectType type;
 };
 
 class HostMonitorInputRunner : public InputRunner {
@@ -86,9 +70,7 @@ public:
     }
 
     void UpdateCollector(const std::string& configName,
-                         const std::vector<std::string>& newCollectorNames,
-                         const std::vector<uint32_t>& newCollectorIntervals,
-                         const std::vector<HostMonitorCollectType>& newCollectorTypes,
+                         const std::vector<CollectorInfo>& newCollectorInfos,
                          QueueKey processQueueKey,
                          size_t inputIndex);
     void RemoveCollector(const std::string& configName);
@@ -101,7 +83,7 @@ public:
     bool IsCollectTaskValid(const std::chrono::steady_clock::time_point& startTime,
                             const std::string& configName,
                             const std::string& collectorName);
-    void ScheduleOnce(HostMonitorTimerEvent::CollectContext& collectContext);
+    void ScheduleOnce(CollectContextPtr collectContext);
 
 private:
     HostMonitorInputRunner();
@@ -113,14 +95,14 @@ private:
                                      []() -> CollectorInstance { return CollectorInstance(std::make_unique<T>()); });
     }
 
-    void PushNextTimerEvent(HostMonitorTimerEvent::CollectContext& config);
+    void PushNextTimerEvent(CollectContextPtr config);
     void AddHostLabels(PipelineEventGroup& group);
 
     std::atomic_bool mIsStarted = false;
     std::unique_ptr<ThreadPool> mThreadPool;
 
-    mutable std::shared_mutex mRegisteredCollectorMapMutex;
-    std::map<CollectorKey, CollectorInstance> mRegisteredCollectorMap;
+    mutable std::shared_mutex mRegisteredStartTimeMutex;
+    std::map<CollectorKey, std::chrono::steady_clock::time_point> mRegisteredStartTime;
 
     std::unordered_map<std::string, std::function<CollectorInstance()>> mCollectorCreatorMap;
 

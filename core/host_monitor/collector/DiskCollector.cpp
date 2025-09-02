@@ -19,6 +19,7 @@
 #include <mntent.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
+#include <sys/sysmacros.h>
 
 #include <string>
 
@@ -52,7 +53,7 @@ bool IsZero(const std::chrono::system_clock::time_point& t) {
     return t.time_since_epoch().count() == 0;
 }
 
-bool DiskCollector::Init(HostMonitorTimerEvent::CollectContext& collectContext) {
+bool DiskCollector::Init(CollectContext& collectContext) {
     if (!BaseCollector::Init(collectContext)) {
         return false;
     }
@@ -82,7 +83,7 @@ std::string JoinBytesLimit(const T& v, const std::string& splitter, size_t n) {
     return result;
 }
 
-bool DiskCollector::Collect(HostMonitorTimerEvent::CollectContext& collectContext, PipelineEventGroup* group) {
+bool DiskCollector::Collect(CollectContext& collectContext, PipelineEventGroup* group) {
     if (group == nullptr) {
         return false;
     }
@@ -289,7 +290,7 @@ void DiskCollector::CalcDiskMetric(const DiskStat& current,
     diskMetric.util = tick / (10.0 * interval);
 }
 
-int DiskCollector::GetDiskCollectStatMap(const HostMonitorTimerEvent::CollectTime& collectTime,
+int DiskCollector::GetDiskCollectStatMap(const CollectTime& collectTime,
                                          std::map<std::string, DiskCollectStat>& diskCollectStatMap) {
     std::map<std::string, DeviceMountInfo> deviceMountMap;
     int num = GetDeviceMountMap(collectTime, deviceMountMap);
@@ -343,7 +344,7 @@ int DiskCollector::GetDiskCollectStatMap(const HostMonitorTimerEvent::CollectTim
     return static_cast<int>(diskCollectStatMap.size());
 }
 
-int DiskCollector::GetFileSystemStat(const HostMonitorTimerEvent::CollectTime& collectTime,
+int DiskCollector::GetFileSystemStat(const CollectTime& collectTime,
                                      const std::string& dirName,
                                      FileSystemUsage& fileSystemUsage) {
     struct statvfs buffer {};
@@ -378,10 +379,7 @@ int DiskCollector::GetFileSystemStat(const HostMonitorTimerEvent::CollectTime& c
     return 0;
 }
 
-int DiskCollector::GetDiskStat(const HostMonitorTimerEvent::CollectTime& collectTime,
-                               dev_t rDev,
-                               DiskUsage& disk,
-                               DiskUsage& deviceUsage) {
+int DiskCollector::GetDiskStat(const CollectTime& collectTime, dev_t rDev, DiskUsage& disk, DiskUsage& deviceUsage) {
     std::vector<std::string> diskLines = {};
     std::string errorMessage;
 
@@ -410,9 +408,7 @@ int DiskCollector::GetDiskStat(const HostMonitorTimerEvent::CollectTime& collect
     return -1;
 }
 
-int DiskCollector::CalDiskUsage(const HostMonitorTimerEvent::CollectTime& collectTime,
-                                IODev& ioDev,
-                                DiskUsage& diskUsage) {
+int DiskCollector::CalDiskUsage(const CollectTime& collectTime, IODev& ioDev, DiskUsage& diskUsage) {
     SystemUptimeInformation uptimeInfo;
     if (!SystemInterface::GetInstance()->GetSystemUptimeInformation(collectTime.mMetricTime, uptimeInfo)) {
         return -1;
@@ -452,9 +448,7 @@ int DiskCollector::CalDiskUsage(const HostMonitorTimerEvent::CollectTime& collec
 
     return 0;
 }
-int DiskCollector::GetDiskUsage(const HostMonitorTimerEvent::CollectTime& collectTime,
-                                DiskUsage& diskUsage,
-                                std::string dirName) {
+int DiskCollector::GetDiskUsage(const CollectTime& collectTime, DiskUsage& diskUsage, std::string dirName) {
     std::shared_ptr<IODev> ioDev;
     DiskUsage deviceUsage{};
     int status = GetIOstat(collectTime, dirName, diskUsage, ioDev, deviceUsage);
@@ -477,7 +471,7 @@ int DiskCollector::GetDiskUsage(const HostMonitorTimerEvent::CollectTime& collec
 }
 
 // dirName可以是devName，也可以是dirName
-int DiskCollector::GetIOstat(const HostMonitorTimerEvent::CollectTime& collectTime,
+int DiskCollector::GetIOstat(const CollectTime& collectTime,
                              std::string& dirName,
                              DiskUsage& disk,
                              std::shared_ptr<IODev>& ioDev,
@@ -507,8 +501,7 @@ bool IsDev(const std::string& dirName) {
 static uint64_t cacheId(const struct stat& ioStat) {
     return S_ISBLK(ioStat.st_mode) ? ioStat.st_rdev : (ioStat.st_ino + ioStat.st_dev);
 }
-std::shared_ptr<IODev> DiskCollector::GetIODev(const HostMonitorTimerEvent::CollectTime& collectTime,
-                                               std::string& dirName) {
+std::shared_ptr<IODev> DiskCollector::GetIODev(const CollectTime& collectTime, std::string& dirName) {
     if (!StartWith(dirName, "/")) {
         dirName = "/dev/" + dirName;
     }
@@ -541,7 +534,7 @@ std::shared_ptr<IODev> DiskCollector::GetIODev(const HostMonitorTimerEvent::Coll
     return std::shared_ptr<IODev>{};
 }
 
-void DiskCollector::RefreshLocalDisk(const HostMonitorTimerEvent::CollectTime& collectTime) {
+void DiskCollector::RefreshLocalDisk(const CollectTime& collectTime) {
     FileSystemListInformation informations;
     if (SystemInterface::GetInstance()->GetFileSystemListInformation(collectTime.mMetricTime, informations)) {
         for (auto const& fileSystem : informations.fileSystemList) {
@@ -562,7 +555,7 @@ void DiskCollector::RefreshLocalDisk(const HostMonitorTimerEvent::CollectTime& c
     }
 }
 
-int DiskCollector::GetDeviceMountMap(const HostMonitorTimerEvent::CollectTime& collectTime,
+int DiskCollector::GetDeviceMountMap(const CollectTime& collectTime,
                                      std::map<std::string, DeviceMountInfo>& deviceMountMap) {
     if (collectTime.mScheduleTime < mDeviceMountMapExpireTime) {
         deviceMountMap = mDeviceMountMap;
@@ -601,8 +594,7 @@ int DiskCollector::GetDeviceMountMap(const HostMonitorTimerEvent::CollectTime& c
     return static_cast<int>(deviceMountMap.size());
 }
 
-int DiskCollector::GetFileSystemInfos(const HostMonitorTimerEvent::CollectTime& collectTime,
-                                      std::vector<FileSystemInfo>& fileSystemInfos) {
+int DiskCollector::GetFileSystemInfos(const CollectTime& collectTime, std::vector<FileSystemInfo>& fileSystemInfos) {
     FileSystemListInformation informations;
     if (!SystemInterface::GetInstance()->GetFileSystemListInformation(collectTime.mMetricTime, informations)) {
         return -1;

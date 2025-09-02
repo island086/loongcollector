@@ -16,43 +16,47 @@
 
 #pragma once
 
+#include <chrono>
+#include <memory>
 #include <string>
 
-#include "host_monitor/HostMonitorTimerEvent.h"
+#include "host_monitor/HostMonitorTypes.h"
 #include "models/PipelineEventGroup.h"
 
 namespace logtail {
+
+// Forward declarations
+class CollectContext;
 
 class BaseCollector {
 public:
     virtual ~BaseCollector() = default;
 
-    virtual bool Init(HostMonitorTimerEvent::CollectContext& collectContext) {
-        auto collectInterval = GetCollectInterval();
-        switch (collectContext.mCollectType) {
-            case HostMonitorCollectType::kSingleValue:
-                collectContext.mCountPerReport = 1;
-                collectContext.mCount = 0;
-                collectContext.mCollectInterval = collectContext.mReportInterval;
-                return true;
-            case HostMonitorCollectType::kMultiValue:
-                if (collectInterval.count() == 0) {
-                    return false;
-                }
-                collectContext.mCountPerReport = collectContext.mReportInterval.count() / collectInterval.count();
-                collectContext.mCount = 0;
-                collectContext.mCollectInterval = collectInterval;
-                return true;
-            default:
-                return false;
-        }
-    }
-    virtual bool Collect(HostMonitorTimerEvent::CollectContext& collectContext, PipelineEventGroup* group) = 0;
+    virtual bool Init(CollectContext& collectContext);
+    virtual bool Collect(CollectContext& collectContext, PipelineEventGroup* group) = 0;
     [[nodiscard]] virtual const std::string& Name() const = 0;
     [[nodiscard]] virtual const std::chrono::seconds GetCollectInterval() const = 0;
 
 protected:
     bool mValidState = true;
 };
+
+class CollectorInstance {
+public:
+    explicit CollectorInstance(std::unique_ptr<BaseCollector>&& collector) : mCollector(std::move(collector)) {}
+
+    bool Init(CollectContext& collectContext);
+
+    bool Collect(CollectContext& collectContext, PipelineEventGroup* group) {
+        return mCollector->Collect(collectContext, group);
+    }
+
+    std::chrono::seconds GetCollectInterval() const { return mCollector->GetCollectInterval(); }
+
+private:
+    std::chrono::steady_clock::time_point mStartTime;
+    std::unique_ptr<BaseCollector> mCollector;
+};
+
 
 } // namespace logtail

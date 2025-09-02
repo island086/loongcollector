@@ -20,6 +20,7 @@
 
 #include "HostMonitorTimerEvent.h"
 #include "host_monitor/Constants.h"
+#include "host_monitor/HostMonitorContext.h"
 #include "host_monitor/SystemInterface.h"
 #include "host_monitor/collector/BaseCollector.h"
 #include "host_monitor/collector/MetricCalculate.h"
@@ -171,36 +172,29 @@ public:
     DiskCollector() = default;
     ~DiskCollector() override = default;
 
-    bool Init(HostMonitorTimerEvent::CollectContext& collectContext) override;
-    bool Collect(HostMonitorTimerEvent::CollectContext& collectContext, PipelineEventGroup* group) override;
+    bool Init(CollectContext& collectContext) override;
+    bool Collect(CollectContext& collectContext, PipelineEventGroup* group) override;
     [[nodiscard]] const std::chrono::seconds GetCollectInterval() const override;
     static const std::string sName;
     const std::string& Name() const override { return sName; }
 
 private:
-    int GetDeviceMountMap(const HostMonitorTimerEvent::CollectTime& collectTime,
-                          std::map<std::string, DeviceMountInfo>& mountMap);
-    int GetDiskCollectStatMap(const HostMonitorTimerEvent::CollectTime& collectTime,
+    int GetDeviceMountMap(const CollectTime& collectTime, std::map<std::string, DeviceMountInfo>& mountMap);
+    int GetDiskCollectStatMap(const CollectTime& collectTime,
                               std::map<std::string, DiskCollectStat>& diskCollectStatMap);
-    int GetFileSystemInfos(const HostMonitorTimerEvent::CollectTime& collectTime,
-                           std::vector<FileSystemInfo>& fileSystemInfos);
-    int GetFileSystemStat(const HostMonitorTimerEvent::CollectTime& collectTime,
-                          const std::string& dirName,
-                          FileSystemUsage& fileSystemUsage);
+    int GetFileSystemInfos(const CollectTime& collectTime, std::vector<FileSystemInfo>& fileSystemInfos);
+    int GetFileSystemStat(const CollectTime& collectTime, const std::string& dirName, FileSystemUsage& fileSystemUsage);
     std::string GetDiskName(const std::string& dev);
-    int GetDiskStat(const HostMonitorTimerEvent::CollectTime& collectTime,
-                    dev_t rDev,
-                    DiskUsage& disk,
-                    DiskUsage& deviceUsage);
-    int CalDiskUsage(const HostMonitorTimerEvent::CollectTime& collectTime, IODev& ioDev, DiskUsage& diskUsage);
-    int GetDiskUsage(const HostMonitorTimerEvent::CollectTime& collectTime, DiskUsage& diskUsage, std::string dirName);
-    int GetIOstat(const HostMonitorTimerEvent::CollectTime& collectTime,
+    int GetDiskStat(const CollectTime& collectTime, dev_t rDev, DiskUsage& disk, DiskUsage& deviceUsage);
+    int CalDiskUsage(const CollectTime& collectTime, IODev& ioDev, DiskUsage& diskUsage);
+    int GetDiskUsage(const CollectTime& collectTime, DiskUsage& diskUsage, std::string dirName);
+    int GetIOstat(const CollectTime& collectTime,
                   std::string& dirName,
                   DiskUsage& disk,
                   std::shared_ptr<IODev>& ioDev,
                   DiskUsage& deviceUsage);
-    std::shared_ptr<IODev> GetIODev(const HostMonitorTimerEvent::CollectTime& collectTime, std::string& dirName);
-    void RefreshLocalDisk(const HostMonitorTimerEvent::CollectTime& collectTime);
+    std::shared_ptr<IODev> GetIODev(const CollectTime& collectTime, std::string& dirName);
+    void RefreshLocalDisk(const CollectTime& collectTime);
     void CalcDiskMetric(const DiskStat& current, const DiskStat& last, double interval, DiskMetric& diskMetric);
 
 private:

@@ -36,6 +36,7 @@
 #include "common/StringView.h"
 #include "constants/EntityConstants.h"
 #include "host_monitor/Constants.h"
+#include "host_monitor/HostMonitorContext.h"
 #include "host_monitor/SystemInterface.h"
 #include "logger/Logger.h"
 #include "models/PipelineEventGroup.h"
@@ -61,7 +62,7 @@ system_clock::time_point ProcessEntityCollector::TicksToUnixTime(int64_t startTi
     return system_clock::time_point{static_cast<milliseconds>(startTicks) + milliseconds{systemInfo.bootTime * 1000}};
 }
 
-bool ProcessEntityCollector::Collect(HostMonitorTimerEvent::CollectContext& collectContext, PipelineEventGroup* group) {
+bool ProcessEntityCollector::Collect(CollectContext& collectContext, PipelineEventGroup* group) {
     if (group == nullptr) {
         return false;
     }
@@ -131,7 +132,7 @@ bool ProcessEntityCollector::Collect(HostMonitorTimerEvent::CollectContext& coll
 
 time_t ProcessEntityCollector::GetSortedProcess(std::vector<ExtendedProcessStatPtr>& processStats,
                                                 size_t topN,
-                                                const HostMonitorTimerEvent::CollectTime& collectTime) {
+                                                const CollectTime& collectTime) {
     auto compare = [](const std::pair<ExtendedProcessStatPtr, double>& a,
                       const std::pair<ExtendedProcessStatPtr, double>& b) { return a.second < b.second; };
     std::priority_queue<std::pair<ExtendedProcessStatPtr, double>,
@@ -146,8 +147,8 @@ time_t ProcessEntityCollector::GetSortedProcess(std::vector<ExtendedProcessStatP
         LOG_ERROR(sLogger, ("failed to get process list information", "skip collect"));
         return 0;
     }
-    HostMonitorTimerEvent::CollectTime shiftCollectTime{collectTime.GetShiftSteadyTime(processListInfo.collectTime),
-                                                        processListInfo.collectTime};
+    CollectTime shiftCollectTime{collectTime.GetShiftSteadyTime(processListInfo.collectTime),
+                                 processListInfo.collectTime};
 
     for (const auto& pid : processListInfo.pids) {
         if (pid == 0) {
@@ -189,9 +190,8 @@ time_t ProcessEntityCollector::GetSortedProcess(std::vector<ExtendedProcessStatP
     return processListInfo.collectTime;
 }
 
-ExtendedProcessStatPtr ProcessEntityCollector::GetProcessStat(pid_t pid,
-                                                              bool& isFirstCollect,
-                                                              const HostMonitorTimerEvent::CollectTime& collectTime) {
+ExtendedProcessStatPtr
+ProcessEntityCollector::GetProcessStat(pid_t pid, bool& isFirstCollect, const CollectTime& collectTime) {
     // TODO: more accurate cache
     auto prev = mPrevProcessStat.find(pid);
     if (prev == mPrevProcessStat.end() || prev->second == nullptr

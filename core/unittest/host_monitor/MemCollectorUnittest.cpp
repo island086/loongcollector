@@ -15,7 +15,7 @@
 
 #include "MetricEvent.h"
 #include "host_monitor/Constants.h"
-#include "host_monitor/HostMonitorTimerEvent.h"
+#include "host_monitor/HostMonitorContext.h"
 #include "host_monitor/collector/MemCollector.h"
 #include "unittest/Unittest.h"
 
@@ -113,7 +113,13 @@ void MemCollectorUnittest::TestGetHostSystemMeminfoStat() const {
 void MemCollectorUnittest::TestCollect() const {
     auto collector = MemCollector();
     PipelineEventGroup group(make_shared<SourceBuffer>());
-    HostMonitorTimerEvent::CollectContext collectContext("test", MemCollector::sName, 0, 0, std::chrono::seconds(1));
+    auto memCollector = std::make_unique<MemCollector>();
+    CollectContext collectContext("test",
+                                  MemCollector::sName,
+                                  QueueKey{},
+                                  0,
+                                  std::chrono::seconds(1),
+                                  CollectorInstance(std::move(memCollector)));
     collectContext.mCountPerReport = 3;
 
     APSARA_TEST_TRUE(collector.Collect(collectContext, &group));

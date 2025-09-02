@@ -26,6 +26,7 @@
 
 #include "MetricValue.h"
 #include "common/StringTools.h"
+#include "host_monitor/HostMonitorContext.h"
 #include "logger/Logger.h"
 
 DEFINE_FLAG_INT32(basic_host_monitor_net_collect_interval, "basic host monitor net collect interval, seconds", 1);
@@ -34,7 +35,7 @@ namespace logtail {
 
 const std::string NetCollector::sName = "net";
 
-bool NetCollector::Init(HostMonitorTimerEvent::CollectContext& collectContext) {
+bool NetCollector::Init(CollectContext& collectContext) {
     if (!BaseCollector::Init(collectContext)) {
         return false;
     }
@@ -42,7 +43,7 @@ bool NetCollector::Init(HostMonitorTimerEvent::CollectContext& collectContext) {
     return true;
 }
 
-bool NetCollector::Collect(HostMonitorTimerEvent::CollectContext& collectContext, PipelineEventGroup* group) {
+bool NetCollector::Collect(CollectContext& collectContext, PipelineEventGroup* group) {
     if (group == nullptr) {
         return false;
     }

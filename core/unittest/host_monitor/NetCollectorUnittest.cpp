@@ -18,7 +18,7 @@
 
 #include "MetricEvent.h"
 #include "host_monitor/Constants.h"
-#include "host_monitor/HostMonitorTimerEvent.h"
+#include "host_monitor/HostMonitorContext.h"
 #include "host_monitor/LinuxSystemInterface.h"
 #include "host_monitor/collector/NetCollector.h"
 #include "unittest/Unittest.h"
@@ -101,7 +101,13 @@ void NetCollectorUnittest::TestCollect() const {
     auto hostname = LoongCollectorMonitor::GetInstance()->mHostname;
     NetCollector collector = NetCollector();
     PipelineEventGroup group(make_shared<SourceBuffer>());
-    HostMonitorTimerEvent::CollectContext collectconfig("test", NetCollector::sName, 0, 0, std::chrono::seconds(1));
+    auto netCollector = std::make_unique<NetCollector>();
+    CollectContext collectconfig("test",
+                                 NetCollector::sName,
+                                 QueueKey{},
+                                 0,
+                                 std::chrono::seconds(1),
+                                 CollectorInstance(std::move(netCollector)));
     collectconfig.mCountPerReport = 3;
 
     APSARA_TEST_TRUE(collector.Collect(collectconfig, &group));
@@ -181,7 +187,13 @@ void NetCollectorUnittest::TestIpv6FileNoExist() const {
     auto hostname = LoongCollectorMonitor::GetInstance()->mHostname;
     NetCollector collector = NetCollector();
     PipelineEventGroup group(make_shared<SourceBuffer>());
-    HostMonitorTimerEvent::CollectContext collectconfig("test", NetCollector::sName, 0, 0, std::chrono::seconds(1));
+    auto netCollector = std::make_unique<NetCollector>();
+    CollectContext collectconfig("test",
+                                 NetCollector::sName,
+                                 QueueKey{},
+                                 0,
+                                 std::chrono::seconds(1),
+                                 CollectorInstance(std::move(netCollector)));
     collectconfig.mCountPerReport = 3;
 
     APSARA_TEST_TRUE(collector.Collect(collectconfig, &group));

@@ -18,6 +18,7 @@
 #include "common/Flags.h"
 #include "common/ProcParser.h"
 #include "host_monitor/Constants.h"
+#include "host_monitor/HostMonitorContext.h"
 #include "host_monitor/collector/ProcessEntityCollector.h"
 #include "unittest/Unittest.h"
 
@@ -58,13 +59,10 @@ void ProcessEntityCollectorUnittest::TestGetSortProcessByCpu() const {
     PROCESS_DIR = "/proc";
     auto collector = ProcessEntityCollector();
     auto processes = vector<ExtendedProcessStatPtr>();
-    collector.GetSortedProcess(processes,
-                               3,
-                               HostMonitorTimerEvent::CollectTime{std::chrono::steady_clock::now(),
-                                                                  time(nullptr)}); // fist time will be ignored
-    std::this_thread::sleep_for(std::chrono::seconds{1});
     collector.GetSortedProcess(
-        processes, 3, HostMonitorTimerEvent::CollectTime{std::chrono::steady_clock::now(), time(nullptr)});
+        processes, 3, CollectTime{std::chrono::steady_clock::now(), time(nullptr)}); // fist time will be ignored
+    std::this_thread::sleep_for(std::chrono::seconds{1});
+    collector.GetSortedProcess(processes, 3, CollectTime{std::chrono::steady_clock::now(), time(nullptr)});
     APSARA_TEST_EQUAL_FATAL(3, processes.size());
     auto prev = processes[0];
     for (auto i = 1UL; i < processes.size(); i++) {
@@ -78,13 +76,10 @@ void ProcessEntityCollectorUnittest::TestGetSortProcessByCpuFail() const {
     PROCESS_DIR = "/not_found_dir";
     auto collector = ProcessEntityCollector();
     auto processes = vector<ExtendedProcessStatPtr>();
-    collector.GetSortedProcess(processes,
-                               3,
-                               HostMonitorTimerEvent::CollectTime{std::chrono::steady_clock::now(),
-                                                                  time(nullptr)}); // fist time will be ignored
-    std::this_thread::sleep_for(std::chrono::seconds{1});
     collector.GetSortedProcess(
-        processes, 3, HostMonitorTimerEvent::CollectTime{std::chrono::steady_clock::now(), time(nullptr)});
+        processes, 3, CollectTime{std::chrono::steady_clock::now(), time(nullptr)}); // fist time will be ignored
+    std::this_thread::sleep_for(std::chrono::seconds{1});
+    collector.GetSortedProcess(processes, 3, CollectTime{std::chrono::steady_clock::now(), time(nullptr)});
     APSARA_TEST_EQUAL_FATAL(0, processes.size());
 }
 
@@ -93,8 +88,8 @@ void ProcessEntityCollectorUnittest::TestGetProcessStat() const {
     auto collector = ProcessEntityCollector();
     auto pid = 1;
     bool isFirstCollect = true;
-    auto processStat = collector.GetProcessStat(
-        pid, isFirstCollect, HostMonitorTimerEvent::CollectTime{std::chrono::steady_clock::now(), time(nullptr)});
+    auto processStat
+        = collector.GetProcessStat(pid, isFirstCollect, CollectTime{std::chrono::steady_clock::now(), time(nullptr)});
     APSARA_TEST_TRUE(processStat != nullptr);
     APSARA_TEST_EQUAL_FATAL(1, processStat->stat.pid);
     APSARA_TEST_EQUAL_FATAL(0, processStat->stat.parentPid);
@@ -106,8 +101,8 @@ void ProcessEntityCollectorUnittest::TestGetProcessStat() const {
            "4194304 4238788 140727020025920 0 0 0 0 0 0 0 0 0 17 3 0 0 0 0 0 6336016 6337300 21442560 "
            "140727020027760 140727020027777 140727020027777 140727020027887 0";
     ofs.close();
-    auto processStat2 = collector.GetProcessStat(
-        pid, isFirstCollect, HostMonitorTimerEvent::CollectTime{std::chrono::steady_clock::now(), time(nullptr)});
+    auto processStat2
+        = collector.GetProcessStat(pid, isFirstCollect, CollectTime{std::chrono::steady_clock::now(), time(nullptr)});
     APSARA_TEST_TRUE_FATAL(processStat2 != nullptr);
     APSARA_TEST_EQUAL_FATAL(1, processStat2->stat.pid);
     APSARA_TEST_EQUAL_FATAL(0, processStat2->stat.parentPid);
@@ -115,8 +110,8 @@ void ProcessEntityCollectorUnittest::TestGetProcessStat() const {
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    auto processStat3 = collector.GetProcessStat(
-        pid, isFirstCollect, HostMonitorTimerEvent::CollectTime{std::chrono::steady_clock::now(), time(nullptr)});
+    auto processStat3
+        = collector.GetProcessStat(pid, isFirstCollect, CollectTime{std::chrono::steady_clock::now(), time(nullptr)});
     APSARA_TEST_TRUE_FATAL(processStat3 != nullptr);
     APSARA_TEST_EQUAL_FATAL(1, processStat3->stat.pid);
     APSARA_TEST_EQUAL_FATAL(0, processStat3->stat.parentPid);
@@ -128,8 +123,8 @@ void ProcessEntityCollectorUnittest::TestGetProcessStatFail() const {
     auto collector = ProcessEntityCollector();
     auto pid = 9999;
     bool isFirstCollect = false;
-    auto processStat = collector.GetProcessStat(
-        pid, isFirstCollect, HostMonitorTimerEvent::CollectTime{std::chrono::steady_clock::now(), time(nullptr)});
+    auto processStat
+        = collector.GetProcessStat(pid, isFirstCollect, CollectTime{std::chrono::steady_clock::now(), time(nullptr)});
     APSARA_TEST_TRUE(processStat == nullptr);
     APSARA_TEST_TRUE_FATAL(isFirstCollect);
 }

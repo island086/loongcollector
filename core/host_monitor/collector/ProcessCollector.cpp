@@ -81,7 +81,7 @@ static inline void GetProcessCpuSorted(std::vector<ProcessAllStat>& allPidStats)
 ProcessCollector::ProcessCollector() : mTopN(INT32_FLAG(host_monitor_process_report_top_N)) {
 }
 
-bool ProcessCollector::Init(HostMonitorTimerEvent::CollectContext& collectContext) {
+bool ProcessCollector::Init(CollectContext& collectContext) {
     if (!BaseCollector::Init(collectContext)) {
         return false;
     }
@@ -94,7 +94,7 @@ bool ProcessCollector::Init(HostMonitorTimerEvent::CollectContext& collectContex
     return true;
 }
 
-bool ProcessCollector::Collect(HostMonitorTimerEvent::CollectContext& collectContext, PipelineEventGroup* group) {
+bool ProcessCollector::Collect(CollectContext& collectContext, PipelineEventGroup* group) {
     if (group == nullptr) {
         return false;
     }
@@ -270,9 +270,7 @@ bool ProcessCollector::Collect(HostMonitorTimerEvent::CollectContext& collectCon
 
 
 // 获取某个pid的信息
-bool ProcessCollector::GetProcessAllStat(const HostMonitorTimerEvent::CollectTime& collectTime,
-                                         pid_t pid,
-                                         ProcessAllStat& processStat) {
+bool ProcessCollector::GetProcessAllStat(const CollectTime& collectTime, pid_t pid, ProcessAllStat& processStat) {
     // 获取这个pid的cpu信息
     processStat.pid = pid;
 
@@ -416,7 +414,7 @@ bool ProcessCollector::GetProcessState(time_t now, pid_t pid, ProcessStat& proce
 }
 
 // 获取每个Pid的CPU信息
-bool ProcessCollector::GetPidsCpu(const HostMonitorTimerEvent::CollectTime& collectTime,
+bool ProcessCollector::GetPidsCpu(const CollectTime& collectTime,
                                   const std::vector<pid_t>& pids,
                                   std::map<pid_t, uint64_t>& pidMap) {
     int readCount = 0;
@@ -445,7 +443,7 @@ bool ProcessCollector::GetProcessCpuInCache(pid_t pid, bool includeCTime) {
 }
 
 
-bool ProcessCollector::GetProcessCpuInformation(const HostMonitorTimerEvent::CollectTime& collectTime,
+bool ProcessCollector::GetProcessCpuInformation(const CollectTime& collectTime,
                                                 pid_t pid,
                                                 ProcessCpuInformation& information,
                                                 bool includeCTime) {

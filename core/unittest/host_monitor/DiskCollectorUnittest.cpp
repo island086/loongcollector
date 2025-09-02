@@ -18,7 +18,7 @@
 #include "MetricEvent.h"
 #include "common/FileSystemUtil.h"
 #include "host_monitor/Constants.h"
-#include "host_monitor/HostMonitorTimerEvent.h"
+#include "host_monitor/HostMonitorContext.h"
 #include "host_monitor/SystemInterface.h"
 #include "host_monitor/collector/DiskCollector.h"
 #include "unittest/Unittest.h"
@@ -57,9 +57,7 @@ void DiskCollectorUnittest::TestGetFileSystemInfos() const {
     bool hasVdb = false;
 
     APSARA_TEST_EQUAL_FATAL(
-        0,
-        collector.GetFileSystemInfos(
-            HostMonitorTimerEvent::CollectTime{std::chrono::steady_clock::now(), time(nullptr)}, fileSystemInfos));
+        0, collector.GetFileSystemInfos(CollectTime{std::chrono::steady_clock::now(), time(nullptr)}, fileSystemInfos));
     for (auto& fileSystem : fileSystemInfos) {
         if (fileSystem.type != "ext4") {
             continue;
@@ -156,7 +154,13 @@ void DiskCollectorUnittest::TestCollect() const {
     auto collector = DiskCollector();
 
     PipelineEventGroup group(make_shared<SourceBuffer>());
-    HostMonitorTimerEvent::CollectContext collectContext("test", DiskCollector::sName, 0, 0, std::chrono::seconds(1));
+    auto diskCollector = std::make_unique<DiskCollector>();
+    CollectContext collectContext("test",
+                                  DiskCollector::sName,
+                                  QueueKey{},
+                                  0,
+                                  std::chrono::seconds(1),
+                                  CollectorInstance(std::move(diskCollector)));
     collectContext.mCountPerReport = 4;
     collectContext.SetTime(std::chrono::steady_clock::now(), time(nullptr));
 

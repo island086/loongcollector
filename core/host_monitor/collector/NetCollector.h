@@ -44,8 +44,8 @@ public:
     NetCollector() = default;
     ~NetCollector() override = default;
 
-    bool Init(HostMonitorTimerEvent::CollectContext& collectContext) override;
-    bool Collect(HostMonitorTimerEvent::CollectContext& collectContext, PipelineEventGroup* group) override;
+    bool Init(CollectContext& collectContext) override;
+    bool Collect(CollectContext& collectContext, PipelineEventGroup* group) override;
     [[nodiscard]] const std::chrono::seconds GetCollectInterval() const override;
 
     static const std::string sName;

@@ -25,6 +25,7 @@
 
 #include "MetricValue.h"
 #include "common/StringTools.h"
+#include "host_monitor/HostMonitorContext.h"
 #include "host_monitor/SystemInterface.h"
 #include "logger/Logger.h"
 
@@ -35,7 +36,7 @@ namespace logtail {
 const std::string SystemCollector::sName = "system";
 const std::string kMetricLabelMode = "valueTag";
 
-bool SystemCollector::Collect(HostMonitorTimerEvent::CollectContext& collectContext, PipelineEventGroup* group) {
+bool SystemCollector::Collect(CollectContext& collectContext, PipelineEventGroup* group) {
     if (group == nullptr) {
         return false;
     }

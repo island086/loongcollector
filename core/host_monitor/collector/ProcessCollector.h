@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "common/ProcParser.h"
+#include "host_monitor/HostMonitorContext.h"
 #include "host_monitor/LinuxSystemInterface.h"
 #include "host_monitor/SystemInterface.h"
 #include "host_monitor/collector/BaseCollector.h"
@@ -32,8 +33,8 @@ public:
     ProcessCollector();
     ~ProcessCollector() override = default;
 
-    bool Init(HostMonitorTimerEvent::CollectContext& collectContext) override;
-    bool Collect(HostMonitorTimerEvent::CollectContext& collectContext, PipelineEventGroup* group) override;
+    bool Init(CollectContext& collectContext) override;
+    bool Collect(CollectContext& collectContext, PipelineEventGroup* group) override;
     [[nodiscard]] const std::chrono::seconds GetCollectInterval() const override;
 
     static const std::string sName;
@@ -46,12 +47,9 @@ public:
 
     bool ReadProcessStat(time_t now, pid_t pid, ProcessInformation& processInfo);
 
-    bool GetPidsCpu(const HostMonitorTimerEvent::CollectTime& collectTime,
-                    const std::vector<pid_t>& pids,
-                    std::map<pid_t, uint64_t>& pidMap);
+    bool GetPidsCpu(const CollectTime& collectTime, const std::vector<pid_t>& pids, std::map<pid_t, uint64_t>& pidMap);
 
-    bool
-    GetProcessAllStat(const HostMonitorTimerEvent::CollectTime& collectTime, pid_t pid, ProcessAllStat& processStat);
+    bool GetProcessAllStat(const CollectTime& collectTime, pid_t pid, ProcessAllStat& processStat);
 
     bool GetProcessMemory(time_t now, pid_t pid, ProcessMemoryInformation& processMemory);
 
@@ -68,7 +66,7 @@ public:
     std::string GetExecutablePath(time_t now, pid_t pid);
 
 protected:
-    bool GetProcessCpuInformation(const HostMonitorTimerEvent::CollectTime& collectTime,
+    bool GetProcessCpuInformation(const CollectTime& collectTime,
                                   pid_t pid,
                                   ProcessCpuInformation& information,
                                   bool includeCTime);

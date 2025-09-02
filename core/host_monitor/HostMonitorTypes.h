@@ -14,23 +14,14 @@
  * limitations under the License.
  */
 
-#include "host_monitor/HostMonitorTimerEvent.h"
-
-#include "AlarmManager.h"
-#include "host_monitor/HostMonitorInputRunner.h"
-#include "logger/Logger.h"
+#pragma once
 
 namespace logtail {
 
-bool HostMonitorTimerEvent::IsValid() const {
-    bool valid = HostMonitorInputRunner::GetInstance()->IsCollectTaskValid(
-        mCollectContext->mStartTime, mCollectContext->mConfigName, mCollectContext->mCollectorName);
-    return valid;
-}
-
-bool HostMonitorTimerEvent::Execute() {
-    HostMonitorInputRunner::GetInstance()->ScheduleOnce(mCollectContext);
-    return true;
-}
+enum class HostMonitorCollectType {
+    kUnknown = 0,
+    kSingleValue,
+    kMultiValue,
+};
 
 } // namespace logtail

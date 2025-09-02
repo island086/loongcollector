@@ -16,7 +16,7 @@
 
 #include "MetricEvent.h"
 #include "host_monitor/Constants.h"
-#include "host_monitor/HostMonitorTimerEvent.h"
+#include "host_monitor/HostMonitorContext.h"
 #include "host_monitor/collector/ProcessCollector.h"
 #include "unittest/Unittest.h"
 
@@ -126,15 +126,20 @@ void ProcessCollectorUnittest::TestGetHostPidStat() const {
     auto collector = ProcessCollector();
     pid_t pid = 12345;
     ProcessAllStat stat;
-    HostMonitorTimerEvent::CollectTime collectTime{std::chrono::steady_clock::now(), time(nullptr)};
+    CollectTime collectTime{std::chrono::steady_clock::now(), time(nullptr)};
     APSARA_TEST_TRUE(collector.GetProcessAllStat(collectTime, pid, stat));
 }
 
 void ProcessCollectorUnittest::TestCollect() const {
     auto collector = ProcessCollector();
     PipelineEventGroup group(make_shared<SourceBuffer>());
-    HostMonitorTimerEvent::CollectContext collectContext(
-        "test", ProcessCollector::sName, 0, 0, std::chrono::seconds(1));
+    auto processCollector = std::make_unique<ProcessCollector>();
+    CollectContext collectContext("test",
+                                  ProcessCollector::sName,
+                                  QueueKey{},
+                                  0,
+                                  std::chrono::seconds(1),
+                                  CollectorInstance(std::move(processCollector)));
     collector.Init(collectContext);
     collectContext.mCountPerReport = 3;
 

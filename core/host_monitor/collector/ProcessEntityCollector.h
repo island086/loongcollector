@@ -30,6 +30,7 @@
 #include "common/ProcParser.h"
 #include "common/StringView.h"
 #include "constants/EntityConstants.h"
+#include "host_monitor/HostMonitorContext.h"
 #include "host_monitor/collector/BaseCollector.h"
 
 using namespace std::chrono;
@@ -58,7 +59,7 @@ public:
     ProcessEntityCollector();
     ~ProcessEntityCollector() override = default;
 
-    bool Collect(HostMonitorTimerEvent::CollectContext& collectContext, PipelineEventGroup* group) override;
+    bool Collect(CollectContext& collectContext, PipelineEventGroup* group) override;
     [[nodiscard]] const std::chrono::seconds GetCollectInterval() const override { return std::chrono::seconds(0); }
 
     static const std::string sName;
@@ -66,11 +67,9 @@ public:
 
 private:
     system_clock::time_point TicksToUnixTime(int64_t startTicks);
-    time_t GetSortedProcess(std::vector<ExtendedProcessStatPtr>& processStats,
-                            size_t topN,
-                            const HostMonitorTimerEvent::CollectTime& collectTime);
-    ExtendedProcessStatPtr
-    GetProcessStat(pid_t pid, bool& isFirstCollect, const HostMonitorTimerEvent::CollectTime& collectTime);
+    time_t
+    GetSortedProcess(std::vector<ExtendedProcessStatPtr>& processStats, size_t topN, const CollectTime& collectTime);
+    ExtendedProcessStatPtr GetProcessStat(pid_t pid, bool& isFirstCollect, const CollectTime& collectTime);
 
     std::string GetProcessEntityID(StringView pid, StringView createTime, StringView hostEntityID);
     void FetchDomainInfo(std::string& domain,
