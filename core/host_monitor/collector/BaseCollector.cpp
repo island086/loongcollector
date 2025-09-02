@@ -37,6 +37,13 @@ bool BaseCollector::Init(CollectContext& collectContext) {
             if (collectInterval.count() == 0) {
                 return false;
             }
+            if (collectContext.mReportInterval.count() % collectInterval.count() != 0) {
+                LOG_ERROR(sLogger,
+                          ("host monitor", "report interval is not divisible by collect interval")(
+                              "report interval", collectContext.mReportInterval.count())("collect interval",
+                                                                                         collectInterval.count()));
+                return false;
+            }
             collectContext.mCountPerReport = collectContext.mReportInterval.count() / collectInterval.count();
             collectContext.mCount = 0;
             collectContext.mCollectInterval = collectInterval;
