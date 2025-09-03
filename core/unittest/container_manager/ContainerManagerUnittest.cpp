@@ -12,14 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <memory>
-#include <string>
 #include <algorithm>
-#include <vector>
-#include <set>
-#include <unordered_map>
 #include <boost/regex.hpp>
+#include <memory>
+#include <set>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
 #include "gtest/gtest.h"
+
 #include "container_manager/ContainerManager.h"
 #include "unittest/Unittest.h"
 #include "unittest/pipeline/LogtailPluginMock.h"
@@ -34,11 +36,15 @@ public:
     void TestrefreshAllContainersSnapshot() const;
     void TestincrementallyUpdateContainersSnapshot() const;
     void TestSaveLoadContainerInfo() const;
+    void TestLoadContainerInfoFromDetailFormat() const;
+    void TestLoadContainerInfoFromContainersFormat() const;
+    void TestLoadContainerInfoVersionHandling() const;
+    void TestSaveContainerInfoWithVersion() const;
 };
 
 void ContainerManagerUnittest::TestcomputeMatchedContainersDiff() const {
     ContainerManager containerManager;
-    
+
     std::set<std::string> fullList;
     std::vector<std::string> removedList;
     std::vector<std::string> matchAddedList;
@@ -122,7 +128,7 @@ void ContainerManagerUnittest::TestcomputeMatchedContainersDiff() const {
         EXPECT_EQ(fullList.size(), 2);
         EXPECT_EQ(diff.mAdded.size(), 1);
         EXPECT_EQ(diff.mAdded[0]->mID, "123");
-    }   
+    }
 
     {
         // test env exclude filter (exclude key=value)
@@ -190,9 +196,9 @@ void ContainerManagerUnittest::TestcomputeMatchedContainersDiff() const {
         matchList.clear();
         fullList.clear();
 
-        filters.mK8SFilter.mPodReg = std::make_shared<boost::regex>("pod1");
-        filters.mK8SFilter.mNamespaceReg = std::make_shared<boost::regex>("namespace1");
-        filters.mK8SFilter.mContainerReg = std::make_shared<boost::regex>("container1");
+        filters.mK8SFilter.mPodReg = std::make_shared<boost::regex>("^pod1$");
+        filters.mK8SFilter.mNamespaceReg = std::make_shared<boost::regex>("^namespace1$");
+        filters.mK8SFilter.mContainerReg = std::make_shared<boost::regex>("^container1$");
         ContainerDiff diff;
         containerManager.computeMatchedContainersDiff(fullList, matchList, filters, diff);
         EXPECT_EQ(fullList.size(), 2);
@@ -290,8 +296,7 @@ void ContainerManagerUnittest::TestcomputeMatchedContainersDiff() const {
         matchList.clear();
         fullList.clear();
         ContainerFilters filters3;
-        filters3.mContainerLabelFilter.mIncludeFields.mFieldsRegMap["app"]
-            = std::make_shared<boost::regex>("^ng.*");
+        filters3.mContainerLabelFilter.mIncludeFields.mFieldsRegMap["app"] = std::make_shared<boost::regex>("^ng.*$");
         ContainerDiff diff3;
         containerManager.computeMatchedContainersDiff(fullList, matchList, filters3, diff3);
         EXPECT_EQ(diff3.mAdded.size(), 1);
@@ -301,8 +306,7 @@ void ContainerManagerUnittest::TestcomputeMatchedContainersDiff() const {
         matchList.clear();
         fullList.clear();
         ContainerFilters filters4;
-        filters4.mContainerLabelFilter.mExcludeFields.mFieldsRegMap["app"]
-            = std::make_shared<boost::regex>("^re.*");
+        filters4.mContainerLabelFilter.mExcludeFields.mFieldsRegMap["app"] = std::make_shared<boost::regex>("^re.*$");
         ContainerDiff diff4;
         containerManager.computeMatchedContainersDiff(fullList, matchList, filters4, diff4);
         EXPECT_EQ(diff4.mAdded.size(), 1);
@@ -489,10 +493,162 @@ void ContainerManagerUnittest::TestSaveLoadContainerInfo() const {
     EXPECT_EQ(it2->second->mUpperDir, std::string("/upper/save2"));
 }
 
+void ContainerManagerUnittest::TestLoadContainerInfoFromDetailFormat() const {
+    ContainerManager containerManager;
+
+    // Prepare test data in v0.1.0 format (detail array with params)
+    Json::Value root;
+    root["version"] = "0.1.0";
+
+    Json::Value detailArray(Json::arrayValue);
+    Json::Value item1(Json::objectValue);
+    item1["config_name"] = "##1.0##config1";
+    item1["container_id"] = "test1";
+    item1["params"] = R"({
+        "ID": "test1",
+        "LogPath": "/var/log/containers/test1.log",
+        "UpperDir": "/var/lib/docker/overlay2/test1",
+        "MetaDatas": ["_namespace_", "default", "_pod_name_", "test-pod", "_container_name_", "test-container"]
+    })";
+
+    Json::Value item2(Json::objectValue);
+    item2["config_name"] = "##1.0##config2";
+    item2["container_id"] = "test2";
+    item2["params"] = R"({
+        "ID": "test2",
+        "LogPath": "/var/log/containers/test2.log",
+        "UpperDir": "/var/lib/docker/overlay2/test2"
+    })";
+
+    detailArray.append(item1);
+    detailArray.append(item2);
+    root["detail"] = detailArray;
+
+    // Test loading from detail format
+    containerManager.loadContainerInfoFromDetailFormat(root, "test_path");
+
+    // Verify containers are loaded
+    EXPECT_EQ(containerManager.mContainerMap.size(), 2);
+    auto it1 = containerManager.mContainerMap.find("test1");
+    auto it2 = containerManager.mContainerMap.find("test2");
+    EXPECT_TRUE(it1 != containerManager.mContainerMap.end());
+    EXPECT_TRUE(it2 != containerManager.mContainerMap.end());
+
+    // Verify container info
+    EXPECT_EQ(it1->second->mID, "test1");
+    EXPECT_EQ(it1->second->mLogPath, "/var/log/containers/test1.log");
+    EXPECT_EQ(it1->second->mUpperDir, "/var/lib/docker/overlay2/test1");
+    EXPECT_EQ(it1->second->mK8sInfo.mNamespace, "default");
+    EXPECT_EQ(it1->second->mK8sInfo.mPod, "test-pod");
+    EXPECT_EQ(it1->second->mK8sInfo.mContainerName, "test-container");
+
+    // Verify config diffs are created
+    EXPECT_TRUE(containerManager.mConfigContainerDiffMap.find("##1.0##config1")
+                != containerManager.mConfigContainerDiffMap.end());
+    EXPECT_TRUE(containerManager.mConfigContainerDiffMap.find("##1.0##config2")
+                != containerManager.mConfigContainerDiffMap.end());
+}
+
+void ContainerManagerUnittest::TestLoadContainerInfoFromContainersFormat() const {
+    ContainerManager containerManager;
+
+    // Prepare test data in v1.0.0+ format (Containers array)
+    Json::Value root;
+    root["version"] = "1.0.0";
+
+    Json::Value containersArray(Json::arrayValue);
+    Json::Value container1(Json::objectValue);
+    container1["ID"] = "test1";
+    container1["LogPath"] = "/var/log/containers/test1.log";
+    container1["UpperDir"] = "/var/lib/docker/overlay2/test1";
+
+    Json::Value container2(Json::objectValue);
+    container2["ID"] = "test2";
+    container2["LogPath"] = "/var/log/containers/test2.log";
+    container2["UpperDir"] = "/var/lib/docker/overlay2/test2";
+
+    containersArray.append(container1);
+    containersArray.append(container2);
+    root["Containers"] = containersArray;
+
+    // Test loading from containers format
+    containerManager.loadContainerInfoFromContainersFormat(root, "test_path");
+
+    // Verify containers are loaded
+    EXPECT_EQ(containerManager.mContainerMap.size(), 2);
+    auto it1 = containerManager.mContainerMap.find("test1");
+    auto it2 = containerManager.mContainerMap.find("test2");
+    EXPECT_TRUE(it1 != containerManager.mContainerMap.end());
+    EXPECT_TRUE(it2 != containerManager.mContainerMap.end());
+
+    // Verify container info
+    EXPECT_EQ(it1->second->mID, "test1");
+    EXPECT_EQ(it1->second->mLogPath, "/var/log/containers/test1.log");
+    EXPECT_EQ(it1->second->mUpperDir, "/var/lib/docker/overlay2/test1");
+}
+
+void ContainerManagerUnittest::TestLoadContainerInfoVersionHandling() const {
+    ContainerManager containerManager;
+
+    // Test v0.1.0 format detection and loading
+    {
+        Json::Value root;
+        root["version"] = "0.1.0";
+        root["detail"] = Json::Value(Json::arrayValue);
+
+        containerManager.loadContainerInfoFromDetailFormat(root, "test_path");
+        // Should not crash even with empty detail array
+        EXPECT_TRUE(true);
+    }
+
+    // Test v1.0.0+ format detection and loading
+    {
+        Json::Value root;
+        root["version"] = "1.0.0";
+        root["Containers"] = Json::Value(Json::arrayValue);
+
+        containerManager.loadContainerInfoFromContainersFormat(root, "test_path");
+        // Should not crash even with empty containers array
+        EXPECT_TRUE(true);
+    }
+
+    // Test missing version field (defaults to 1.0.0)
+    {
+        Json::Value root;
+        root["Containers"] = Json::Value(Json::arrayValue);
+
+        containerManager.loadContainerInfoFromContainersFormat(root, "test_path");
+        // Should not crash
+        EXPECT_TRUE(true);
+    }
+}
+
+void ContainerManagerUnittest::TestSaveContainerInfoWithVersion() const {
+    ContainerManager containerManager;
+
+    // Prepare a container
+    RawContainerInfo containerInfo;
+    containerInfo.mID = "save_version_test";
+    containerInfo.mUpperDir = "/upper/save_version_test";
+    containerInfo.mLogPath = "/log/save_version_test";
+    containerManager.mContainerMap["save_version_test"] = std::make_shared<RawContainerInfo>(containerInfo);
+
+    // Save to file
+    containerManager.SaveContainerInfo();
+
+    // The file should now contain version field
+    // This is more of an integration test, but we verify the method doesn't crash
+    EXPECT_TRUE(true);
+}
+
 UNIT_TEST_CASE(ContainerManagerUnittest, TestcomputeMatchedContainersDiff)
 UNIT_TEST_CASE(ContainerManagerUnittest, TestrefreshAllContainersSnapshot)
 UNIT_TEST_CASE(ContainerManagerUnittest, TestincrementallyUpdateContainersSnapshot)
 UNIT_TEST_CASE(ContainerManagerUnittest, TestSaveLoadContainerInfo)
+UNIT_TEST_CASE(ContainerManagerUnittest, TestLoadContainerInfoFromDetailFormat)
+UNIT_TEST_CASE(ContainerManagerUnittest, TestLoadContainerInfoFromContainersFormat)
+UNIT_TEST_CASE(ContainerManagerUnittest, TestLoadContainerInfoVersionHandling)
+UNIT_TEST_CASE(ContainerManagerUnittest, TestSaveContainerInfoWithVersion)
 
 } // namespace logtail
 

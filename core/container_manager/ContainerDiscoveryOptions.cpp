@@ -149,8 +149,15 @@ bool SplitRegexFromMap(const std::unordered_map<std::string, std::string>& input
     std::unordered_map<std::string, std::shared_ptr<boost::regex>> regexResult;
 
     for (const auto& input : inputs) {
-        // 检查前缀
-        if (!input.second.empty() || input.second[0] == '^') {
+        // 检查是否是有效的正则表达式：必须以^开头并且以$结尾
+        bool isValidRegex = false;
+        if (!input.second.empty() &&
+            input.second[0] == '^' &&
+            input.second.back() == '$') {
+            isValidRegex = true;
+        }
+
+        if (isValidRegex) {
             try {
                 // 编译正则表达式
                 auto reg = std::make_shared<boost::regex>(input.second);

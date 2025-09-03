@@ -525,6 +525,8 @@ void ContainerManager::LoadContainerInfo() {
         // New container_state.json style format with Containers array
         loadContainerInfoFromContainersFormat(root, configPath);
     }
+    // Apply container diffs immediately after loading
+    ApplyContainerDiffs();
 }
 
 void ContainerManager::loadContainerInfoFromDetailFormat(const Json::Value& root, const std::string& configPath) {
@@ -640,9 +642,6 @@ void ContainerManager::loadContainerInfoFromDetailFormat(const Json::Value& root
         }
 
         LOG_INFO(sLogger, ("load container state from docker_path_config.json (v0.1.0)", configPath));
-
-        // Apply container diffs immediately after loading
-        ApplyContainerDiffs();
     }
 }
 
@@ -683,9 +682,6 @@ void ContainerManager::loadContainerInfoFromContainersFormat(const Json::Value& 
                     mConfigContainerDiffMap[configName] = std::make_shared<ContainerDiff>(diff);
                 }
             }
-
-            // Apply container diffs immediately after loading
-            ApplyContainerDiffs();
         }
 
         LOG_INFO(sLogger, ("load container state from docker_path_config.json (v1.0.0+)", configPath));

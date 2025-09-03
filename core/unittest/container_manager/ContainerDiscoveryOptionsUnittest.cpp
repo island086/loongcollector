@@ -29,6 +29,12 @@ namespace logtail {
 class ContainerDiscoveryOptionsUnittest : public testing::Test {
 public:
     void OnSuccessfulInit() const;
+    void TestInitWithInvalidConfig() const;
+    void TestContainerFilterConfigInit() const;
+    void TestRegexCompilation() const;
+    void TestEmptyConfig() const;
+    void TestComplexFilterCombination() const;
+    void TestExternalTagMapping() const;
 
 private:
     const string pluginType = "test";
@@ -142,7 +148,288 @@ void ContainerDiscoveryOptionsUnittest::OnSuccessfulInit() const {
     APSARA_TEST_FALSE(config->mCollectingContainersMeta);
 }
 
+void ContainerDiscoveryOptionsUnittest::TestInitWithInvalidConfig() const {
+    unique_ptr<ContainerDiscoveryOptions> config;
+    Json::Value configJson;
+    string configStr, errorMsg;
+
+    // Test with null config
+    config.reset(new ContainerDiscoveryOptions());
+    APSARA_TEST_TRUE(config->Init(Json::Value(), ctx, pluginType));
+    // Should initialize with defaults
+    APSARA_TEST_FALSE(config->mCollectingContainersMeta);
+
+    // Test with invalid JSON structure
+    configStr = R"(
+        {
+            "ContainerFilters": "invalid_string_instead_of_object",
+            "ExternalK8sLabelTag": [],
+            "ExternalEnvTag": 123,
+            "CollectingContainersMeta": "not_a_boolean"
+        }
+    )";
+    APSARA_TEST_TRUE(ParseJsonTable(configStr, configJson, errorMsg));
+    config.reset(new ContainerDiscoveryOptions());
+    APSARA_TEST_TRUE(config->Init(configJson, ctx, pluginType));
+    // Should handle invalid types gracefully with defaults
+    APSARA_TEST_EQUAL(0U, config->mExternalK8sLabelTag.size());
+    APSARA_TEST_EQUAL(0U, config->mExternalEnvTag.size());
+    APSARA_TEST_FALSE(config->mCollectingContainersMeta);
+
+    // Test with invalid regex patterns
+    configStr = R"(
+        {
+            "ContainerFilters": {
+                "K8sNamespaceRegex": "[invalid regex",
+                "IncludeK8sLabel": {
+                    "key": "[another invalid regex"
+                }
+            }
+        }
+    )";
+    APSARA_TEST_TRUE(ParseJsonTable(configStr, configJson, errorMsg));
+    config.reset(new ContainerDiscoveryOptions());
+    APSARA_TEST_TRUE(config->Init(configJson, ctx, pluginType));
+    // Should handle regex compilation errors gracefully
+    APSARA_TEST_TRUE(true); // Just verify it doesn't crash
+}
+
+void ContainerDiscoveryOptionsUnittest::TestContainerFilterConfigInit() const {
+    ContainerFilterConfig filterConfig;
+    Json::Value configJson;
+    string configStr, errorMsg;
+
+    // Test empty config
+    APSARA_TEST_TRUE(filterConfig.Init(Json::Value(), ctx, pluginType));
+    APSARA_TEST_EQUAL("", filterConfig.mK8sNamespaceRegex);
+    APSARA_TEST_EQUAL(0U, filterConfig.mIncludeK8sLabel.size());
+
+    // Test valid config
+    configStr = R"(
+        {
+            "K8sNamespaceRegex": "default",
+            "K8sPodRegex": "app-.*",
+            "K8sContainerRegex": "nginx",
+            "IncludeK8sLabel": {
+                "app": "web",
+                "version": "^v[0-9]+$"
+            },
+            "ExcludeK8sLabel": {
+                "env": "test"
+            },
+            "IncludeEnv": {
+                "SERVICE_NAME": "nginx"
+            },
+            "ExcludeEnv": {
+                "DEBUG": "true"
+            },
+            "IncludeContainerLabel": {
+                "maintainer": "team"
+            },
+            "ExcludeContainerLabel": {
+                "deprecated": "true"
+            }
+        }
+    )";
+    APSARA_TEST_TRUE(ParseJsonTable(configStr, configJson, errorMsg));
+    APSARA_TEST_TRUE(filterConfig.Init(configJson, ctx, pluginType));
+    APSARA_TEST_EQUAL("default", filterConfig.mK8sNamespaceRegex);
+    APSARA_TEST_EQUAL("app-.*", filterConfig.mK8sPodRegex);
+    APSARA_TEST_EQUAL("nginx", filterConfig.mK8sContainerRegex);
+    APSARA_TEST_EQUAL(2U, filterConfig.mIncludeK8sLabel.size());
+    APSARA_TEST_EQUAL(1U, filterConfig.mExcludeK8sLabel.size());
+    APSARA_TEST_EQUAL(1U, filterConfig.mIncludeEnv.size());
+    APSARA_TEST_EQUAL(1U, filterConfig.mExcludeEnv.size());
+    APSARA_TEST_EQUAL(1U, filterConfig.mIncludeContainerLabel.size());
+    APSARA_TEST_EQUAL(1U, filterConfig.mExcludeContainerLabel.size());
+
+    // Test GetContainerFilters
+    ContainerFilters filters;
+    APSARA_TEST_TRUE(filterConfig.GetContainerFilters(filters));
+    APSARA_TEST_TRUE(filters.mK8SFilter.mNamespaceReg != nullptr);
+    APSARA_TEST_TRUE(filters.mK8SFilter.mPodReg != nullptr);
+    APSARA_TEST_TRUE(filters.mK8SFilter.mContainerReg != nullptr);
+}
+
+void ContainerDiscoveryOptionsUnittest::TestRegexCompilation() const {
+    ContainerFilterConfig filterConfig;
+    Json::Value configJson;
+    string configStr, errorMsg;
+
+    // Test regex patterns - only strings starting with ^ and ending with $ are treated as regex
+    configStr = R"(
+        {
+            "IncludeK8sLabel": {
+                "valid_regex": "^web.*$",
+                "invalid_regex1": "^web.*",
+                "invalid_regex2": "web.*$",
+                "static_match": "exact-match"
+            },
+            "ExcludeEnv": {
+                "temp": ".*temp.*"
+            }
+        }
+    )";
+    APSARA_TEST_TRUE(ParseJsonTable(configStr, configJson, errorMsg));
+    APSARA_TEST_TRUE(filterConfig.Init(configJson, ctx, pluginType));
+
+    ContainerFilters filters;
+    APSARA_TEST_TRUE(filterConfig.GetContainerFilters(filters));
+
+    // Verify regex compilation - only valid regex (^...$) should be in mFieldsRegMap
+    APSARA_TEST_TRUE(filters.mK8SFilter.mK8sLabelFilter.mIncludeFields.mFieldsRegMap.count("valid_regex"));
+    APSARA_TEST_TRUE(filters.mK8SFilter.mK8sLabelFilter.mIncludeFields.mFieldsMap.count("invalid_regex1"));
+    APSARA_TEST_TRUE(filters.mK8SFilter.mK8sLabelFilter.mIncludeFields.mFieldsMap.count("invalid_regex2"));
+    APSARA_TEST_TRUE(filters.mK8SFilter.mK8sLabelFilter.mIncludeFields.mFieldsMap.count("static_match"));
+    APSARA_TEST_TRUE(filters.mEnvFilter.mExcludeFields.mFieldsMap.count("temp"));
+}
+
+void ContainerDiscoveryOptionsUnittest::TestEmptyConfig() const {
+    unique_ptr<ContainerDiscoveryOptions> config;
+    Json::Value configJson;
+    string configStr, errorMsg;
+
+    // Test completely empty config
+    config.reset(new ContainerDiscoveryOptions());
+    APSARA_TEST_TRUE(config->Init(Json::Value(), ctx, pluginType));
+    APSARA_TEST_EQUAL(0U, config->mExternalK8sLabelTag.size());
+    APSARA_TEST_EQUAL(0U, config->mExternalEnvTag.size());
+    APSARA_TEST_FALSE(config->mCollectingContainersMeta);
+
+    // Test config with empty objects
+    configStr = R"(
+        {
+            "ContainerFilters": {},
+            "ExternalK8sLabelTag": {},
+            "ExternalEnvTag": {},
+            "CollectingContainersMeta": false
+        }
+    )";
+    APSARA_TEST_TRUE(ParseJsonTable(configStr, configJson, errorMsg));
+    config.reset(new ContainerDiscoveryOptions());
+    APSARA_TEST_TRUE(config->Init(configJson, ctx, pluginType));
+    APSARA_TEST_EQUAL(0U, config->mExternalK8sLabelTag.size());
+    APSARA_TEST_EQUAL(0U, config->mExternalEnvTag.size());
+    APSARA_TEST_FALSE(config->mCollectingContainersMeta);
+}
+
+void ContainerDiscoveryOptionsUnittest::TestComplexFilterCombination() const {
+    unique_ptr<ContainerDiscoveryOptions> config;
+    Json::Value configJson;
+    string configStr, errorMsg;
+
+    // Test complex combination of all filter types
+    configStr = R"(
+        {
+            "ContainerFilters": {
+                "K8sNamespaceRegex": "production|staging",
+                "K8sPodRegex": "web-.*|api-.*",
+                "K8sContainerRegex": "nginx|tomcat",
+                "IncludeK8sLabel": {
+                    "app": "web",
+                    "tier": "^(frontend|backend)$",
+                    "version": "v2"
+                },
+                "ExcludeK8sLabel": {
+                    "env": "test",
+                    "deprecated": "true"
+                },
+                "IncludeEnv": {
+                    "SERVICE_TYPE": "http",
+                    "PORT": "^[0-9]+$"
+                },
+                "ExcludeEnv": {
+                    "DEBUG": ".*",
+                    "TEMP": ".*"
+                },
+                "IncludeContainerLabel": {
+                    "maintainer": "platform-team",
+                    "build": ".*"
+                },
+                "ExcludeContainerLabel": {
+                    "experimental": ".*"
+                }
+            },
+            "CollectingContainersMeta": true
+        }
+    )";
+    APSARA_TEST_TRUE(ParseJsonTable(configStr, configJson, errorMsg));
+    config.reset(new ContainerDiscoveryOptions());
+    APSARA_TEST_TRUE(config->Init(configJson, ctx, pluginType));
+    APSARA_TEST_TRUE(config->mCollectingContainersMeta);
+
+    // Verify all filters are properly initialized
+    APSARA_TEST_EQUAL(3U, config->mContainerFilterConfig.mIncludeK8sLabel.size());
+    APSARA_TEST_EQUAL(2U, config->mContainerFilterConfig.mExcludeK8sLabel.size());
+    APSARA_TEST_EQUAL(2U, config->mContainerFilterConfig.mIncludeEnv.size());
+    APSARA_TEST_EQUAL(2U, config->mContainerFilterConfig.mExcludeEnv.size());
+    APSARA_TEST_EQUAL(2U, config->mContainerFilterConfig.mIncludeContainerLabel.size());
+    APSARA_TEST_EQUAL(1U, config->mContainerFilterConfig.mExcludeContainerLabel.size());
+
+    // Verify regex compilation
+    ContainerFilters filters;
+    APSARA_TEST_TRUE(config->mContainerFilterConfig.GetContainerFilters(filters));
+    APSARA_TEST_TRUE(filters.mK8SFilter.mNamespaceReg != nullptr);
+    APSARA_TEST_TRUE(filters.mK8SFilter.mPodReg != nullptr);
+    APSARA_TEST_TRUE(filters.mK8SFilter.mContainerReg != nullptr);
+}
+
+void ContainerDiscoveryOptionsUnittest::TestExternalTagMapping() const {
+    unique_ptr<ContainerDiscoveryOptions> config;
+    Json::Value configJson;
+    string configStr, errorMsg;
+
+    // Test external tag mapping
+    configStr = R"(
+        {
+            "ExternalK8sLabelTag": {
+                "app.kubernetes.io/name": "app_name",
+                "app.kubernetes.io/version": "app_version"
+            },
+            "ExternalEnvTag": {
+                "SERVICE_NAME": "service",
+                "SERVICE_PORT": "port"
+            },
+            "CollectingContainersMeta": true
+        }
+    )";
+    APSARA_TEST_TRUE(ParseJsonTable(configStr, configJson, errorMsg));
+    config.reset(new ContainerDiscoveryOptions());
+    APSARA_TEST_TRUE(config->Init(configJson, ctx, pluginType));
+
+    APSARA_TEST_EQUAL(2U, config->mExternalK8sLabelTag.size());
+    APSARA_TEST_EQUAL(2U, config->mExternalEnvTag.size());
+    APSARA_TEST_TRUE(config->mCollectingContainersMeta);
+
+    // Verify tag mappings
+    APSARA_TEST_EQUAL("app_name", config->mExternalK8sLabelTag["app.kubernetes.io/name"]);
+    APSARA_TEST_EQUAL("app_version", config->mExternalK8sLabelTag["app.kubernetes.io/version"]);
+    APSARA_TEST_EQUAL("service", config->mExternalEnvTag["SERVICE_NAME"]);
+    APSARA_TEST_EQUAL("port", config->mExternalEnvTag["SERVICE_PORT"]);
+
+    // Test invalid external tag mapping
+    configStr = R"(
+        {
+            "ExternalK8sLabelTag": "invalid_string",
+            "ExternalEnvTag": 123
+        }
+    )";
+    APSARA_TEST_TRUE(ParseJsonTable(configStr, configJson, errorMsg));
+    config.reset(new ContainerDiscoveryOptions());
+    APSARA_TEST_TRUE(config->Init(configJson, ctx, pluginType));
+
+    // Should handle invalid types gracefully
+    APSARA_TEST_EQUAL(0U, config->mExternalK8sLabelTag.size());
+    APSARA_TEST_EQUAL(0U, config->mExternalEnvTag.size());
+}
+
 UNIT_TEST_CASE(ContainerDiscoveryOptionsUnittest, OnSuccessfulInit)
+UNIT_TEST_CASE(ContainerDiscoveryOptionsUnittest, TestInitWithInvalidConfig)
+UNIT_TEST_CASE(ContainerDiscoveryOptionsUnittest, TestContainerFilterConfigInit)
+UNIT_TEST_CASE(ContainerDiscoveryOptionsUnittest, TestRegexCompilation)
+UNIT_TEST_CASE(ContainerDiscoveryOptionsUnittest, TestEmptyConfig)
+UNIT_TEST_CASE(ContainerDiscoveryOptionsUnittest, TestComplexFilterCombination)
+UNIT_TEST_CASE(ContainerDiscoveryOptionsUnittest, TestExternalTagMapping)
 
 } // namespace logtail
 
