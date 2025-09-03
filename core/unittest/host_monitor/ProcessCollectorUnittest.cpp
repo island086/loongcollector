@@ -17,6 +17,7 @@
 #include "MetricEvent.h"
 #include "host_monitor/Constants.h"
 #include "host_monitor/HostMonitorContext.h"
+#include "host_monitor/HostMonitorTypes.h"
 #include "host_monitor/collector/ProcessCollector.h"
 #include "unittest/Unittest.h"
 
@@ -138,9 +139,11 @@ void ProcessCollectorUnittest::TestCollect() const {
                                   ProcessCollector::sName,
                                   QueueKey{},
                                   0,
-                                  std::chrono::seconds(1),
+                                  std::chrono::seconds(5),
                                   CollectorInstance(std::move(processCollector)));
-    collector.Init(collectContext);
+    // Set the collect type to kMultiValue for ProcessCollector
+    collectContext.mCollectType = HostMonitorCollectType::kMultiValue;
+    APSARA_TEST_TRUE(collector.Init(collectContext));
     collectContext.mCountPerReport = 3;
 
     std::this_thread::sleep_for(std::chrono::seconds(1));

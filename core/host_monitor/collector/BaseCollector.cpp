@@ -16,6 +16,8 @@
 
 #include "host_monitor/collector/BaseCollector.h"
 
+#include <iostream>
+
 #include "host_monitor/HostMonitorContext.h"
 #include "logger/Logger.h"
 
@@ -36,6 +38,13 @@ bool BaseCollector::Init(CollectContext& collectContext) {
         case HostMonitorCollectType::kMultiValue: {
             auto collectInterval = GetCollectInterval();
             if (collectInterval.count() == 0) {
+                return false;
+            }
+            if (collectInterval.count() > collectContext.mReportInterval.count()) {
+                LOG_ERROR(sLogger,
+                          ("host monitor", "collect interval is greater than report interval")(
+                              "collect interval", collectInterval.count())("report interval",
+                                                                           collectContext.mReportInterval.count()));
                 return false;
             }
             if (collectContext.mReportInterval.count() % collectInterval.count() != 0) {
