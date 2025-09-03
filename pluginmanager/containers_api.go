@@ -19,7 +19,7 @@ type DockerFileUpdateCmd struct {
 	Mounts   []Mount // 容器挂载路径
 	UpperDir string  // 容器默认路径
 	LogPath  string  // 标准输出路径
-	MetaData map[string]string
+	MetaDatas map[string]string
 }
 
 type DockerFileUpdateCmdAll struct {

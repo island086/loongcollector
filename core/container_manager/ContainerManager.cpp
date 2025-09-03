@@ -380,7 +380,7 @@ static Json::Value SerializeRawContainerInfo(const std::shared_ptr<RawContainerI
     for (const auto& p : info->mCustomMetadatas) {
         metadata[p.first] = Json::Value(p.second);
     }
-    v["MetaData"] = metadata;
+    v["MetaDatas"] = metadata;
 
     // k8s
     Json::Value k8s(Json::objectValue);
@@ -446,8 +446,8 @@ static std::shared_ptr<RawContainerInfo> DeserializeRawContainerInfo(const Json:
     }
 
     // metadata
-    if (v.isMember("MetaData") && v["MetaData"].isObject()) {
-        const auto& metadata = v["MetaData"];
+    if (v.isMember("MetaDatas") && v["MetaDatas"].isObject()) {
+        const auto& metadata = v["MetaDatas"];
         auto names = metadata.getMemberNames();
         for (const auto& key : names) {
             if (metadata[key].isString()) {
