@@ -77,8 +77,8 @@ bool NetDevParser::ParseDeviceStats(StringView& deviceName, std::vector<uint64_t
     stats.reserve(16); // 网络设备通常有16个统计字段
 
     for (auto iter = parser.begin(); iter != parser.end(); ++iter) {
-        auto value = parser.ParseNumber<uint64_t>(*iter, 0);
-        stats.push_back(value);
+        uint64_t value;
+        stats.push_back(StringTo(*iter, value) ? value : 0);
     }
 
     return !stats.empty();

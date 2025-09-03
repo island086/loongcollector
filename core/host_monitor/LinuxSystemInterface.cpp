@@ -823,7 +823,8 @@ bool LinuxSystemInterface::GetDiskStateInformationOnce(DiskStateInformation& dis
                 auto iter = parser.begin();
                 auto end = parser.end();
                 for (size_t i = 0; i < static_cast<size_t>(EnumDiskState::count) && iter != end; ++i, ++iter) {
-                    diskValues.push_back(parser.ParseNumber<uint64_t>(*iter, 0));
+                    uint64_t value;
+                    diskValues.push_back(StringTo(*iter, value) ? value : 0);
                 }
 
                 if (diskValues.size() < static_cast<size_t>(EnumDiskState::count)) {
@@ -982,7 +983,8 @@ bool LinuxSystemInterface::GetProcessStatmOnce(pid_t pid, ProcessMemoryInformati
         auto iter = parser.begin();
         auto end = parser.end();
         for (size_t i = 0; i < 3 && iter != end; ++i, ++iter) {
-            memValues.push_back(parser.ParseNumber<uint64_t>(*iter, 0));
+            uint64_t value;
+            memValues.push_back(StringTo(*iter, value) ? value : 0);
         }
 
         if (memValues.size() >= 3) {

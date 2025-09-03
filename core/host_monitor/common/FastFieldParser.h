@@ -58,7 +58,8 @@ public:
         if (field.empty()) {
             return defaultValue;
         }
-        return ParseNumber<T>(field, defaultValue);
+        T result;
+        return StringTo(field, result) ? result : defaultValue;
     }
 
     /**
@@ -86,26 +87,6 @@ public:
      * @brief 获取字段总数（需要完整遍历）
      */
     size_t GetFieldCount();
-
-    /**
-     * @brief 高性能数值解析 - 公开接口
-     */
-    template <typename T>
-    T ParseNumber(StringView field, T defaultValue) {
-        if constexpr (std::is_integral_v<T>) {
-            T result;
-            auto [ptr, ec] = std::from_chars(field.data(), field.data() + field.size(), result);
-            return (ec == std::errc{}) ? result : defaultValue;
-        } else if constexpr (std::is_floating_point_v<T>) {
-            // 对于浮点数，直接使用strtod以保证兼容性
-            // std::from_chars对浮点数支持在一些编译器中不完整
-            std::string temp(field.data(), field.size());
-            char* end;
-            double value = std::strtod(temp.c_str(), &end);
-            return (end != temp.c_str()) ? static_cast<T>(value) : defaultValue;
-        }
-        return defaultValue;
-    }
 
 private:
     StringView mLine;
@@ -164,16 +145,24 @@ public:
             ++iter;
 
         // 按顺序读取10个统计字段
-        user = (iter != end) ? mParser.ParseNumber<T>(*iter++, T{}) : T{};
-        nice = (iter != end) ? mParser.ParseNumber<T>(*iter++, T{}) : T{};
-        system = (iter != end) ? mParser.ParseNumber<T>(*iter++, T{}) : T{};
-        idle = (iter != end) ? mParser.ParseNumber<T>(*iter++, T{}) : T{};
-        iowait = (iter != end) ? mParser.ParseNumber<T>(*iter++, T{}) : T{};
-        irq = (iter != end) ? mParser.ParseNumber<T>(*iter++, T{}) : T{};
-        softirq = (iter != end) ? mParser.ParseNumber<T>(*iter++, T{}) : T{};
-        steal = (iter != end) ? mParser.ParseNumber<T>(*iter++, T{}) : T{};
-        guest = (iter != end) ? mParser.ParseNumber<T>(*iter++, T{}) : T{};
-        guestNice = (iter != end) ? mParser.ParseNumber<T>(*iter++, T{}) : T{};
+        auto parseField = [](StringViewSplitterIterator& it, StringViewSplitterIterator& end) -> T {
+            if (it != end) {
+                T result;
+                return StringTo(*it++, result) ? result : T{};
+            }
+            return T{};
+        };
+
+        user = parseField(iter, end);
+        nice = parseField(iter, end);
+        system = parseField(iter, end);
+        idle = parseField(iter, end);
+        iowait = parseField(iter, end);
+        irq = parseField(iter, end);
+        softirq = parseField(iter, end);
+        steal = parseField(iter, end);
+        guest = parseField(iter, end);
+        guestNice = parseField(iter, end);
     }
 
 private:
