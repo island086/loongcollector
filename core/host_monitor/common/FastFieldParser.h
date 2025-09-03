@@ -17,11 +17,13 @@
 #pragma once
 
 #include <charconv>
+#include <cstdint>
 
 #include <string>
-#include <string_view>
 #include <type_traits>
 #include <vector>
+
+#include "common/StringTools.h"
 
 namespace logtail {
 
@@ -30,28 +32,18 @@ namespace logtail {
  */
 class FastFieldParser {
 public:
-    explicit FastFieldParser(std::string_view line, char delimiter = ' ')
-        : mLine(line), mDelimiter(delimiter), mCurrentPos(0) {}
-
-    /**
-     * @brief 跳转到指定字段索引
-     * @param index 字段索引（从0开始）
-     * @return 是否成功跳转
-     */
-    bool SeekToField(size_t index);
-
-    /**
-     * @brief 获取当前字段的 string_view
-     * @return 字段的 string_view，失败返回空
-     */
-    std::string_view GetCurrentField();
+    explicit FastFieldParser(StringView line, char delimiter = ' ')
+        : mLine(line),
+          mDelimiterChar(delimiter),
+          mDelimiter(StringView(&mDelimiterChar, 1)),
+          mSplitter(mLine, mDelimiter, true) {}
 
     /**
      * @brief 直接获取指定索引的字段
      * @param index 字段索引
-     * @return 字段的 string_view，失败返回空
+     * @return 字段的 StringView，失败返回空
      */
-    std::string_view GetField(size_t index);
+    StringView GetField(size_t index);
 
     /**
      * @brief 直接解析指定字段为数值类型
@@ -70,12 +62,16 @@ public:
     }
 
     /**
-     * @brief 批量获取多个字段
-     * @param startIndex 起始字段索引
-     * @param count 字段数量
-     * @return 字段 string_view 的 vector
+     * @brief 获取字段迭代器开始位置
+     * @return StringViewSplitterIterator
      */
-    std::vector<std::string_view> GetFields(size_t startIndex, size_t count);
+    StringViewSplitterIterator begin() const { return mSplitter.begin(); }
+
+    /**
+     * @brief 获取字段迭代器结束位置
+     * @return StringViewSplitterIterator
+     */
+    StringViewSplitterIterator end() const { return mSplitter.end(); }
 
     /**
      * @brief 检查字段是否以指定前缀开始
@@ -83,12 +79,8 @@ public:
      * @param prefix 前缀
      * @return 是否匹配
      */
-    bool FieldStartsWith(size_t index, std::string_view prefix);
+    bool FieldStartsWith(size_t index, StringView prefix);
 
-    /**
-     * @brief 重置解析器到行首
-     */
-    void Reset() { mCurrentPos = 0; }
 
     /**
      * @brief 获取字段总数（需要完整遍历）
@@ -96,46 +88,10 @@ public:
     size_t GetFieldCount();
 
     /**
-     * @brief 批量解析数值字段 - 通用优化方法
-     * @tparam T 目标数值类型
-     * @param startIndex 起始字段索引
-     * @param count 字段数量
-     * @param defaultValue 解析失败时的默认值
-     * @return 解析结果的 vector
+     * @brief 高性能数值解析 - 公开接口
      */
     template <typename T>
-    std::vector<T> GetFieldsAs(size_t startIndex, size_t count, T defaultValue = T{}) {
-        auto fields = GetFields(startIndex, count);
-        std::vector<T> result;
-        result.reserve(fields.size());
-
-        for (const auto& field : fields) {
-            result.push_back(ParseNumber<T>(field, defaultValue));
-        }
-
-        return result;
-    }
-
-private:
-    std::string_view mLine;
-    char mDelimiter;
-    size_t mCurrentPos;
-
-    /**
-     * @brief 跳过连续的分隔符
-     */
-    void SkipDelimiters();
-
-    /**
-     * @brief 查找下一个分隔符位置
-     */
-    size_t FindNextDelimiter(size_t start);
-
-    /**
-     * @brief 高性能数值解析
-     */
-    template <typename T>
-    T ParseNumber(std::string_view field, T defaultValue) {
+    T ParseNumber(StringView field, T defaultValue) {
         if constexpr (std::is_integral_v<T>) {
             T result;
             auto [ptr, ec] = std::from_chars(field.data(), field.data() + field.size(), result);
@@ -143,13 +99,19 @@ private:
         } else if constexpr (std::is_floating_point_v<T>) {
             // 对于浮点数，直接使用strtod以保证兼容性
             // std::from_chars对浮点数支持在一些编译器中不完整
-            std::string temp(field);
+            std::string temp(field.data(), field.size());
             char* end;
             double value = std::strtod(temp.c_str(), &end);
             return (end != temp.c_str()) ? static_cast<T>(value) : defaultValue;
         }
         return defaultValue;
     }
+
+private:
+    StringView mLine;
+    char mDelimiterChar;
+    StringView mDelimiter;
+    StringViewSplitter mSplitter;
 };
 
 /**
@@ -157,7 +119,7 @@ private:
  */
 class CpuStatParser {
 public:
-    explicit CpuStatParser(std::string_view line) : mParser(line) {}
+    explicit CpuStatParser(StringView line) : mParser(line) {}
 
     /**
      * @brief 检查是否为 CPU 行
@@ -193,34 +155,25 @@ public:
     template <typename T>
     void
     GetCpuStats(T& user, T& nice, T& system, T& idle, T& iowait, T& irq, T& softirq, T& steal, T& guest, T& guestNice) {
-        // 一次性获取并解析字段1-10，只遍历一次字符串 - 大幅性能提升
-        auto stats = mParser.GetFieldsAs<T>(1, 10, T{});
+        // 使用迭代器遍历字段1-10
+        auto iter = mParser.begin();
+        auto end = mParser.end();
 
-        // 安全检查：确保有足够的字段
-        if (stats.size() >= 10) {
-            user = stats[0];
-            nice = stats[1];
-            system = stats[2];
-            idle = stats[3];
-            iowait = stats[4];
-            irq = stats[5];
-            softirq = stats[6];
-            steal = stats[7];
-            guest = stats[8];
-            guestNice = stats[9];
-        } else {
-            // 降级到逐个解析，保证兼容性
-            user = mParser.GetFieldAs<T>(1, T{});
-            nice = mParser.GetFieldAs<T>(2, T{});
-            system = mParser.GetFieldAs<T>(3, T{});
-            idle = mParser.GetFieldAs<T>(4, T{});
-            iowait = mParser.GetFieldAs<T>(5, T{});
-            irq = mParser.GetFieldAs<T>(6, T{});
-            softirq = mParser.GetFieldAs<T>(7, T{});
-            steal = mParser.GetFieldAs<T>(8, T{});
-            guest = mParser.GetFieldAs<T>(9, T{});
-            guestNice = mParser.GetFieldAs<T>(10, T{});
-        }
+        // 跳过字段0 (cpu名称)
+        if (iter != end)
+            ++iter;
+
+        // 按顺序读取10个统计字段
+        user = (iter != end) ? mParser.ParseNumber<T>(*iter++, T{}) : T{};
+        nice = (iter != end) ? mParser.ParseNumber<T>(*iter++, T{}) : T{};
+        system = (iter != end) ? mParser.ParseNumber<T>(*iter++, T{}) : T{};
+        idle = (iter != end) ? mParser.ParseNumber<T>(*iter++, T{}) : T{};
+        iowait = (iter != end) ? mParser.ParseNumber<T>(*iter++, T{}) : T{};
+        irq = (iter != end) ? mParser.ParseNumber<T>(*iter++, T{}) : T{};
+        softirq = (iter != end) ? mParser.ParseNumber<T>(*iter++, T{}) : T{};
+        steal = (iter != end) ? mParser.ParseNumber<T>(*iter++, T{}) : T{};
+        guest = (iter != end) ? mParser.ParseNumber<T>(*iter++, T{}) : T{};
+        guestNice = (iter != end) ? mParser.ParseNumber<T>(*iter++, T{}) : T{};
     }
 
 private:
@@ -232,15 +185,15 @@ private:
  */
 class NetDevParser {
 public:
-    explicit NetDevParser(std::string_view line) : mLine(line) {}
+    explicit NetDevParser(StringView line) : mLine(line) {}
 
     /**
      * @brief 解析设备名和统计数据
      */
-    bool ParseDeviceStats(std::string_view& deviceName, std::vector<uint64_t>& stats);
+    bool ParseDeviceStats(StringView& deviceName, std::vector<uint64_t>& stats);
 
 private:
-    std::string_view mLine;
+    StringView mLine;
 };
 
 /**
@@ -250,38 +203,21 @@ namespace FastParse {
 /**
  * @brief 快速获取指定字段
  */
-std::string_view GetField(std::string_view line, size_t index, char delimiter = ' ');
+StringView GetField(StringView line, size_t index, char delimiter = ' ');
 
 /**
  * @brief 快速解析数值字段
  */
 template <typename T>
-T GetFieldAs(std::string_view line, size_t index, T defaultValue = T{}, char delimiter = ' ') {
+T GetFieldAs(StringView line, size_t index, T defaultValue = T{}, char delimiter = ' ') {
     FastFieldParser parser(line, delimiter);
     return parser.GetFieldAs<T>(index, defaultValue);
 }
 
 /**
- * @brief 批量解析数值字段 - 性能优化版本
- * @tparam T 目标数值类型
- * @param line 输入行
- * @param startIndex 起始字段索引
- * @param count 字段数量
- * @param defaultValue 解析失败时的默认值
- * @param delimiter 分隔符
- * @return 解析结果的 vector
- */
-template <typename T>
-std::vector<T>
-GetFieldsAs(std::string_view line, size_t startIndex, size_t count, T defaultValue = T{}, char delimiter = ' ') {
-    FastFieldParser parser(line, delimiter);
-    return parser.GetFieldsAs<T>(startIndex, count, defaultValue);
-}
-
-/**
  * @brief 检查字段前缀
  */
-bool FieldStartsWith(std::string_view line, size_t index, std::string_view prefix, char delimiter = ' ');
+bool FieldStartsWith(StringView line, size_t index, StringView prefix, char delimiter = ' ');
 } // namespace FastParse
 
 } // namespace logtail

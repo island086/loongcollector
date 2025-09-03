@@ -61,8 +61,14 @@ void FastFieldParserUnittest::TestBasicFieldAccess() {
     APSARA_TEST_TRUE(parser.FieldStartsWith(1, "field1"));
     APSARA_TEST_FALSE(parser.FieldStartsWith(0, "wrong"));
 
-    // 测试批量获取字段
-    auto fields = parser.GetFields(1, 3);
+    // 测试批量获取字段（使用迭代器）
+    vector<StringView> fields;
+    auto iter = parser.begin();
+    auto end = parser.end();
+    ++iter; // 跳过第一个字段
+    for (size_t i = 0; i < 3 && iter != end; ++i, ++iter) {
+        fields.push_back(*iter);
+    }
     APSARA_TEST_EQUAL(3U, fields.size());
     APSARA_TEST_EQUAL("field1", string(fields[0]));
     APSARA_TEST_EQUAL("field2", string(fields[1]));
@@ -132,7 +138,7 @@ void FastFieldParserUnittest::TestNetDevParser() {
     string netDevLine = "  eth0: 1234567890 123456 0 0 0 0 0 0 987654321 98765 0 0 0 0 0 0";
 
     NetDevParser parser(netDevLine);
-    string_view deviceName;
+    StringView deviceName;
     vector<uint64_t> stats;
 
     APSARA_TEST_TRUE(parser.ParseDeviceStats(deviceName, stats));
@@ -149,7 +155,7 @@ void FastFieldParserUnittest::TestNetDevParser() {
     string invalidLine = "invalid line without colon";
     NetDevParser invalidParser(invalidLine);
 
-    string_view invalidName;
+    StringView invalidName;
     vector<uint64_t> invalidStats;
     APSARA_TEST_FALSE(invalidParser.ParseDeviceStats(invalidName, invalidStats));
 }

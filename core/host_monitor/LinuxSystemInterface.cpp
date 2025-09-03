@@ -817,7 +817,14 @@ bool LinuxSystemInterface::GetDiskStateInformationOnce(DiskStateInformation& dis
                 continue;
             }
             try {
-                auto diskValues = parser.GetFieldsAs<uint64_t>(0, static_cast<size_t>(EnumDiskState::count), 0);
+                std::vector<uint64_t> diskValues;
+                diskValues.reserve(static_cast<size_t>(EnumDiskState::count));
+
+                auto iter = parser.begin();
+                auto end = parser.end();
+                for (size_t i = 0; i < static_cast<size_t>(EnumDiskState::count) && iter != end; ++i, ++iter) {
+                    diskValues.push_back(parser.ParseNumber<uint64_t>(*iter, 0));
+                }
 
                 if (diskValues.size() < static_cast<size_t>(EnumDiskState::count)) {
                     continue; // 字段数量不足，跳过此行
@@ -885,7 +892,7 @@ bool LinuxSystemInterface::GetNetInterfaceInformationOnce(NetInterfaceInformatio
         const auto& line = netDevLines[i];
 
         NetDevParser parser(line);
-        std::string_view deviceNameView;
+        StringView deviceNameView;
         std::vector<uint64_t> stats;
 
         if (!parser.ParseDeviceStats(deviceNameView, stats)) {
@@ -968,7 +975,15 @@ bool LinuxSystemInterface::GetProcessStatmOnce(pid_t pid, ProcessMemoryInformati
     if (!processStatmString.empty()) {
         const std::string& input = processStatmString.front();
 
-        auto memValues = FastParse::GetFieldsAs<uint64_t>(input, 0, 3, 0);
+        FastFieldParser parser(input);
+        std::vector<uint64_t> memValues;
+        memValues.reserve(3);
+
+        auto iter = parser.begin();
+        auto end = parser.end();
+        for (size_t i = 0; i < 3 && iter != end; ++i, ++iter) {
+            memValues.push_back(parser.ParseNumber<uint64_t>(*iter, 0));
+        }
 
         if (memValues.size() >= 3) {
             processMemory.size = memValues[0] * PAGE_SIZE;
