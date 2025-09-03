@@ -17,6 +17,7 @@
 #include "host_monitor/collector/BaseCollector.h"
 
 #include "host_monitor/HostMonitorContext.h"
+#include "logger/Logger.h"
 
 namespace logtail {
 
