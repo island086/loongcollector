@@ -36,7 +36,7 @@ namespace logtail {
 
 const std::string MemCollector::sName = "memory";
 
-bool MemCollector::Collect(CollectContext& collectContext, PipelineEventGroup* group) {
+bool MemCollector::Collect(HostMonitorContext& collectContext, PipelineEventGroup* group) {
     if (group == nullptr) {
         return false;
     }

@@ -38,14 +38,14 @@ struct CollectTime {
     }
 };
 
-struct CollectContext {
+struct HostMonitorContext {
     // Disable copy constructor and copy assignment
-    CollectContext(const CollectContext&) = delete;
-    CollectContext& operator=(const CollectContext&) = delete;
+    HostMonitorContext(const HostMonitorContext&) = delete;
+    HostMonitorContext& operator=(const HostMonitorContext&) = delete;
 
     // Enable move constructor and move assignment
-    CollectContext(CollectContext&&) = default;
-    CollectContext& operator=(CollectContext&&) = default;
+    HostMonitorContext(HostMonitorContext&&) = default;
+    HostMonitorContext& operator=(HostMonitorContext&&) = default;
     std::string mConfigName;
     std::string mCollectorName;
     QueueKey mProcessQueueKey;
@@ -62,12 +62,12 @@ struct CollectContext {
     std::chrono::steady_clock::time_point mStartTime;
     HostMonitorCollectType mCollectType = HostMonitorCollectType::kUnknown;
 
-    CollectContext(const std::string& configName,
-                   const std::string& collectorName,
-                   QueueKey processQueueKey,
-                   size_t inputIndex,
-                   const std::chrono::seconds& reportInterval,
-                   CollectorInstance&& collector)
+    HostMonitorContext(const std::string& configName,
+                       const std::string& collectorName,
+                       QueueKey processQueueKey,
+                       size_t inputIndex,
+                       const std::chrono::seconds& reportInterval,
+                       CollectorInstance&& collector)
         : mConfigName(configName),
           mCollectorName(collectorName),
           mProcessQueueKey(processQueueKey),
@@ -89,6 +89,6 @@ struct CollectContext {
     bool CheckClockRolling();
 };
 
-using CollectContextPtr = std::shared_ptr<CollectContext>;
+using CollectContextPtr = std::shared_ptr<HostMonitorContext>;
 
 } // namespace logtail

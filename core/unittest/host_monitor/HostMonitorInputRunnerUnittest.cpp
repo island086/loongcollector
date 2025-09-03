@@ -83,12 +83,12 @@ void HostMonitorInputRunnerUnittest::TestScheduleOnce() const {
     ProcessQueueManager::GetInstance()->CreateOrUpdateBoundedQueue(queueKey, 0, ctx);
 
     auto mockCollector = std::make_unique<MockCollector>();
-    auto collectContext = std::make_shared<CollectContext>(configName,
-                                                           MockCollector::sName,
-                                                           queueKey,
-                                                           0,
-                                                           std::chrono::seconds(60),
-                                                           CollectorInstance(std::move(mockCollector)));
+    auto collectContext = std::make_shared<HostMonitorContext>(configName,
+                                                               MockCollector::sName,
+                                                               queueKey,
+                                                               0,
+                                                               std::chrono::seconds(60),
+                                                               CollectorInstance(std::move(mockCollector)));
     collectContext->SetTime(std::chrono::steady_clock::now(), 0);
     // 第一次ScheduleOnce不会立即添加TimerEvent，而是添加任务到线程池
     runner->ScheduleOnce(collectContext);
@@ -97,12 +97,12 @@ void HostMonitorInputRunnerUnittest::TestScheduleOnce() const {
     APSARA_TEST_EQUAL_FATAL(1, Timer::GetInstance()->mQueue.size());
 
     auto mockCollector2 = std::make_unique<MockCollector>();
-    auto collectContext2 = std::make_shared<CollectContext>(configName,
-                                                            MockCollector::sName,
-                                                            queueKey,
-                                                            0,
-                                                            std::chrono::seconds(60),
-                                                            CollectorInstance(std::move(mockCollector2)));
+    auto collectContext2 = std::make_shared<HostMonitorContext>(configName,
+                                                                MockCollector::sName,
+                                                                queueKey,
+                                                                0,
+                                                                std::chrono::seconds(60),
+                                                                CollectorInstance(std::move(mockCollector2)));
     collectContext2->mStartTime
         = HostMonitorInputRunner::GetInstance()->mRegisteredStartTime.at({configName, MockCollector::sName});
     runner->ScheduleOnce(collectContext2);
@@ -121,7 +121,7 @@ void HostMonitorInputRunnerUnittest::TestScheduleOnce() const {
 void HostMonitorInputRunnerUnittest::TestReset() const {
     { // case 1: between two points
         auto mockCollector = std::make_unique<MockCollector>();
-        CollectContext collectContext(
+        HostMonitorContext collectContext(
             "test", "test", QueueKey{}, 0, std::chrono::seconds(15), CollectorInstance(std::move(mockCollector)));
         auto steadyClockNow = std::chrono::steady_clock::now();
         collectContext.SetTime(steadyClockNow, 1);
@@ -134,7 +134,7 @@ void HostMonitorInputRunnerUnittest::TestReset() const {
     }
     { // case 2: at the edge of the collect interval
         auto mockCollector = std::make_unique<MockCollector>();
-        CollectContext collectContext(
+        HostMonitorContext collectContext(
             "test", "test", QueueKey{}, 0, std::chrono::seconds(15), CollectorInstance(std::move(mockCollector)));
         auto steadyClockNow = std::chrono::steady_clock::now();
         collectContext.SetTime(steadyClockNow, 5);
@@ -147,7 +147,7 @@ void HostMonitorInputRunnerUnittest::TestReset() const {
     }
     { // case 3: at the edge of the report interval
         auto mockCollector = std::make_unique<MockCollector>();
-        CollectContext collectContext(
+        HostMonitorContext collectContext(
             "test", "test", QueueKey{}, 0, std::chrono::seconds(15), CollectorInstance(std::move(mockCollector)));
         auto steadyClockNow = std::chrono::steady_clock::now();
         collectContext.SetTime(steadyClockNow, 15);

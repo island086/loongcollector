@@ -36,7 +36,7 @@ namespace logtail {
 const std::string SystemCollector::sName = "system";
 const std::string kMetricLabelMode = "valueTag";
 
-bool SystemCollector::Collect(CollectContext& collectContext, PipelineEventGroup* group) {
+bool SystemCollector::Collect(HostMonitorContext& collectContext, PipelineEventGroup* group) {
     if (group == nullptr) {
         return false;
     }

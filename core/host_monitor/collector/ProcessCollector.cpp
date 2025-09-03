@@ -81,7 +81,7 @@ static inline void GetProcessCpuSorted(std::vector<ProcessAllStat>& allPidStats)
 ProcessCollector::ProcessCollector() : mTopN(INT32_FLAG(host_monitor_process_report_top_N)) {
 }
 
-bool ProcessCollector::Init(CollectContext& collectContext) {
+bool ProcessCollector::Init(HostMonitorContext& collectContext) {
     if (!BaseCollector::Init(collectContext)) {
         return false;
     }
@@ -94,7 +94,7 @@ bool ProcessCollector::Init(CollectContext& collectContext) {
     return true;
 }
 
-bool ProcessCollector::Collect(CollectContext& collectContext, PipelineEventGroup* group) {
+bool ProcessCollector::Collect(HostMonitorContext& collectContext, PipelineEventGroup* group) {
     if (group == nullptr) {
         return false;
     }

@@ -50,12 +50,12 @@ void CPUCollectorUnittest::TestCollectNormal() const {
     auto collector = CPUCollector();
     PipelineEventGroup group(make_shared<SourceBuffer>());
     auto cpuCollector = std::make_unique<CPUCollector>();
-    CollectContext collectContext("test",
-                                  CPUCollector::sName,
-                                  QueueKey{},
-                                  0,
-                                  std::chrono::seconds(1),
-                                  CollectorInstance(std::move(cpuCollector)));
+    HostMonitorContext collectContext("test",
+                                      CPUCollector::sName,
+                                      QueueKey{},
+                                      0,
+                                      std::chrono::seconds(1),
+                                      CollectorInstance(std::move(cpuCollector)));
     collectContext.Reset();
     collectContext.mCountPerReport = 3;
 
@@ -134,12 +134,12 @@ void CPUCollectorUnittest::TestCpuValue0() const {
     auto collector = CPUCollector();
     PipelineEventGroup group(make_shared<SourceBuffer>());
     auto cpuCollector = std::make_unique<CPUCollector>();
-    CollectContext collectContext("test",
-                                  CPUCollector::sName,
-                                  QueueKey{},
-                                  0,
-                                  std::chrono::seconds(1),
-                                  CollectorInstance(std::move(cpuCollector)));
+    HostMonitorContext collectContext("test",
+                                      CPUCollector::sName,
+                                      QueueKey{},
+                                      0,
+                                      std::chrono::seconds(1),
+                                      CollectorInstance(std::move(cpuCollector)));
 
     ofstream ofs("./stat", std::ios::trunc);
     ofs << "cpu  0 0 0 0 0 0 0 0 0 0 \n";
@@ -154,12 +154,12 @@ void CPUCollectorUnittest::TestjiffiesDeltaNegative() const {
     auto collector = CPUCollector();
     PipelineEventGroup group(make_shared<SourceBuffer>());
     auto cpuCollector = std::make_unique<CPUCollector>();
-    CollectContext collectContext("test",
-                                  CPUCollector::sName,
-                                  QueueKey{},
-                                  0,
-                                  std::chrono::seconds(1),
-                                  CollectorInstance(std::move(cpuCollector)));
+    HostMonitorContext collectContext("test",
+                                      CPUCollector::sName,
+                                      QueueKey{},
+                                      0,
+                                      std::chrono::seconds(1),
+                                      CollectorInstance(std::move(cpuCollector)));
 
     ofstream ofs("./stat", std::ios::trunc);
     ofs << "cpu  2 2 2 2 2 2 2 2 2 2 \n";
@@ -183,12 +183,12 @@ void CPUCollectorUnittest::TestCpuCount0() const {
     auto collector = CPUCollector();
     PipelineEventGroup group(make_shared<SourceBuffer>());
     auto cpuCollector = std::make_unique<CPUCollector>();
-    CollectContext collectContext("test",
-                                  CPUCollector::sName,
-                                  QueueKey{},
-                                  0,
-                                  std::chrono::seconds(1),
-                                  CollectorInstance(std::move(cpuCollector)));
+    HostMonitorContext collectContext("test",
+                                      CPUCollector::sName,
+                                      QueueKey{},
+                                      0,
+                                      std::chrono::seconds(1),
+                                      CollectorInstance(std::move(cpuCollector)));
     collectContext.Reset();
 
     ofstream ofs2("./stat", std::ios::trunc);
@@ -205,12 +205,12 @@ void CPUCollectorUnittest::TestGetCPUInformation() const {
     auto collector = CPUCollector();
     PipelineEventGroup group(make_shared<SourceBuffer>());
     auto cpuCollector = std::make_unique<CPUCollector>();
-    CollectContext collectContext("test",
-                                  CPUCollector::sName,
-                                  QueueKey{},
-                                  0,
-                                  std::chrono::seconds(1),
-                                  CollectorInstance(std::move(cpuCollector)));
+    HostMonitorContext collectContext("test",
+                                      CPUCollector::sName,
+                                      QueueKey{},
+                                      0,
+                                      std::chrono::seconds(1),
+                                      CollectorInstance(std::move(cpuCollector)));
     collectContext.Reset();
 
     ofstream ofs3("./stat", std::ios::trunc);
@@ -226,12 +226,12 @@ void CPUCollectorUnittest::TestGetCPUInformationInterface() const {
     auto collector = CPUCollector();
     PipelineEventGroup group(make_shared<SourceBuffer>());
     auto cpuCollector = std::make_unique<CPUCollector>();
-    CollectContext collectContext("test",
-                                  CPUCollector::sName,
-                                  QueueKey{},
-                                  0,
-                                  std::chrono::seconds(1),
-                                  CollectorInstance(std::move(cpuCollector)));
+    HostMonitorContext collectContext("test",
+                                      CPUCollector::sName,
+                                      QueueKey{},
+                                      0,
+                                      std::chrono::seconds(1),
+                                      CollectorInstance(std::move(cpuCollector)));
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
     collectContext.mCollectTime.mMetricTime += 1;
@@ -249,12 +249,12 @@ void CPUCollectorUnittest::TestGroupNull() const {
     PipelineEventGroup* group = nullptr;
 
     auto cpuCollector = std::make_unique<CPUCollector>();
-    CollectContext collectContext("test",
-                                  CPUCollector::sName,
-                                  QueueKey{},
-                                  0,
-                                  std::chrono::seconds(1),
-                                  CollectorInstance(std::move(cpuCollector)));
+    HostMonitorContext collectContext("test",
+                                      CPUCollector::sName,
+                                      QueueKey{},
+                                      0,
+                                      std::chrono::seconds(1),
+                                      CollectorInstance(std::move(cpuCollector)));
 
     APSARA_TEST_FALSE_FATAL(collector.Collect(collectContext, group));
 }

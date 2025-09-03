@@ -23,12 +23,12 @@
 
 namespace logtail {
 
-bool CollectorInstance::Init(CollectContext& collectContext) {
+bool CollectorInstance::Init(HostMonitorContext& collectContext) {
     mStartTime = collectContext.mStartTime;
     return mCollector->Init(collectContext);
 }
 
-bool BaseCollector::Init(CollectContext& collectContext) {
+bool BaseCollector::Init(HostMonitorContext& collectContext) {
     switch (collectContext.mCollectType) {
         case HostMonitorCollectType::kSingleValue:
             collectContext.mCountPerReport = 1;

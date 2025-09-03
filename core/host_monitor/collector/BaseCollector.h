@@ -26,14 +26,14 @@
 namespace logtail {
 
 // Forward declarations
-class CollectContext;
+class HostMonitorContext;
 
 class BaseCollector {
 public:
     virtual ~BaseCollector() = default;
 
-    virtual bool Init(CollectContext& collectContext);
-    virtual bool Collect(CollectContext& collectContext, PipelineEventGroup* group) = 0;
+    virtual bool Init(HostMonitorContext& collectContext);
+    virtual bool Collect(HostMonitorContext& collectContext, PipelineEventGroup* group) = 0;
     [[nodiscard]] virtual const std::string& Name() const = 0;
     [[nodiscard]] virtual const std::chrono::seconds GetCollectInterval() const = 0;
 
@@ -45,9 +45,9 @@ class CollectorInstance {
 public:
     explicit CollectorInstance(std::unique_ptr<BaseCollector>&& collector) : mCollector(std::move(collector)) {}
 
-    bool Init(CollectContext& collectContext);
+    bool Init(HostMonitorContext& collectContext);
 
-    bool Collect(CollectContext& collectContext, PipelineEventGroup* group) {
+    bool Collect(HostMonitorContext& collectContext, PipelineEventGroup* group) {
         return mCollector->Collect(collectContext, group);
     }
 

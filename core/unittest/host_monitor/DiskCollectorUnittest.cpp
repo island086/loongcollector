@@ -155,12 +155,12 @@ void DiskCollectorUnittest::TestCollect() const {
 
     PipelineEventGroup group(make_shared<SourceBuffer>());
     auto diskCollector = std::make_unique<DiskCollector>();
-    CollectContext collectContext("test",
-                                  DiskCollector::sName,
-                                  QueueKey{},
-                                  0,
-                                  std::chrono::seconds(1),
-                                  CollectorInstance(std::move(diskCollector)));
+    HostMonitorContext collectContext("test",
+                                      DiskCollector::sName,
+                                      QueueKey{},
+                                      0,
+                                      std::chrono::seconds(1),
+                                      CollectorInstance(std::move(diskCollector)));
     collectContext.mCountPerReport = 4;
     collectContext.SetTime(std::chrono::steady_clock::now(), time(nullptr));
 

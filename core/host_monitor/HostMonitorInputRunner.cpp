@@ -87,12 +87,12 @@ void HostMonitorInputRunner::UpdateCollector(const std::string& configName,
         }
         auto collector = mCollectorCreatorMap.at(collectorName)();
 
-        auto collectContext = std::make_shared<CollectContext>(configName,
-                                                               collectorName,
-                                                               processQueueKey,
-                                                               inputIndex,
-                                                               std::chrono::seconds(newCollectorInfos[i].interval),
-                                                               std::move(collector));
+        auto collectContext = std::make_shared<HostMonitorContext>(configName,
+                                                                   collectorName,
+                                                                   processQueueKey,
+                                                                   inputIndex,
+                                                                   std::chrono::seconds(newCollectorInfos[i].interval),
+                                                                   std::move(collector));
         collectContext->mCollectType = newCollectorInfos[i].type;
         if (!collectContext->mCollector.Init(*collectContext)) {
             LOG_ERROR(sLogger, ("host monitor", "init collector failed")("collector", collectorName));

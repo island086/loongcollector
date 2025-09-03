@@ -62,7 +62,7 @@ system_clock::time_point ProcessEntityCollector::TicksToUnixTime(int64_t startTi
     return system_clock::time_point{static_cast<milliseconds>(startTicks) + milliseconds{systemInfo.bootTime * 1000}};
 }
 
-bool ProcessEntityCollector::Collect(CollectContext& collectContext, PipelineEventGroup* group) {
+bool ProcessEntityCollector::Collect(HostMonitorContext& collectContext, PipelineEventGroup* group) {
     if (group == nullptr) {
         return false;
     }

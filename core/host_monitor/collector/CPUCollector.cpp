@@ -29,7 +29,7 @@ namespace logtail {
 
 const std::string CPUCollector::sName = "cpu";
 
-bool CPUCollector::Collect(CollectContext& collectContext, PipelineEventGroup* group) {
+bool CPUCollector::Collect(HostMonitorContext& collectContext, PipelineEventGroup* group) {
     if (group == nullptr) {
         LOG_ERROR(sLogger, ("PipelineEventGroup got nullptr", "skip"));
         return false;

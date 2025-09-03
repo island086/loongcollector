@@ -35,7 +35,7 @@ namespace logtail {
 
 const std::string NetCollector::sName = "net";
 
-bool NetCollector::Init(CollectContext& collectContext) {
+bool NetCollector::Init(HostMonitorContext& collectContext) {
     if (!BaseCollector::Init(collectContext)) {
         return false;
     }
@@ -43,7 +43,7 @@ bool NetCollector::Init(CollectContext& collectContext) {
     return true;
 }
 
-bool NetCollector::Collect(CollectContext& collectContext, PipelineEventGroup* group) {
+bool NetCollector::Collect(HostMonitorContext& collectContext, PipelineEventGroup* group) {
     if (group == nullptr) {
         return false;
     }

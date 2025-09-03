@@ -23,7 +23,7 @@
 
 namespace logtail {
 
-void CollectContext::Reset() {
+void HostMonitorContext::Reset() {
     auto systemClockNow = std::chrono::system_clock::now();
     auto steadyClockNow = std::chrono::steady_clock::now();
     auto metricTimeNow = std::chrono::system_clock::to_time_t(systemClockNow);
@@ -32,8 +32,8 @@ void CollectContext::Reset() {
     CalculateFirstCollectTime(metricTimeNow, steadyClockNow);
 }
 
-void CollectContext::CalculateFirstCollectTime(time_t metricTimeNow,
-                                               std::chrono::steady_clock::time_point steadyClockNow) {
+void HostMonitorContext::CalculateFirstCollectTime(time_t metricTimeNow,
+                                                   std::chrono::steady_clock::time_point steadyClockNow) {
     // In case of multiple collect, one report metrics
     // 1:25 1:26 1:30 1:35 1:40 1:45
     // If start at 1:26, the next metric time should be 1:30. But this data point is belong to the previous interval
@@ -47,7 +47,7 @@ void CollectContext::CalculateFirstCollectTime(time_t metricTimeNow,
 }
 
 // System clock can be rolling, so we need to check if the system clock is rolling
-bool CollectContext::CheckClockRolling() {
+bool HostMonitorContext::CheckClockRolling() {
     auto steadyClockNow = std::chrono::steady_clock::now();
     auto systemClockNow = std::chrono::system_clock::now();
     auto systemTimeT = std::chrono::system_clock::to_time_t(systemClockNow);

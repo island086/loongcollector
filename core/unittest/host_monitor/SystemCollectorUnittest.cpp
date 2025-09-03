@@ -44,12 +44,12 @@ void SystemCollectorUnittest::TestCollect() const {
     auto collector = SystemCollector();
     PipelineEventGroup group(make_shared<SourceBuffer>());
     auto systemCollector = std::make_unique<SystemCollector>();
-    CollectContext collectconfig("test",
-                                 SystemCollector::sName,
-                                 QueueKey{},
-                                 0,
-                                 std::chrono::seconds(1),
-                                 CollectorInstance(std::move(systemCollector)));
+    HostMonitorContext collectconfig("test",
+                                     SystemCollector::sName,
+                                     QueueKey{},
+                                     0,
+                                     std::chrono::seconds(1),
+                                     CollectorInstance(std::move(systemCollector)));
     collectconfig.mCountPerReport = 3;
 
     APSARA_TEST_TRUE(collector.Collect(collectconfig, &group));

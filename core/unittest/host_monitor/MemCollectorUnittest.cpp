@@ -114,12 +114,12 @@ void MemCollectorUnittest::TestCollect() const {
     auto collector = MemCollector();
     PipelineEventGroup group(make_shared<SourceBuffer>());
     auto memCollector = std::make_unique<MemCollector>();
-    CollectContext collectContext("test",
-                                  MemCollector::sName,
-                                  QueueKey{},
-                                  0,
-                                  std::chrono::seconds(1),
-                                  CollectorInstance(std::move(memCollector)));
+    HostMonitorContext collectContext("test",
+                                      MemCollector::sName,
+                                      QueueKey{},
+                                      0,
+                                      std::chrono::seconds(1),
+                                      CollectorInstance(std::move(memCollector)));
     collectContext.mCountPerReport = 3;
 
     APSARA_TEST_TRUE(collector.Collect(collectContext, &group));

@@ -53,7 +53,7 @@ bool IsZero(const std::chrono::system_clock::time_point& t) {
     return t.time_since_epoch().count() == 0;
 }
 
-bool DiskCollector::Init(CollectContext& collectContext) {
+bool DiskCollector::Init(HostMonitorContext& collectContext) {
     if (!BaseCollector::Init(collectContext)) {
         return false;
     }
@@ -83,7 +83,7 @@ std::string JoinBytesLimit(const T& v, const std::string& splitter, size_t n) {
     return result;
 }
 
-bool DiskCollector::Collect(CollectContext& collectContext, PipelineEventGroup* group) {
+bool DiskCollector::Collect(HostMonitorContext& collectContext, PipelineEventGroup* group) {
     if (group == nullptr) {
         return false;
     }

@@ -135,12 +135,12 @@ void ProcessCollectorUnittest::TestCollect() const {
     auto collector = ProcessCollector();
     PipelineEventGroup group(make_shared<SourceBuffer>());
     auto processCollector = std::make_unique<ProcessCollector>();
-    CollectContext collectContext("test",
-                                  ProcessCollector::sName,
-                                  QueueKey{},
-                                  0,
-                                  std::chrono::seconds(5),
-                                  CollectorInstance(std::move(processCollector)));
+    HostMonitorContext collectContext("test",
+                                      ProcessCollector::sName,
+                                      QueueKey{},
+                                      0,
+                                      std::chrono::seconds(5),
+                                      CollectorInstance(std::move(processCollector)));
     // Set the collect type to kMultiValue for ProcessCollector
     collectContext.mCollectType = HostMonitorCollectType::kMultiValue;
     APSARA_TEST_TRUE(collector.Init(collectContext));
