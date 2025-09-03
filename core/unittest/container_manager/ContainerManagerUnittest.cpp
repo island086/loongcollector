@@ -40,6 +40,7 @@ public:
     void TestLoadContainerInfoFromContainersFormat() const;
     void TestLoadContainerInfoVersionHandling() const;
     void TestSaveContainerInfoWithVersion() const;
+
 };
 
 void ContainerManagerUnittest::TestcomputeMatchedContainersDiff() const {
@@ -542,6 +543,20 @@ void ContainerManagerUnittest::TestLoadContainerInfoFromDetailFormat() const {
     EXPECT_EQ(it1->second->mK8sInfo.mPod, "test-pod");
     EXPECT_EQ(it1->second->mK8sInfo.mContainerName, "test-container");
 
+    // Verify metadata by checking the vectors
+    bool foundNamespace = false, foundPodName = false, foundContainerName = false, foundImageName = false;
+    for (const auto& metadata : it1->second->mMetadatas) {
+        if (GetDefaultTagKeyString(metadata.first) == "_namespace_" && metadata.second == "default") foundNamespace = true;
+        else if (GetDefaultTagKeyString(metadata.first) == "_pod_name_" && metadata.second == "test-pod") foundPodName = true;
+        else if (GetDefaultTagKeyString(metadata.first) == "_container_name_" && metadata.second == "test-container") foundContainerName = true;
+        else if (GetDefaultTagKeyString(metadata.first) == "_image_name_") foundImageName = true;
+    }
+
+    EXPECT_TRUE(foundNamespace);
+    EXPECT_TRUE(foundPodName);
+    EXPECT_TRUE(foundContainerName);
+    EXPECT_FALSE(foundImageName);
+
     // Verify config diffs are created
     EXPECT_TRUE(containerManager.mConfigContainerDiffMap.find("##1.0##config1")
                 != containerManager.mConfigContainerDiffMap.end());
@@ -626,20 +641,35 @@ void ContainerManagerUnittest::TestLoadContainerInfoVersionHandling() const {
 void ContainerManagerUnittest::TestSaveContainerInfoWithVersion() const {
     ContainerManager containerManager;
 
-    // Prepare a container
+    // Prepare a container with metadata
     RawContainerInfo containerInfo;
     containerInfo.mID = "save_version_test";
     containerInfo.mUpperDir = "/upper/save_version_test";
     containerInfo.mLogPath = "/log/save_version_test";
+    containerInfo.AddMetadata("test_key", "test_value");
+    containerInfo.AddMetadata("another_key", "another_value");
     containerManager.mContainerMap["save_version_test"] = std::make_shared<RawContainerInfo>(containerInfo);
 
     // Save to file
     containerManager.SaveContainerInfo();
 
-    // The file should now contain version field
-    // This is more of an integration test, but we verify the method doesn't crash
-    EXPECT_TRUE(true);
+    // Clear and reload to test serialization/deserialization
+    containerManager.mContainerMap.clear();
+    containerManager.LoadContainerInfo();
+
+    // Verify the container was loaded with metadata
+    auto it = containerManager.mContainerMap.find("save_version_test");
+    EXPECT_TRUE(it != containerManager.mContainerMap.end());
+    // Check custom metadata (since test_key and another_key are not in containerNameTag)
+    bool foundTestKey = false, foundAnotherKey = false;
+    for (const auto& customMetadata : it->second->mCustomMetadatas) {
+        if (customMetadata.first == "test_key" && customMetadata.second == "test_value") foundTestKey = true;
+        else if (customMetadata.first == "another_key" && customMetadata.second == "another_value") foundAnotherKey = true;
+    }
+    EXPECT_TRUE(foundTestKey);
+    EXPECT_TRUE(foundAnotherKey);
 }
+
 
 UNIT_TEST_CASE(ContainerManagerUnittest, TestcomputeMatchedContainersDiff)
 UNIT_TEST_CASE(ContainerManagerUnittest, TestrefreshAllContainersSnapshot)

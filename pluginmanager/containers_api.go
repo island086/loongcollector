@@ -15,11 +15,11 @@ type Mount struct {
 }
 
 type DockerFileUpdateCmd struct {
-	ID        string
-	MetaDatas []string // 容器信息
-	Mounts    []Mount  // 容器挂载路径
-	UpperDir  string   // 容器默认路径
-	LogPath   string   // 标准输出路径
+	ID       string
+	Mounts   []Mount // 容器挂载路径
+	UpperDir string  // 容器默认路径
+	LogPath  string  // 标准输出路径
+	MetaData map[string]string
 }
 
 type DockerFileUpdateCmdAll struct {
@@ -42,8 +42,7 @@ func convertDockerInfos(info *containercenter.DockerInfoDetail, allCmd *DockerFi
 	// info.ContainerNameTag
 	cmd.MetaDatas = make([]string, 0, len(info.ContainerNameTag)*2)
 	for key, val := range info.ContainerNameTag {
-		cmd.MetaDatas = append(cmd.MetaDatas, key)
-		cmd.MetaDatas = append(cmd.MetaDatas, val)
+		cmd.MetaDatas[key] = val
 	}
 	cmd.Mounts = make([]Mount, 0, len(info.ContainerInfo.Mounts))
 	for _, mount := range info.ContainerInfo.Mounts {

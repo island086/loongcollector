@@ -35,6 +35,7 @@ public:
     void TestEmptyConfig() const;
     void TestComplexFilterCombination() const;
     void TestExternalTagMapping() const;
+    void TestGetCustomExternalTags() const;
 
 private:
     const string pluginType = "test";
@@ -374,6 +375,7 @@ void ContainerDiscoveryOptionsUnittest::TestComplexFilterCombination() const {
     APSARA_TEST_TRUE(filters.mK8SFilter.mContainerReg != nullptr);
 }
 
+
 void ContainerDiscoveryOptionsUnittest::TestExternalTagMapping() const {
     unique_ptr<ContainerDiscoveryOptions> config;
     Json::Value configJson;
@@ -423,6 +425,77 @@ void ContainerDiscoveryOptionsUnittest::TestExternalTagMapping() const {
     APSARA_TEST_EQUAL(0U, config->mExternalEnvTag.size());
 }
 
+void ContainerDiscoveryOptionsUnittest::TestGetCustomExternalTags() const {
+    unique_ptr<ContainerDiscoveryOptions> config;
+    Json::Value configJson;
+    string configStr, errorMsg;
+
+    // Setup config with external tag mappings
+    configStr = R"(
+        {
+            "ExternalK8sLabelTag": {
+                "app": "application_name",
+                "version": "app_version"
+            },
+            "ExternalEnvTag": {
+                "SERVICE_NAME": "service_name",
+                "PORT": "service_port"
+            }
+        }
+    )";
+    APSARA_TEST_TRUE(ParseJsonTable(configStr, configJson, errorMsg));
+    config.reset(new ContainerDiscoveryOptions());
+    APSARA_TEST_TRUE(config->Init(configJson, ctx, pluginType));
+
+    // Test container info
+    std::unordered_map<std::string, std::string> containerEnvs = {
+        {"SERVICE_NAME", "nginx"},
+        {"PORT", "8080"},
+        {"DEBUG", "true"}
+    };
+
+    std::unordered_map<std::string, std::string> containerK8sLabels = {
+        {"app", "web-server"},
+        {"version", "1.0.0"},
+        {"tier", "frontend"}
+    };
+
+    // Test GetCustomExternalTags with existing tags
+    std::vector<std::pair<std::string, std::string>> existingTags = {
+        {"existing_tag", "existing_value"}
+    };
+    config->GetCustomExternalTags(containerEnvs, containerK8sLabels, existingTags);
+    APSARA_TEST_EQUAL(5U, existingTags.size());
+    // Verify existing tag is preserved
+    APSARA_TEST_EQUAL("existing_tag", existingTags[0].first);
+    APSARA_TEST_EQUAL("existing_value", existingTags[0].second);
+    // Verify new tags are added
+    bool foundServiceName = false, foundServicePort = false, foundAppName = false, foundAppVersion = false;
+    for (const auto& tag : existingTags) {
+        if (tag.first == "service_name" && tag.second == "nginx") foundServiceName = true;
+        else if (tag.first == "service_port" && tag.second == "8080") foundServicePort = true;
+        else if (tag.first == "application_name" && tag.second == "web-server") foundAppName = true;
+        else if (tag.first == "app_version" && tag.second == "1.0.0") foundAppVersion = true;
+    }
+    APSARA_TEST_TRUE(foundServiceName);
+    APSARA_TEST_TRUE(foundServicePort);
+    APSARA_TEST_TRUE(foundAppName);
+    APSARA_TEST_TRUE(foundAppVersion);
+
+    // Test with empty mappings
+    ContainerDiscoveryOptions emptyConfig;
+    std::vector<std::pair<std::string, std::string>> testTags;
+    emptyConfig.GetCustomExternalTags(containerEnvs, containerK8sLabels, testTags);
+    APSARA_TEST_EQUAL(0U, testTags.size());
+
+    // Test with empty container info
+    std::unordered_map<std::string, std::string> emptyEnvs;
+    std::unordered_map<std::string, std::string> emptyLabels;
+    std::vector<std::pair<std::string, std::string>> resultTags;
+    config->GetCustomExternalTags(emptyEnvs, emptyLabels, resultTags);
+    APSARA_TEST_EQUAL(0U, resultTags.size());
+}
+
 UNIT_TEST_CASE(ContainerDiscoveryOptionsUnittest, OnSuccessfulInit)
 UNIT_TEST_CASE(ContainerDiscoveryOptionsUnittest, TestInitWithInvalidConfig)
 UNIT_TEST_CASE(ContainerDiscoveryOptionsUnittest, TestContainerFilterConfigInit)
@@ -430,6 +503,7 @@ UNIT_TEST_CASE(ContainerDiscoveryOptionsUnittest, TestRegexCompilation)
 UNIT_TEST_CASE(ContainerDiscoveryOptionsUnittest, TestEmptyConfig)
 UNIT_TEST_CASE(ContainerDiscoveryOptionsUnittest, TestComplexFilterCombination)
 UNIT_TEST_CASE(ContainerDiscoveryOptionsUnittest, TestExternalTagMapping)
+UNIT_TEST_CASE(ContainerDiscoveryOptionsUnittest, TestGetCustomExternalTags)
 
 } // namespace logtail
 

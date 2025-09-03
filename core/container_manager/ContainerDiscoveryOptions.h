@@ -84,6 +84,11 @@ struct ContainerDiscoveryOptions {
     bool mCollectingContainersMeta = false;
 
     bool Init(const Json::Value& config, const CollectionPipelineContext& ctx, const std::string& pluginType);
+
+    // Fill external tags into the provided vector based on container info and tag mappings
+    void GetCustomExternalTags(const std::unordered_map<std::string, std::string>& containerEnvs,
+                              const std::unordered_map<std::string, std::string>& containerK8sLabels,
+                              std::vector<std::pair<std::string, std::string>>& tags) const;
 };
 
 using ContainerDiscoveryConfig = std::pair<const ContainerDiscoveryOptions*, const CollectionPipelineContext*>;

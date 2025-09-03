@@ -52,6 +52,10 @@ struct RawContainerInfo {
     std::string mUpperDir;
     // 挂载
     std::vector<Mount> mMounts;
+    // 容器信息
+    std::vector<std::pair<TagKey, std::string>> mMetadatas;
+    std::vector<std::pair<std::string, std::string>>
+        mCustomMetadatas; //  ContainerNameTag which is custom, e.g. env config tag
     // 原始k8s信息
     K8sInfo mK8sInfo;
     // 环境变量信息
@@ -114,6 +118,9 @@ struct RawContainerInfo {
         return true;
     }
     bool operator!=(const RawContainerInfo& rhs) const { return !(*this == rhs); }
+
+    void AddMetadata(const std::string& key, const std::string& value);
+
 };
 
 
@@ -125,12 +132,7 @@ struct ContainerInfo {
     // '/host_all/var/lib/xxxxxx/upper/home/admin' if config is wildcard, this will mapping to config->mWildcardPaths[0]
     std::string mRealBaseDir;
 
-    std::vector<std::pair<std::string, std::string>> mTags; // ExternalEnvTag and ExternalK8sLabelTag.
-    std::vector<std::pair<TagKey, std::string>> mMetadatas; //  ContainerNameTag which is reserved and can be processed
-    std::vector<std::pair<std::string, std::string>>
-        mCustomMetadatas; //  ContainerNameTag which is custom, e.g. env config tag
-
-    void AddMetadata(const std::string& key, const std::string& value);
+    std::vector<std::pair<std::string, std::string>> mExtraTags; // ExternalEnvTag and ExternalK8sLabelTag.
 
 private:
 };

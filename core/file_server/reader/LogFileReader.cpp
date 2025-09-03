@@ -131,9 +131,9 @@ LogFileReader* LogFileReader::CreateLogFileReader(const string& hostLogPathDir,
                                           : discoveryConfig.first->GetBasePath(),
                                       containerPath->mRealBaseDir.size());
                 reader->SetContainerID(containerPath->mRawContainerInfo->mID);
-                reader->SetContainerMetadatas(containerPath->mMetadatas);
-                reader->SetContainerCustomMetadatas(containerPath->mCustomMetadatas);
-                reader->SetContainerExtraTags(containerPath->mTags);
+                reader->SetContainerMetadatas(containerPath->mRawContainerInfo->mMetadatas);
+                reader->SetContainerCustomMetadatas(containerPath->mRawContainerInfo->mCustomMetadatas);
+                reader->SetContainerExtraTags(containerPath->mExtraTags);
             }
         }
 
@@ -2470,8 +2470,8 @@ bool LogFileReader::UpdateContainerInfo() {
         mContainerStopped = containerInfo->mRawContainerInfo->mStopped;
         mContainerMetadatas.clear();
         mContainerExtraTags.clear();
-        SetContainerMetadatas(containerInfo->mMetadatas);
-        SetContainerExtraTags(containerInfo->mTags);
+        SetContainerMetadatas(containerInfo->mRawContainerInfo->mMetadatas);
+        SetContainerExtraTags(containerInfo->mExtraTags);
         return true;
     }
     return false;

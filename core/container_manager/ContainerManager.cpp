@@ -137,7 +137,7 @@ bool ContainerManager::checkContainerDiffForOneConfig(FileDiscoveryOptions* opti
     if (diff.IsEmpty()) {
         return false;
     }
-    LOG_INFO(sLogger, ("diff", diff.ToString()));
+    LOG_INFO(sLogger, ("diff", diff.ToString())("configName", ctx->GetConfigName()));
     mConfigContainerDiffMap[ctx->GetConfigName()] = std::make_shared<ContainerDiff>(diff);
     return true;
 }
@@ -372,6 +372,16 @@ static Json::Value SerializeRawContainerInfo(const std::shared_ptr<RawContainerI
     }
     v["Mounts"] = mounts;
 
+    // metadata
+    Json::Value metadata(Json::objectValue);
+    for (const auto& p : info->mMetadatas) {
+        metadata[GetDefaultTagKeyString(p.first)] = Json::Value(p.second);
+    }
+    for (const auto& p : info->mCustomMetadatas) {
+        metadata[p.first] = Json::Value(p.second);
+    }
+    v["MetaData"] = metadata;
+
     // k8s
     Json::Value k8s(Json::objectValue);
     k8s["Namespace"] = Json::Value(info->mK8sInfo.mNamespace);
@@ -431,6 +441,17 @@ static std::shared_ptr<RawContainerInfo> DeserializeRawContainerInfo(const Json:
                 if (m.isMember("Destination") && m["Destination"].isString())
                     mt.mDestination = m["Destination"].asString();
                 info->mMounts.emplace_back(std::move(mt));
+            }
+        }
+    }
+
+    // metadata
+    if (v.isMember("MetaData") && v["MetaData"].isObject()) {
+        const auto& metadata = v["MetaData"];
+        auto names = metadata.getMemberNames();
+        for (const auto& key : names) {
+            if (metadata[key].isString()) {
+                info->AddMetadata(key, metadata[key].asString());
             }
         }
     }
@@ -590,6 +611,10 @@ void ContainerManager::loadContainerInfoFromDetailFormat(const Json::Value& root
                             std::string key = metadatas[j].asString();
                             std::string value = metadatas[j + 1].asString();
 
+                            // Store all metadata
+                            info->AddMetadata(key, value);
+
+                            // Also handle specific known fields for backward compatibility
                             if (key == "_namespace_") {
                                 info->mK8sInfo.mNamespace = value;
                             } else if (key == "_pod_name_") {
@@ -670,20 +695,13 @@ void ContainerManager::loadContainerInfoFromContainersFormat(const Json::Value& 
         // Apply containers to all existing configs
         if (!allContainers.empty()) {
             auto nameConfigMap = FileServer::GetInstance()->GetAllFileDiscoveryConfigs();
-            for (const auto& configPair : nameConfigMap) {
-                const std::string& configName = configPair.first;
-
-                ContainerDiff diff;
-                for (const auto& container : allContainers) {
-                    diff.mAdded.push_back(container);
-                }
-
-                if (!diff.IsEmpty()) {
-                    mConfigContainerDiffMap[configName] = std::make_shared<ContainerDiff>(diff);
+            for (auto itr = nameConfigMap.begin(); itr != nameConfigMap.end(); ++itr) {
+                FileDiscoveryOptions* options = itr->second.first;
+                if (options->IsContainerDiscoveryEnabled()) {
+                    checkContainerDiffForOneConfig(options, itr->second.second);
                 }
             }
         }
-
         LOG_INFO(sLogger, ("load container state from docker_path_config.json (v1.0.0+)", configPath));
     }
 }

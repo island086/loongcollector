@@ -289,4 +289,36 @@ bool ContainerDiscoveryOptions::Init(const Json::Value& config,
 
     return true;
 }
+
+void ContainerDiscoveryOptions::GetCustomExternalTags(
+    const std::unordered_map<std::string, std::string>& containerEnvs,
+    const std::unordered_map<std::string, std::string>& containerK8sLabels,
+    std::vector<std::pair<std::string, std::string>>& tags) const {
+    if (mExternalEnvTag.empty() && mExternalK8sLabelTag.empty()) {
+        return;
+    }
+
+    // Process environment variable mappings
+    for (const auto& envMapping : mExternalEnvTag) {
+        const std::string& envKey = envMapping.first;
+        const std::string& tagKey = envMapping.second;
+
+        auto envIt = containerEnvs.find(envKey);
+        if (envIt != containerEnvs.end()) {
+            tags.emplace_back(tagKey, envIt->second);
+        }
+    }
+
+    // Process K8s label mappings
+    for (const auto& labelMapping : mExternalK8sLabelTag) {
+        const std::string& labelKey = labelMapping.first;
+        const std::string& tagKey = labelMapping.second;
+
+        auto labelIt = containerK8sLabels.find(labelKey);
+        if (labelIt != containerK8sLabels.end()) {
+            tags.emplace_back(tagKey, labelIt->second);
+        }
+    }
+}
+
 } // namespace logtail
