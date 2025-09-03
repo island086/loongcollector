@@ -444,10 +444,6 @@ public:
 
     void GetContainerStoppedEvents(std::vector<Event*>& eventVec);
 
-    void SaveDockerConfig();
-
-    void LoadDockerConfig();
-
     /**
      * delete mHandlersToDelete and mReaderToDelete
      */

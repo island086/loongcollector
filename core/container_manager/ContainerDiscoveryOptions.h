@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <boost/regex.hpp>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -24,7 +25,6 @@
 
 #include "collection_pipeline/CollectionPipelineContext.h"
 #include "collection_pipeline/plugin/instance/PluginInstance.h"
-#include <boost/regex.hpp>
 
 namespace logtail {
 
@@ -50,7 +50,7 @@ struct K8sFilter {
 
 struct ContainerFilters {
     K8sFilter mK8SFilter;
-    MatchCriteriaFilter mEnvFilter;    
+    MatchCriteriaFilter mEnvFilter;
     MatchCriteriaFilter mContainerLabelFilter;
 };
 
@@ -70,10 +70,9 @@ struct ContainerFilterConfig {
     std::unordered_map<std::string, std::string> mExcludeContainerLabel;
 
     bool Init(const Json::Value& config, const CollectionPipelineContext& ctx, const std::string& pluginType);
-    
+
     bool GetContainerFilters(ContainerFilters& mContainerFilters);
 };
-
 
 
 struct ContainerDiscoveryOptions {

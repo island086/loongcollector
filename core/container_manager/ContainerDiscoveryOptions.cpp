@@ -14,10 +14,11 @@
 
 #include "container_manager/ContainerDiscoveryOptions.h"
 
+#include <boost/regex.hpp>
+
 #include "collection_pipeline/CollectionPipeline.h"
 #include "common/LogtailCommonFlags.h"
 #include "common/ParamExtractor.h"
-#include <boost/regex.hpp>
 
 
 using namespace std;
@@ -26,7 +27,9 @@ DEFINE_FLAG_INT32(default_plugin_log_queue_size, "", 10);
 
 namespace logtail {
 
-bool ContainerFilterConfig::Init(const Json::Value& config, const CollectionPipelineContext& ctx, const string& pluginType) {
+bool ContainerFilterConfig::Init(const Json::Value& config,
+                                 const CollectionPipelineContext& ctx,
+                                 const string& pluginType) {
     string errorMsg;
 
     // K8pluginNamespaceRegex
@@ -145,7 +148,7 @@ bool SplitRegexFromMap(const std::unordered_map<std::string, std::string>& input
     std::unordered_map<std::string, std::string> staticResult;
     std::unordered_map<std::string, std::shared_ptr<boost::regex>> regexResult;
 
-    for (const auto& input: inputs) {
+    for (const auto& input : inputs) {
         // 检查前缀
         if (!input.second.empty() || input.second[0] == '^') {
             try {
@@ -216,7 +219,6 @@ bool ContainerFilterConfig::GetContainerFilters(ContainerFilters& filters) {
     }
     return true;
 }
-
 
 
 bool ContainerDiscoveryOptions::Init(const Json::Value& config,

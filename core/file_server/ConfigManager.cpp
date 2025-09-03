@@ -892,13 +892,6 @@ void ConfigManager::GetContainerStoppedEvents(std::vector<Event*>& eventVec) {
     ContainerManager::GetInstance()->GetContainerStoppedEvents(eventVec);
 }
 
-void ConfigManager::SaveDockerConfig() {
-    
-}
-
-void ConfigManager::LoadDockerConfig() {
-    
-}
 
 void ConfigManager::ClearFilePipelineMatchCache() {
     ScopedSpinLock lock(mCacheFileConfigMapLock);

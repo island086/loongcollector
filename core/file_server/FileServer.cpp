@@ -43,7 +43,7 @@ FileServer::FileServer() {
 
 // 启动文件服务，包括加载配置、处理检查点、注册事件等
 void FileServer::Start() {
-    ConfigManager::GetInstance()->LoadDockerConfig();
+    ContainerManager::GetInstance()->LoadContainerInfo();
     CheckPointManager::Instance()->LoadCheckPoint();
     LOG_INFO(sLogger, ("watch dirs", "start"));
     auto start = GetCurrentTimeInMilliSeconds();
@@ -103,7 +103,7 @@ void FileServer::Resume(bool isConfigUpdate) {
     if (isConfigUpdate) {
         ClearContainerInfo();
         ContainerManager::GetInstance()->ApplyContainerDiffs();
-        ConfigManager::GetInstance()->SaveDockerConfig();
+        ContainerManager::GetInstance()->SaveContainerInfo();
     }
 
     LOG_INFO(sLogger, ("file server resume", "starts"));

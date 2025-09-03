@@ -8,9 +8,12 @@
 
 #include "ConfigManager.h"
 #include "app_config/AppConfig.h"
+#include "collection_pipeline/CollectionPipelineContext.h"
 #include "common/FileSystemUtil.h"
 #include "common/JsonUtil.h"
 #include "common/StringTools.h"
+#include "container_manager/ContainerDiff.h"
+#include "container_manager/ContainerDiscoveryOptions.h"
 #include "file_server/FileServer.h"
 #include "go_pipeline/LogtailPlugin.h"
 
@@ -486,36 +489,207 @@ void ContainerManager::SaveContainerInfo() {
         }
     }
     root["Containers"] = arr;
-    std::string statePath = PathJoin(GetAgentDataDir(), "container_state.json");
-    OverwriteFile(statePath, root.toStyledString());
-    LOG_INFO(sLogger, ("save container state", statePath));
+    root["version"] = "1.0.0";
+    std::string configPath = PathJoin(GetAgentDataDir(), "docker_path_config.json");
+    OverwriteFile(configPath, root.toStyledString());
+    LOG_INFO(sLogger, ("save container state", configPath));
 }
 
 void ContainerManager::LoadContainerInfo() {
-    std::string statePath = PathJoin(GetAgentDataDir(), "container_state.json");
+    std::string configPath = PathJoin(GetAgentDataDir(), "docker_path_config.json");
     std::string content;
-    if (FileReadResult::kOK != ReadFileContent(statePath, content)) {
-        return;
-    }
-    Json::Value root;
-    std::string err;
-    if (!ParseJsonTable(content, root, err)) {
-        LOG_WARNING(sLogger, ("invalid container state json", err));
+
+    // Load from docker_path_config.json and determine logic based on version
+    if (FileReadResult::kOK != ReadFileContent(configPath, content)) {
+        LOG_INFO(sLogger, ("docker_path_config.json not found", configPath));
         return;
     }
 
-    if (root.isMember("Containers") && root["Containers"].isArray()) {
-        std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>> tmp;
-        const auto& arr = root["Containers"];
-        for (Json::ArrayIndex i = 0; i < arr.size(); ++i) {
-            auto info = DeserializeRawContainerInfo(arr[i]);
-            if (!info->mID.empty()) {
-                tmp[info->mID] = info;
+    Json::Value root;
+    std::string err;
+    if (!ParseJsonTable(content, root, err)) {
+        LOG_WARNING(sLogger, ("invalid docker_path_config.json", err));
+        return;
+    }
+
+    // Check version to determine parsing logic
+    std::string version = "1.0.0"; // Default to new format
+    if (root.isMember("version") && root["version"].isString()) {
+        version = root["version"].asString();
+    }
+
+    if (version == "0.1.0") {
+        // Original docker_path_config.json format with detail array
+        loadContainerInfoFromDetailFormat(root, configPath);
+    } else {
+        // New container_state.json style format with Containers array
+        loadContainerInfoFromContainersFormat(root, configPath);
+    }
+}
+
+void ContainerManager::loadContainerInfoFromDetailFormat(const Json::Value& root, const std::string& configPath) {
+    if (!root.isMember("detail") || !root["detail"].isArray()) {
+        LOG_WARNING(sLogger, ("detail array not found in docker_path_config.json", ""));
+        return;
+    }
+
+    std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>> tmpContainerMap;
+    std::unordered_map<std::string, std::vector<std::shared_ptr<RawContainerInfo>>> configContainerMap;
+    const auto& arr = root["detail"];
+
+    for (Json::ArrayIndex i = 0; i < arr.size(); ++i) {
+        const auto& item = arr[i];
+        std::string configName;
+        if (item.isMember("config_name") && item["config_name"].isString()) {
+            configName = item["config_name"].asString();
+        }
+
+        if (item.isMember("params") && item["params"].isString()) {
+            std::string paramsStr = item["params"].asString();
+            Json::Value paramsJson;
+            std::string err;
+            if (ParseJsonTable(paramsStr, paramsJson, err)) {
+                auto info = std::make_shared<RawContainerInfo>();
+
+                // Parse basic fields
+                if (paramsJson.isMember("ID") && paramsJson["ID"].isString()) {
+                    info->mID = paramsJson["ID"].asString();
+                }
+                if (paramsJson.isMember("UpperDir") && paramsJson["UpperDir"].isString()) {
+                    info->mUpperDir = paramsJson["UpperDir"].asString();
+                }
+                if (paramsJson.isMember("LogPath") && paramsJson["LogPath"].isString()) {
+                    info->mLogPath = paramsJson["LogPath"].asString();
+                }
+
+                // Parse mounts
+                if (paramsJson.isMember("Mounts") && paramsJson["Mounts"].isArray()) {
+                    const auto& mounts = paramsJson["Mounts"];
+                    for (Json::ArrayIndex j = 0; j < mounts.size(); ++j) {
+                        const auto& m = mounts[j];
+                        if (m.isObject()) {
+                            Mount mt;
+                            if (m.isMember("Source") && m["Source"].isString()) {
+                                mt.mSource = m["Source"].asString();
+                            }
+                            if (m.isMember("Destination") && m["Destination"].isString()) {
+                                mt.mDestination = m["Destination"].asString();
+                            }
+                            info->mMounts.emplace_back(std::move(mt));
+                        }
+                    }
+                }
+
+                // Parse MetaDatas for K8s info and other metadata
+                if (paramsJson.isMember("MetaDatas") && paramsJson["MetaDatas"].isArray()) {
+                    const auto& metadatas = paramsJson["MetaDatas"];
+                    for (Json::ArrayIndex j = 0; j < metadatas.size(); j += 2) {
+                        if (j + 1 < metadatas.size() && metadatas[j].isString() && metadatas[j + 1].isString()) {
+                            std::string key = metadatas[j].asString();
+                            std::string value = metadatas[j + 1].asString();
+
+                            if (key == "_namespace_") {
+                                info->mK8sInfo.mNamespace = value;
+                            } else if (key == "_pod_name_") {
+                                info->mK8sInfo.mPod = value;
+                            } else if (key == "_container_name_") {
+                                info->mK8sInfo.mContainerName = value;
+                            } else if (key == "_image_name_") {
+                                // Store image name in env or container labels
+                                info->mContainerLabels["_image_name_"] = value;
+                            } else if (key == "_container_ip_") {
+                                info->mContainerLabels["_container_ip_"] = value;
+                            } else if (key == "_pod_uid_") {
+                                info->mK8sInfo.mLabels["pod-uid"] = value;
+                            }
+                        }
+                    }
+                }
+
+                // Add to container map if ID is valid
+                if (!info->mID.empty()) {
+                    tmpContainerMap[info->mID] = info;
+                    // Also associate with config if config name is available
+                    if (!configName.empty()) {
+                        configContainerMap[configName].push_back(info);
+                    }
+                }
+            } else {
+                LOG_WARNING(sLogger, ("invalid params json in docker_path_config.json", err));
             }
         }
+    }
+
+    if (!tmpContainerMap.empty()) {
+        std::lock_guard<std::mutex> lock(mContainerMapMutex);
+        mContainerMap.swap(tmpContainerMap);
+
+        // Update config container diffs for each config
+        for (const auto& configPair : configContainerMap) {
+            const std::string& configName = configPair.first;
+            const auto& containers = configPair.second;
+
+            ContainerDiff diff;
+            for (const auto& container : containers) {
+                diff.mAdded.push_back(container);
+            }
+
+            if (!diff.IsEmpty()) {
+                mConfigContainerDiffMap[configName] = std::make_shared<ContainerDiff>(diff);
+            }
+        }
+
+        LOG_INFO(sLogger, ("load container state from docker_path_config.json (v0.1.0)", configPath));
+
+        // Apply container diffs immediately after loading
+        ApplyContainerDiffs();
+    }
+}
+
+void ContainerManager::loadContainerInfoFromContainersFormat(const Json::Value& root, const std::string& configPath) {
+    if (!root.isMember("Containers") || !root["Containers"].isArray()) {
+        LOG_WARNING(sLogger, ("Containers array not found in docker_path_config.json", ""));
+        return;
+    }
+
+    std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>> tmp;
+    std::vector<std::shared_ptr<RawContainerInfo>> allContainers;
+    const auto& arr = root["Containers"];
+
+    for (Json::ArrayIndex i = 0; i < arr.size(); ++i) {
+        auto info = DeserializeRawContainerInfo(arr[i]);
+        if (!info->mID.empty()) {
+            tmp[info->mID] = info;
+            allContainers.push_back(info);
+        }
+    }
+
+    if (!tmp.empty()) {
         std::lock_guard<std::mutex> lock(mContainerMapMutex);
         mContainerMap.swap(tmp);
+
+        // Apply containers to all existing configs
+        if (!allContainers.empty()) {
+            auto nameConfigMap = FileServer::GetInstance()->GetAllFileDiscoveryConfigs();
+            for (const auto& configPair : nameConfigMap) {
+                const std::string& configName = configPair.first;
+
+                ContainerDiff diff;
+                for (const auto& container : allContainers) {
+                    diff.mAdded.push_back(container);
+                }
+
+                if (!diff.IsEmpty()) {
+                    mConfigContainerDiffMap[configName] = std::make_shared<ContainerDiff>(diff);
+                }
+            }
+
+            // Apply container diffs immediately after loading
+            ApplyContainerDiffs();
+        }
+
+        LOG_INFO(sLogger, ("load container state from docker_path_config.json (v1.0.0+)", configPath));
     }
-    LOG_INFO(sLogger, ("load container state", statePath));
 }
+
 } // namespace logtail

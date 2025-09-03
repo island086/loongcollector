@@ -59,6 +59,9 @@ private:
                                  const ContainerFilters& filters,
                                  ContainerDiff& diff);
 
+    void loadContainerInfoFromDetailFormat(const Json::Value& root, const std::string& configPath);
+    void loadContainerInfoFromContainersFormat(const Json::Value& root, const std::string& configPath);
+
     std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>> mContainerMap;
     std::unordered_map<std::string, std::shared_ptr<ContainerDiff>> mConfigContainerDiffMap;
     std::mutex mContainerMapMutex;
