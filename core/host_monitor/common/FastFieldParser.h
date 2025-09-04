@@ -105,7 +105,28 @@ public:
     /**
      * @brief 检查是否为 CPU 行
      */
-    bool IsCpuLine() { return mParser.FieldStartsWith(0, "cpu"); }
+    bool IsCpuLine() {
+        auto field = mParser.GetField(0);
+        if (field.size() < 3 || field.substr(0, 3) != "cpu") {
+            return false;
+        }
+
+        // Check if it's exactly "cpu" (total CPU stats)
+        if (field == "cpu") {
+            return true;
+        }
+
+        // Check if remaining characters after "cpu" are all digits
+        int index;
+        auto numberPart = field.substr(3);
+        if (numberPart.empty()) {
+            return false;
+        }
+        if (!StringTo(numberPart, index)) {
+            return false;
+        }
+        return true;
+    }
 
     /**
      * @brief 获取 CPU 索引（-1 表示总体 CPU）
@@ -123,10 +144,12 @@ public:
             }
 
             int result;
-            auto [ptr, ec] = std::from_chars(numberPart.data(), numberPart.data() + numberPart.size(), result);
-            return (ec == std::errc{}) ? result : -1;
+            if (!StringTo(numberPart, result)) {
+                return -2;
+            }
+            return result;
         }
-        return -1;
+        return -2;
     }
 
     /**

@@ -417,12 +417,13 @@ bool LinuxSystemInterface::GetCPUInformationOnce(CPUInformation& cpuInfo) {
     for (auto const& line : cpuLines) {
         CpuStatParser parser(line);
 
-        if (!parser.IsCpuLine()) {
+        int cpuIndex = parser.GetCpuIndex();
+        if (cpuIndex < -1) {
             continue;
         }
 
         CPUStat cpuStat{};
-        cpuStat.index = parser.GetCpuIndex();
+        cpuStat.index = cpuIndex;
 
         parser.GetCpuStats(cpuStat.user,
                            cpuStat.nice,
