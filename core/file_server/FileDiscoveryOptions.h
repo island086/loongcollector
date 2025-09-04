@@ -49,9 +49,9 @@ public:
     void SetEnableContainerDiscoveryFlag(bool flag) { mEnableContainerDiscovery = true; }
     const std::shared_ptr<std::vector<ContainerInfo>>& GetContainerInfo() const { return mContainerInfos; }
 
-    const std::shared_ptr<std::set<std::string>>& GetFullContainerList() const {return mFullContainerList;}
+    const std::shared_ptr<std::set<std::string>>& GetFullContainerList() const { return mFullContainerList; }
 
-    void SetContainerDiscoveryOptions(ContainerDiscoveryOptions option) {mContainerDiscovery = std::move(option);}
+    void SetContainerDiscoveryOptions(ContainerDiscoveryOptions option) { mContainerDiscovery = std::move(option); }
     ContainerDiscoveryOptions GetContainerDiscoveryOptions() const { return mContainerDiscovery; }
 
     void SetContainerInfo(const std::shared_ptr<std::vector<ContainerInfo>>& info) { mContainerInfos = info; }
@@ -69,7 +69,8 @@ public:
     bool IsTimeout(const std::string& path) const;
     bool WithinMaxDepth(const std::string& path) const;
 
-    bool UpdateRawContainerInfo(const std::shared_ptr<RawContainerInfo>& rawContainerInfo, const CollectionPipelineContext*);
+    bool UpdateRawContainerInfo(const std::shared_ptr<RawContainerInfo>& rawContainerInfo,
+                                const CollectionPipelineContext*);
     bool DeleteRawContainerInfo(const std::string& containerID);
 
     ContainerInfo* GetContainerPathByLogPath(const std::string& logPath) const;

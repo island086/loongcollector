@@ -195,8 +195,8 @@ vector<filesystem::path> InputStaticFile::GetFiles() const {
                                                                                          mContext->GetConfigName()));
             } else {
                 LOG_DEBUG(sLogger,
-                          ("no files found, container id",
-                           item.mRawContainerInfo->mID)("real base dir", item.mRealBaseDir)("config", mContext->GetConfigName()));
+                          ("no files found, container id", item.mRawContainerInfo->mID)(
+                              "real base dir", item.mRealBaseDir)("config", mContext->GetConfigName()));
             }
         }
         LOG_INFO(sLogger, ("total files cnt", res.size())("config", mContext->GetConfigName()));

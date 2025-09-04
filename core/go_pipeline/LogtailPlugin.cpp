@@ -309,9 +309,7 @@ bool LogtailPlugin::LoadPluginBase() {
         // Be compatible with old libGoPluginAdapter.so, V2 -> V1.
         auto registerV2Fun = (RegisterLogtailCallBackV2)loader.LoadMethod("RegisterLogtailCallBackV2", error);
         if (error.empty()) {
-            registerV2Fun(LogtailPlugin::IsValidToSend,
-                          LogtailPlugin::SendPb,
-                          LogtailPlugin::SendPbV2);
+            registerV2Fun(LogtailPlugin::IsValidToSend, LogtailPlugin::SendPb, LogtailPlugin::SendPbV2);
         } else {
             LOG_WARNING(sLogger, ("load RegisterLogtailCallBackV2 failed", error)("try to load V1", ""));
 

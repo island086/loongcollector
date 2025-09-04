@@ -85,7 +85,8 @@ struct RawContainerInfo {
                 return false;
             }
         }
-        if (mK8sInfo.mNamespace != rhs.mK8sInfo.mNamespace || mK8sInfo.mPod != rhs.mK8sInfo.mPod || mK8sInfo.mContainerName != rhs.mK8sInfo.mContainerName) {
+        if (mK8sInfo.mNamespace != rhs.mK8sInfo.mNamespace || mK8sInfo.mPod != rhs.mK8sInfo.mPod
+            || mK8sInfo.mContainerName != rhs.mK8sInfo.mContainerName) {
             return false;
         }
         if (mK8sInfo.mLabels.size() != rhs.mK8sInfo.mLabels.size()) {
@@ -120,7 +121,6 @@ struct RawContainerInfo {
     bool operator!=(const RawContainerInfo& rhs) const { return !(*this == rhs); }
 
     void AddMetadata(const std::string& key, const std::string& value);
-
 };
 
 

@@ -17,8 +17,8 @@
 #include <fstream>
 #include <string>
 
-#include "boost/format.hpp"
 #include "boost/filesystem.hpp"
+#include "boost/format.hpp"
 
 #include "common/FileSystemUtil.h"
 #include "common/LogtailCommonFlags.h"

@@ -26,9 +26,7 @@ void RegisterLogtailCallBack(IsValidToSendFun checkFun, SendPbFun sendFun) {
     gAdapterSendPbFun = sendFun;
 }
 
-void RegisterLogtailCallBackV2(IsValidToSendFun checkFun,
-                               SendPbFun sendV1Fun,
-                               SendPbV2Fun sendV2Fun) {
+void RegisterLogtailCallBackV2(IsValidToSendFun checkFun, SendPbFun sendV1Fun, SendPbV2Fun sendV2Fun) {
     fprintf(stderr, "register fun v2 %p %p %p \n", checkFun, sendV1Fun, sendV2Fun);
     gAdapterIsValidToSendFun = checkFun;
     gAdapterSendPbFun = sendV1Fun;

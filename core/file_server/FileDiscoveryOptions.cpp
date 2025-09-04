@@ -681,7 +681,8 @@ ContainerInfo* FileDiscoveryOptions::GetContainerPathByLogPath(const string& log
 }
 
 
-bool FileDiscoveryOptions::UpdateRawContainerInfo(const std::shared_ptr<RawContainerInfo>& rawContainerInfo, const CollectionPipelineContext* ctx) {
+bool FileDiscoveryOptions::UpdateRawContainerInfo(const std::shared_ptr<RawContainerInfo>& rawContainerInfo,
+                                                  const CollectionPipelineContext* ctx) {
     if (!mContainerInfos) {
         return false;
     }
@@ -689,8 +690,9 @@ bool FileDiscoveryOptions::UpdateRawContainerInfo(const std::shared_ptr<RawConta
     ContainerInfo containerInfo;
     containerInfo.mRawContainerInfo = rawContainerInfo;
 
-    mContainerDiscovery.GetCustomExternalTags(rawContainerInfo->mEnv, rawContainerInfo->mContainerLabels, containerInfo.mExtraTags);
-    
+    mContainerDiscovery.GetCustomExternalTags(
+        rawContainerInfo->mEnv, rawContainerInfo->mContainerLabels, containerInfo.mExtraTags);
+
     if (!mDeduceAndSetContainerBaseDirFunc(containerInfo, ctx, this)) {
         return false;
     }

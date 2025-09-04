@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "unittest/Unittest.h"
-#include "sdk/Common.h"
-#include "sdk/Client.h"
-#include "sdk/Exception.h"
 #include "common/CompressTools.h"
 #include "plugin/flusher/sls/EnterpriseSLSClientManager.h"
+#include "sdk/Client.h"
+#include "sdk/Common.h"
+#include "sdk/Exception.h"
+#include "unittest/Unittest.h"
 
 DECLARE_FLAG_STRING(default_access_key_id);
 DECLARE_FLAG_STRING(default_access_key);

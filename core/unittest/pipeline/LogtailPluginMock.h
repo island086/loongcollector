@@ -33,7 +33,9 @@ public:
     void BlockStop() { stopBlockFlag = true; }
     void UnblockStop() { stopBlockFlag = false; }
     void SetUpContainersMeta(const std::string& containersMeta) { mMockContainersMeta = containersMeta; }
-    void SetUpDiffContainersMeta(const std::string& diffContainersMeta) { mMockDiffContainersMeta = diffContainersMeta; }
+    void SetUpDiffContainersMeta(const std::string& diffContainersMeta) {
+        mMockDiffContainersMeta = diffContainersMeta;
+    }
 
     bool LoadPipeline(const std::string& pipelineName,
                       const std::string& pipeline,

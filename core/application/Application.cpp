@@ -40,6 +40,7 @@
 #include "config/OnetimeConfigInfoManager.h"
 #include "config/watcher/InstanceConfigWatcher.h"
 #include "config/watcher/PipelineConfigWatcher.h"
+#include "container_manager/ContainerManager.h"
 #include "file_server/ConfigManager.h"
 #include "file_server/EventDispatcher.h"
 #include "file_server/FileServer.h"
@@ -49,7 +50,6 @@
 #include "logger/Logger.h"
 #include "monitor/Monitor.h"
 #include "plugin/flusher/sls/DiskBufferWriter.h"
-#include "container_manager/ContainerManager.h"
 #include "plugin/flusher/sls/FlusherSLS.h"
 #include "plugin/input/InputFeedbackInterfaceRegistry.h"
 #include "runner/FlusherRunner.h"
@@ -241,7 +241,7 @@ void Application::Start() { // GCOVR_EXCL_START
     HttpSink::GetInstance()->Init();
     FlusherRunner::GetInstance()->Init();
     ProcessorRunner::GetInstance()->Init();
-    //ContainerManager::GetInstance()->Init();
+    // ContainerManager::GetInstance()->Init();
 
     // flusher_sls resource should be explicitly initialized to allow internal metrics and alarms to be sent
     FlusherSLS::InitResource();

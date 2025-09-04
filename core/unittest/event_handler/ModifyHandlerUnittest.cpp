@@ -211,7 +211,7 @@ private:
         )";
         Json::Value containerJson;
         APSARA_TEST_TRUE_FATAL(ParseJsonTable(containerStr, containerJson, errorMsg));
-        //APSARA_TEST_TRUE_FATAL(discoveryOpts.UpdateContainerInfo(containerJson, &ctx));
+        // APSARA_TEST_TRUE_FATAL(discoveryOpts.UpdateContainerInfo(containerJson, &ctx));
     }
 
     void stopContainer(const std::string containerID) {

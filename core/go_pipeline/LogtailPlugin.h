@@ -144,8 +144,8 @@ typedef GoInt (*InitPluginBaseV2Fun)(GoString cfg);
 typedef GoInt (*ProcessLogsFun)(GoString c, GoSlice l, GoString p, GoString t, GoSlice tags);
 typedef GoInt (*ProcessLogGroupFun)(GoString c, GoSlice l, GoString p);
 typedef struct innerContainerMeta* (*GetContainerMetaFun)(GoString containerID);
-typedef char*(*GetAllContainerMetaFun)();
-typedef char*(*GetDiffContainerMetaFun)();
+typedef char* (*GetAllContainerMetaFun)();
+typedef char* (*GetDiffContainerMetaFun)();
 typedef InnerPluginMetrics* (*GetGoMetricsFun)(GoString metricType);
 
 // Methods export by adapter.
@@ -170,9 +170,7 @@ typedef int (*SendPbV2Fun)(const char* configName,
 
 
 typedef void (*RegisterLogtailCallBack)(IsValidToSendFun checkFun, SendPbFun sendFun);
-typedef void (*RegisterLogtailCallBackV2)(IsValidToSendFun checkFun,
-                                          SendPbFun sendFun,
-                                          SendPbV2Fun sendV2Fun);
+typedef void (*RegisterLogtailCallBackV2)(IsValidToSendFun checkFun, SendPbFun sendFun, SendPbV2Fun sendV2Fun);
 
 typedef int (*PluginAdapterVersion)();
 }

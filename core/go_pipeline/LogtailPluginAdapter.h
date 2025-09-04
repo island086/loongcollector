@@ -49,9 +49,8 @@ typedef int (*SendPbV2Fun)(const char* configName,
 
 PLUGIN_ADAPTER_API void RegisterLogtailCallBack(IsValidToSendFun checkFun, SendPbFun sendFun);
 
-PLUGIN_ADAPTER_API void RegisterLogtailCallBackV2(IsValidToSendFun checkFun,
-                                                  SendPbFun sendV1Fun,
-                                                  SendPbV2Fun sendV2Fun);
+PLUGIN_ADAPTER_API void
+RegisterLogtailCallBackV2(IsValidToSendFun checkFun, SendPbFun sendV1Fun, SendPbV2Fun sendV2Fun);
 
 PLUGIN_ADAPTER_API int LogtailIsValidToSend(long long logstoreKey);
 
