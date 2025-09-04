@@ -16,11 +16,11 @@
 
 #pragma once
 
+#include <future>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-#include "common/Thread.h"
 #include "container_manager/ContainerDiff.h"
 #include "container_manager/ContainerDiscoveryOptions.h"
 #include "file_server/ContainerInfo.h"
@@ -69,7 +69,7 @@ private:
     std::mutex mStoppedContainerIDsMutex;
 
     uint32_t mLastUpdateTime = 0;
-    ThreadPtr mThread;
+    std::future<void> mThreadRes;
 
     std::atomic<bool> mIsRunning{false};
     friend class ContainerManagerUnittest;

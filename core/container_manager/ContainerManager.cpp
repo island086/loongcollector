@@ -3,6 +3,7 @@
 #include <ctime>
 
 #include <boost/regex.hpp>
+#include <chrono>
 
 #include "json/json.h"
 
@@ -38,7 +39,7 @@ void ContainerManager::Init() {
     }
     mIsRunning = true;
     LOG_INFO(sLogger, ("ContainerManager", "init"));
-    mThread = CreateThread([this]() { pollingLoop(); });
+    mThreadRes = std::async(std::launch::async, &ContainerManager::pollingLoop, this);
 }
 
 void ContainerManager::Stop() {
@@ -46,11 +47,16 @@ void ContainerManager::Stop() {
         return;
     }
     mIsRunning = false;
-    if (mThread != NULL) {
+    if (mThreadRes.valid()) {
         try {
-            mThread->Wait(5 * 1000000);
+            auto status = mThreadRes.wait_for(std::chrono::seconds(5));
+            if (status == std::future_status::ready) {
+                LOG_INFO(sLogger, ("ContainerManager", "polling thread stopped successfully"));
+            } else {
+                LOG_WARNING(sLogger, ("ContainerManager", "polling thread forced to stopped"));
+            }
         } catch (...) {
-            LOG_ERROR(sLogger, ("stop polling modify thread failed", ToString((int)mThread->GetState())));
+            LOG_ERROR(sLogger, ("stop polling thread failed", ""));
         }
     }
 }
@@ -66,7 +72,7 @@ void ContainerManager::pollingLoop() {
         if (now - lastUpdateAllTime >= 100) {
             refreshAllContainersSnapshot();
             lastUpdateAllTime = now;
-        } else if (now - lastUpdateDiffTime >= 10) {
+        } else if (now - lastUpdateDiffTime >= 1) {
             incrementallyUpdateContainersSnapshot();
             lastUpdateDiffTime = now;
         }
@@ -144,7 +150,7 @@ bool ContainerManager::checkContainerDiffForOneConfig(FileDiscoveryOptions* opti
 
 void ContainerManager::incrementallyUpdateContainersSnapshot() {
     std::string diffContainersMeta = LogtailPlugin::GetInstance()->GetDiffContainersMeta();
-    LOG_INFO(sLogger, ("diffContainersMeta", diffContainersMeta));
+    LOG_DEBUG(sLogger, ("diffContainersMeta", diffContainersMeta));
 
     Json::Value jsonParams;
     std::string errorMsg;
@@ -180,7 +186,7 @@ void ContainerManager::incrementallyUpdateContainersSnapshot() {
 
 void ContainerManager::refreshAllContainersSnapshot() {
     std::string allContainersMeta = LogtailPlugin::GetInstance()->GetAllContainersMeta();
-    LOG_INFO(sLogger, ("allContainersMeta", allContainersMeta));
+    LOG_DEBUG(sLogger, ("allContainersMeta", allContainersMeta));
     // cmd 解析json
     Json::Value jsonParams;
     std::string errorMsg;
