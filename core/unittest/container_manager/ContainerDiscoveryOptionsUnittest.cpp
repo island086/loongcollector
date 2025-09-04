@@ -448,22 +448,14 @@ void ContainerDiscoveryOptionsUnittest::TestGetCustomExternalTags() const {
     APSARA_TEST_TRUE(config->Init(configJson, ctx, pluginType));
 
     // Test container info
-    std::unordered_map<std::string, std::string> containerEnvs = {
-        {"SERVICE_NAME", "nginx"},
-        {"PORT", "8080"},
-        {"DEBUG", "true"}
-    };
+    std::unordered_map<std::string, std::string> containerEnvs
+        = {{"SERVICE_NAME", "nginx"}, {"PORT", "8080"}, {"DEBUG", "true"}};
 
-    std::unordered_map<std::string, std::string> containerK8sLabels = {
-        {"app", "web-server"},
-        {"version", "1.0.0"},
-        {"tier", "frontend"}
-    };
+    std::unordered_map<std::string, std::string> containerK8sLabels
+        = {{"app", "web-server"}, {"version", "1.0.0"}, {"tier", "frontend"}};
 
     // Test GetCustomExternalTags with existing tags
-    std::vector<std::pair<std::string, std::string>> existingTags = {
-        {"existing_tag", "existing_value"}
-    };
+    std::vector<std::pair<std::string, std::string>> existingTags = {{"existing_tag", "existing_value"}};
     config->GetCustomExternalTags(containerEnvs, containerK8sLabels, existingTags);
     APSARA_TEST_EQUAL(5U, existingTags.size());
     // Verify existing tag is preserved
@@ -472,10 +464,14 @@ void ContainerDiscoveryOptionsUnittest::TestGetCustomExternalTags() const {
     // Verify new tags are added
     bool foundServiceName = false, foundServicePort = false, foundAppName = false, foundAppVersion = false;
     for (const auto& tag : existingTags) {
-        if (tag.first == "service_name" && tag.second == "nginx") foundServiceName = true;
-        else if (tag.first == "service_port" && tag.second == "8080") foundServicePort = true;
-        else if (tag.first == "application_name" && tag.second == "web-server") foundAppName = true;
-        else if (tag.first == "app_version" && tag.second == "1.0.0") foundAppVersion = true;
+        if (tag.first == "service_name" && tag.second == "nginx")
+            foundServiceName = true;
+        else if (tag.first == "service_port" && tag.second == "8080")
+            foundServicePort = true;
+        else if (tag.first == "application_name" && tag.second == "web-server")
+            foundAppName = true;
+        else if (tag.first == "app_version" && tag.second == "1.0.0")
+            foundAppVersion = true;
     }
     APSARA_TEST_TRUE(foundServiceName);
     APSARA_TEST_TRUE(foundServicePort);

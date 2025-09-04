@@ -40,7 +40,6 @@ public:
     void TestLoadContainerInfoFromContainersFormat() const;
     void TestLoadContainerInfoVersionHandling() const;
     void TestSaveContainerInfoWithVersion() const;
-
 };
 
 void ContainerManagerUnittest::TestcomputeMatchedContainersDiff() const {
@@ -546,10 +545,14 @@ void ContainerManagerUnittest::TestLoadContainerInfoFromDetailFormat() const {
     // Verify metadata by checking the vectors
     bool foundNamespace = false, foundPodName = false, foundContainerName = false, foundImageName = false;
     for (const auto& metadata : it1->second->mMetadatas) {
-        if (GetDefaultTagKeyString(metadata.first) == "_namespace_" && metadata.second == "default") foundNamespace = true;
-        else if (GetDefaultTagKeyString(metadata.first) == "_pod_name_" && metadata.second == "test-pod") foundPodName = true;
-        else if (GetDefaultTagKeyString(metadata.first) == "_container_name_" && metadata.second == "test-container") foundContainerName = true;
-        else if (GetDefaultTagKeyString(metadata.first) == "_image_name_") foundImageName = true;
+        if (GetDefaultTagKeyString(metadata.first) == "_namespace_" && metadata.second == "default")
+            foundNamespace = true;
+        else if (GetDefaultTagKeyString(metadata.first) == "_pod_name_" && metadata.second == "test-pod")
+            foundPodName = true;
+        else if (GetDefaultTagKeyString(metadata.first) == "_container_name_" && metadata.second == "test-container")
+            foundContainerName = true;
+        else if (GetDefaultTagKeyString(metadata.first) == "_image_name_")
+            foundImageName = true;
     }
 
     EXPECT_TRUE(foundNamespace);
@@ -663,8 +666,10 @@ void ContainerManagerUnittest::TestSaveContainerInfoWithVersion() const {
     // Check custom metadata (since test_key and another_key are not in containerNameTag)
     bool foundTestKey = false, foundAnotherKey = false;
     for (const auto& customMetadata : it->second->mCustomMetadatas) {
-        if (customMetadata.first == "test_key" && customMetadata.second == "test_value") foundTestKey = true;
-        else if (customMetadata.first == "another_key" && customMetadata.second == "another_value") foundAnotherKey = true;
+        if (customMetadata.first == "test_key" && customMetadata.second == "test_value")
+            foundTestKey = true;
+        else if (customMetadata.first == "another_key" && customMetadata.second == "another_value")
+            foundAnotherKey = true;
     }
     EXPECT_TRUE(foundTestKey);
     EXPECT_TRUE(foundAnotherKey);
