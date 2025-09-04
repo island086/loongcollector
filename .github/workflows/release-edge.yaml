@@ -26,7 +26,6 @@ on:
       - 'changes/**'
       - 'licenses/**'
       - 'CHANGELOG.md'
-  workflow_dispatch:
 
 jobs:
   # 第一步：构建不同架构的安装包
@@ -60,12 +59,10 @@ jobs:
           echo "Current commit: $(git rev-parse HEAD)"
 
       - name: Build Linux ${{ matrix.arch }} package
+        env:
+          VERSION: edge
         run: |
-          VERSION="edge"
-          
-          # 构建Linux包
           make dist
-          
           ls -la dist/
 
       - name: Upload Linux ${{ matrix.arch }} artifacts

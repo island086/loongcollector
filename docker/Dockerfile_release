@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM --platform=$TARGETPLATFORM ubuntu:25.10 AS build
+FROM ubuntu:25.10 AS build
 ARG VERSION=0.0.1
 ARG TARGETPLATFORM
 WORKDIR /usr/local
@@ -21,7 +21,6 @@ COPY dist/loongcollector-${VERSION}.linux-${TARGETPLATFORM##*/}.tar.gz .
 RUN tar -xzf loongcollector-${VERSION}.linux-${TARGETPLATFORM##*/}.tar.gz
 
 FROM ubuntu:25.10
-LABEL maintainer="TomYu <yyuuttaaoo@gmail.com>"
 
 ENV container=docker
 
