@@ -31,7 +31,7 @@ on:
       - 2.*
 jobs:
   BuildPurePlugin:
-    runs-on: ${{ matrix.runner }}
+    runs-on: ${{ matrix.runner }}-latest
     timeout-minutes: 60
     strategy:
       matrix:
