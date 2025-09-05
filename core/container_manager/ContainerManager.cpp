@@ -126,6 +126,12 @@ bool ContainerManager::CheckContainerDiffForAllConfig() {
 
 bool ContainerManager::checkContainerDiffForOneConfig(FileDiscoveryOptions* options,
                                                       const CollectionPipelineContext* ctx) {
+    // If this config's container update time is newer than or equal to global update time,
+    // return the cached result if it exists
+    if (options->GetLastContainerUpdateTime() > mLastUpdateTime) {
+        return false;
+    }
+
     std::unordered_map<std::string, std::shared_ptr<RawContainerInfo>> containerInfoMap;
     const auto& containerInfos = options->GetContainerInfo();
     if (containerInfos) {
@@ -140,6 +146,10 @@ bool ContainerManager::checkContainerDiffForOneConfig(FileDiscoveryOptions* opti
                                  containerInfoMap,
                                  options->GetContainerDiscoveryOptions().mContainerFilters,
                                  diff);
+
+    // Update the config's container update time when there are changes
+    options->SetLastContainerUpdateTime(time(nullptr));
+    
     if (diff.IsEmpty()) {
         return false;
     }
@@ -163,24 +173,34 @@ void ContainerManager::incrementallyUpdateContainersSnapshot() {
     Json::Value deleteContainers = diffContainers["Delete"];
     Json::Value stopContainers = diffContainers["Stop"];
 
+    bool hasChanges = false;
+
     for (const auto& container : updateContainers) {
         auto containerInfo = DeserializeRawContainerInfo(container);
         if (containerInfo && !containerInfo->mID.empty()) {
             std::lock_guard<std::mutex> lock(mContainerMapMutex);
             mContainerMap[containerInfo->mID] = containerInfo;
+            hasChanges = true;
         }
     }
 
     for (const auto& container : deleteContainers) {
         std::string containerId = container.asString();
         std::lock_guard<std::mutex> lock(mContainerMapMutex);
-        mContainerMap.erase(containerId);
+        if (mContainerMap.erase(containerId) > 0) {
+            hasChanges = true;
+        }
     }
     for (const auto& container : stopContainers) {
         std::string containerId = container.asString();
         mStoppedContainerIDsMutex.lock();
         mStoppedContainerIDs.push_back(containerId);
         mStoppedContainerIDsMutex.unlock();
+        hasChanges = true;
+    }
+
+    if (hasChanges) {
+        mLastUpdateTime = time(nullptr);
     }
 }
 
@@ -204,6 +224,7 @@ void ContainerManager::refreshAllContainersSnapshot() {
     }
     std::lock_guard<std::mutex> lock(mContainerMapMutex);
     mContainerMap = tmpContainerMap;
+    mLastUpdateTime = time(nullptr);
 }
 
 

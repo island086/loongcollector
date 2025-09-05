@@ -78,6 +78,10 @@ public:
     bool IsTailingAllMatchedFiles() const { return mTailingAllMatchedFiles; }
     void SetTailingAllMatchedFiles(bool flag) { mTailingAllMatchedFiles = flag; }
 
+    uint32_t GetLastContainerUpdateTime() const { return mLastContainerUpdateTime; }
+    void SetLastContainerUpdateTime(uint32_t time) { mLastContainerUpdateTime = time; }
+
+
     std::vector<std::string> mFilePaths;
     int32_t mMaxDirSearchDepth = 0;
     int32_t mPreservedDirDepth = -1;
@@ -133,6 +137,8 @@ private:
 
     // 过渡使用
     bool mTailingAllMatchedFiles = false;
+
+    uint32_t mLastContainerUpdateTime = 0;
 
 #ifdef APSARA_UNIT_TEST_MAIN
     friend class FileDiscoveryOptionsUnittest;
