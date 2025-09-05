@@ -16,6 +16,8 @@
 
 #include "plugin/processor/ProcessorParseJsonNative.h"
 
+#include <memory>
+
 #include "rapidjson/document.h"
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
@@ -92,9 +94,21 @@ void ProcessorParseJsonNative::Process(PipelineEventGroup& logGroup) {
     const StringView& logPath = logGroup.GetMetadata(EventGroupMetaKey::LOG_FILE_PATH_RESOLVED);
     EventsContainer& events = logGroup.MutableEvents();
 
+    // Create reusable SIMD parser for this log group processing
+    #if defined(__INCLUDE_SSE4_2__)
+    std::unique_ptr<simdjson::ondemand::parser> reusableParser;
+    if (mUseSimdJson) {
+        reusableParser = std::make_unique<simdjson::ondemand::parser>();
+    }
+    #endif
+
     size_t wIdx = 0;
     for (size_t rIdx = 0; rIdx < events.size(); ++rIdx) {
-        if (ProcessEvent(logPath, events[rIdx], logGroup.GetAllMetadata())) {
+        #if defined(__INCLUDE_SSE4_2__)
+        if (ProcessEvent(logPath, events[rIdx], logGroup.GetAllMetadata(), reusableParser.get())) {
+        #else
+        if (ProcessEvent(logPath, events[rIdx], logGroup.GetAllMetadata(), nullptr)) {
+        #endif
             if (wIdx != rIdx) {
                 events[wIdx] = std::move(events[rIdx]);
             }
@@ -106,7 +120,8 @@ void ProcessorParseJsonNative::Process(PipelineEventGroup& logGroup) {
 
 bool ProcessorParseJsonNative::ProcessEvent(const StringView& logPath,
                                             PipelineEventPtr& e,
-                                            const GroupMetadata& metadata) {
+                                            const GroupMetadata& metadata,
+                                            void* reusableParser) {
     if (!IsSupportedEvent(e)) {
         ADD_COUNTER(mOutFailedEventsTotal, 1);
         return true;
@@ -122,7 +137,7 @@ bool ProcessorParseJsonNative::ProcessEvent(const StringView& logPath,
     bool sourceKeyOverwritten = false;
     bool parseSuccess;
     if (mUseSimdJson) {
-        parseSuccess = JsonLogLineParserSimdJson(sourceEvent, logPath, e, sourceKeyOverwritten);
+        parseSuccess = JsonLogLineParserSimdJson(sourceEvent, logPath, e, sourceKeyOverwritten, reusableParser);
     } else {
         parseSuccess = JsonLogLineParserRapidJson(sourceEvent, logPath, e, sourceKeyOverwritten);
     }
@@ -241,9 +256,10 @@ OptimizedValueToStringBuffer(simdjson::ondemand::value& value, LogEvent& sourceE
 bool ProcessorParseJsonNative::JsonLogLineParser(LogEvent& sourceEvent,
                                                  const StringView& logPath,
                                                  PipelineEventPtr& e,
-                                                 bool& sourceKeyOverwritten) {
+                                                 bool& sourceKeyOverwritten,
+                                                 void* reusableParser) {
     if (mUseSimdJson) {
-        return JsonLogLineParserSimdJson(sourceEvent, logPath, e, sourceKeyOverwritten);
+        return JsonLogLineParserSimdJson(sourceEvent, logPath, e, sourceKeyOverwritten, reusableParser);
     } else {
         return JsonLogLineParserRapidJson(sourceEvent, logPath, e, sourceKeyOverwritten);
     }
@@ -252,14 +268,23 @@ bool ProcessorParseJsonNative::JsonLogLineParser(LogEvent& sourceEvent,
 bool ProcessorParseJsonNative::JsonLogLineParserSimdJson(LogEvent& sourceEvent,
                                                          const StringView& logPath,
                                                          PipelineEventPtr& e,
-                                                         bool& sourceKeyOverwritten) {
+                                                         bool& sourceKeyOverwritten,
+                                                         void* reusableParser) {
 #if defined(__INCLUDE_SSE4_2__)
     StringView buffer = sourceEvent.GetContent(mSourceKey);
 
     if (buffer.empty())
         return false;
 
-    simdjson::ondemand::parser parser;
+    // Use reusable parser if provided, otherwise create a new one
+    auto* parserPtr = static_cast<simdjson::ondemand::parser*>(reusableParser);
+    std::unique_ptr<simdjson::ondemand::parser> localParser;
+    if (!parserPtr) {
+        localParser = std::make_unique<simdjson::ondemand::parser>();
+        parserPtr = localParser.get();
+    }
+    auto& parser = *parserPtr;
+
     simdjson::padded_string bufStr(buffer.data(), buffer.size());
     simdjson::ondemand::document doc;
     simdjson::ondemand::object object;

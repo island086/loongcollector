@@ -43,17 +43,19 @@ private:
     bool JsonLogLineParser(LogEvent& sourceEvent,
                            const StringView& logPath,
                            PipelineEventPtr& e,
-                           bool& sourceKeyOverwritten);
+                           bool& sourceKeyOverwritten,
+                           void* reusableParser = nullptr);
     bool JsonLogLineParserSimdJson(LogEvent& sourceEvent,
                                    const StringView& logPath,
                                    PipelineEventPtr& e,
-                                   bool& sourceKeyOverwritten);
+                                   bool& sourceKeyOverwritten,
+                                   void* reusableParser = nullptr);
     bool JsonLogLineParserRapidJson(LogEvent& sourceEvent,
                                     const StringView& logPath,
                                     PipelineEventPtr& e,
                                     bool& sourceKeyOverwritten);
     void AddLog(const StringView& key, const StringView& value, LogEvent& targetEvent, bool overwritten = true);
-    bool ProcessEvent(const StringView& logPath, PipelineEventPtr& e, const GroupMetadata& metadata);
+    bool ProcessEvent(const StringView& logPath, PipelineEventPtr& e, const GroupMetadata& metadata, void* reusableParser = nullptr);
 
     CounterPtr mDiscardedEventsTotal;
     CounterPtr mOutFailedEventsTotal;
