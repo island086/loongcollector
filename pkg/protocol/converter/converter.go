@@ -186,6 +186,9 @@ func (c *Converter) ToByteStreamWithSelectedFields(logGroup *protocol.LogGroup, 
 	case ProtocolCustomSingle:
 		return c.ConvertToSingleProtocolStream(logGroup, targetFields)
 	case ProtocolCustomSingleFlatten:
+		if c.OnlyContents {
+			return c.ConvertToSingleProtocolContentStreamFlatten(logGroup, targetFields)
+		}
 		return c.ConvertToSingleProtocolStreamFlatten(logGroup, targetFields)
 	case ProtocolInfluxdb:
 		return c.ConvertToInfluxdbProtocolStream(logGroup, targetFields)
