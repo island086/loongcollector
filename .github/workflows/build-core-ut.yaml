@@ -32,11 +32,11 @@ on:
 
 jobs:
   BuildCoreUT:
-    runs-on: ${{ matrix.runner }}
+    runs-on: ${{ matrix.runner }}-latest
     timeout-minutes: 90
     strategy:
       matrix:
-        runner: [arc-runner-set-ilogtail]
+        runner: [ubuntu]
       fail-fast: true
     steps:
       - name: Set up Go
