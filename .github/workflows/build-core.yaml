@@ -36,7 +36,7 @@ jobs:
     timeout-minutes: 60
     strategy:
       matrix:
-        runner: [arc-runner-set-ilogtail]
+        runner: [unbutu]
       fail-fast: true
     steps:
       - name: Set up Go
