@@ -16,6 +16,7 @@ package loki
 
 import (
 	"errors"
+	"github.com/grafana/loki/pkg/push"
 	"time"
 
 	"github.com/grafana/loki-client-go/loki"
@@ -52,6 +53,8 @@ type FlusherLoki struct {
 	MaxRetries int
 	// DynamicLabels labels to be parsed from logs
 	DynamicLabels []string
+
+	DynamicMetadata []string
 	// StaticLabels labels to add to each log
 	StaticLabels model.LabelSet
 	// ClientConfig http client config
@@ -152,7 +155,7 @@ func (f *FlusherLoki) IsReady(projectName string, logstoreName string, logstoreK
 func (f *FlusherLoki) Flush(projectName string, logstoreName string, configName string, logGroupList []*protocol.LogGroup) error {
 	for _, logGroup := range logGroupList {
 		logger.Debug(f.context.GetRuntimeContext(), "[LogGroup] topic", logGroup.Topic, "logstore", logGroup.Category, "logcount", len(logGroup.Logs), "tags", logGroup.LogTags)
-		serializedLogs, values, err := f.converter.ToByteStreamWithSelectedFields(logGroup, f.DynamicLabels)
+		serializedLogs, values, metadataValues, err := f.converter.ToByteStreamWithSelectedFieldsV3(logGroup, f.DynamicLabels, f.DynamicMetadata)
 		if err != nil {
 			logger.Warning(f.context.GetRuntimeContext(), "FLUSHER_FLUSH_ALARM", "flush loki convert log fail, error", err)
 			continue
@@ -160,8 +163,9 @@ func (f *FlusherLoki) Flush(projectName string, logstoreName string, configName 
 
 		for i, log := range serializedLogs.([][]byte) {
 			labels := f.buildLokiLabels(values[i])
+			metadata := f.buildLokiMetadataList(metadataValues[i])
 			// Append a log to the next batch, the sending is async
-			err = f.lokiClient.Handle(labels, time.Unix(int64(logGroup.Logs[i].Time), 0), string(log))
+			err := f.lokiClient.HandleWithMetadata(labels, time.Unix(int64(logGroup.Logs[i].Time), 0), string(log), metadata)
 			if err != nil {
 				logger.Warning(f.context.GetRuntimeContext(), "FLUSHER_FLUSH_ALARM", "flush loki convert log fail, error", err)
 			}
@@ -224,6 +228,20 @@ func (f *FlusherLoki) buildLokiLabels(value map[string]string) model.LabelSet {
 		labels[model.LabelName(key)] = model.LabelValue(val)
 	}
 	return labels
+}
+
+func (f *FlusherLoki) buildLokiMetadataList(value map[string]string) push.LabelsAdapter {
+	metadata := push.LabelsAdapter{}
+	// Skip if the labels is invalid or not found
+	for key, val := range value {
+		// Remove prefix, Loki doesn't support `.` in label
+		key = converter.TrimPrefix(key)
+		metadata = append(metadata, push.LabelAdapter{
+			Name:  key,
+			Value: val,
+		})
+	}
+	return metadata
 }
 
 func init() {

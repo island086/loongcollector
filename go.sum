@@ -812,8 +812,8 @@ github.com/gorilla/websocket v1.4.2 h1:+/TMaTYc4QFitKJxsQ7Yye35DkWvkdLcvGKqM+x0U
 github.com/gorilla/websocket v1.4.2/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
 github.com/gosnmp/gosnmp v1.34.0 h1:p96iiNTTdL4ZYspPC3leSKXiHfE1NiIYffMu9100p5E=
 github.com/gosnmp/gosnmp v1.34.0/go.mod h1:QWTRprXN9haHFof3P96XTDYc46boCGAh5IXp0DniEx4=
-github.com/grafana/loki-client-go v0.0.0-20230116142646-e7494d0ef70c h1:Toi+wRFOqseiyLnQn/3jACSL+Un6OPZApiWaEBhGm9M=
-github.com/grafana/loki-client-go v0.0.0-20230116142646-e7494d0ef70c/go.mod h1:MnvsSJjfC93GhzN/t0DQYJmWqNtNB5tMkjN3NlDkZig=
+github.com/grafana/loki-client-go v0.0.0-20240913122146-e119d400c3a5 h1:WnE53XyxJw1n9GRot6wlB2PhBuCS0BU4b+/V41z7EM4=
+github.com/grafana/loki-client-go v0.0.0-20240913122146-e119d400c3a5/go.mod h1:z4lrnn1Zkg6GKxQ67C1FB2VDWx14ogZOY6DIrlKfnWM=
 github.com/grafana/regexp v0.0.0-20220304095617-2e8d9baf4ac2 h1:uirlL/j72L93RhV4+mkWhjv0cov2I0MIgPOG9rMDr1k=
 github.com/grafana/regexp v0.0.0-20220304095617-2e8d9baf4ac2/go.mod h1:M5qHK+eWfAv8VR/265dIuEpL3fNfeC21tXXp9itM24A=
 github.com/gregjones/httpcache v0.0.0-20180305231024-9cad4c3443a7/go.mod h1:FecbI9+v66THATjSRHfNgh1IVFe/9kFxbXtjV0ctIMA=

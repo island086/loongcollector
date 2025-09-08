@@ -60,17 +60,25 @@ func (c *Converter) ConvertToSingleProtocolLogsFlatten(logGroup *protocol.LogGro
 	return convertedLogs, desiredValues, nil
 }
 
-func (c *Converter) ConvertToSingleProtocolContentLogsFlatten(logGroup *protocol.LogGroup, targetFields []string) ([]string, []map[string]string, error) {
-	convertedLogs, desiredValues := make([]string, len(logGroup.Logs)), make([]map[string]string, len(logGroup.Logs))
+func (c *Converter) ConvertToSingleProtocolLogsFlattenV3(logGroup *protocol.LogGroup, targetFields []string, targetMetadataFields []string) ([]string, []map[string]string, []map[string]string, error) {
+	convertedLogs, desiredValues, metadataDesiredValues := make([]string, len(logGroup.Logs)), make([]map[string]string, len(logGroup.Logs)), make([]map[string]string, len(logGroup.Logs))
 
 	for i, log := range logGroup.Logs {
 		contents, tags := convertLogToMap(log, logGroup.LogTags, logGroup.Source, logGroup.Topic, c.TagKeyRenameMap)
 
+		// label
 		desiredValue, err := findTargetValues(targetFields, contents, tags, c.TagKeyRenameMap)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		desiredValues[i] = desiredValue
+
+		// metadata
+		metadataDesiredValue, err := findTargetValues(targetMetadataFields, contents, tags, c.TagKeyRenameMap)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		metadataDesiredValues[i] = metadataDesiredValue
 
 		contentKey := "content"
 		if newKey, ok := c.TagKeyRenameMap["content"]; ok && len(newKey) != 0 {
@@ -79,7 +87,7 @@ func (c *Converter) ConvertToSingleProtocolContentLogsFlatten(logGroup *protocol
 
 		convertedLogs[i] = contents[contentKey]
 	}
-	return convertedLogs, desiredValues, nil
+	return convertedLogs, desiredValues, metadataDesiredValues, nil
 }
 
 func (c *Converter) ConvertToSingleProtocolStreamFlatten(logGroup *protocol.LogGroup, targetFields []string) ([][]byte, []map[string]string, error) {
@@ -103,10 +111,10 @@ func (c *Converter) ConvertToSingleProtocolStreamFlatten(logGroup *protocol.LogG
 	return marshaledLogs, desiredValues, nil
 }
 
-func (c *Converter) ConvertToSingleProtocolContentStreamFlatten(logGroup *protocol.LogGroup, targetFields []string) ([][]byte, []map[string]string, error) {
-	convertedLogs, desiredValues, err := c.ConvertToSingleProtocolContentLogsFlatten(logGroup, targetFields)
+func (c *Converter) ConvertToSingleProtocolStreamFlattenV3(logGroup *protocol.LogGroup, targetFields []string, targetMetadataFields []string) ([][]byte, []map[string]string, []map[string]string, error) {
+	convertedLogs, desiredValues, metadataDesiredValues, err := c.ConvertToSingleProtocolLogsFlattenV3(logGroup, targetFields, targetMetadataFields)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	marshaledLogs := make([][]byte, len(logGroup.Logs))
 	for i, log := range convertedLogs {
@@ -116,8 +124,8 @@ func (c *Converter) ConvertToSingleProtocolContentStreamFlatten(logGroup *protoc
 			b = bytes.TrimRight(b, "\n")
 			marshaledLogs[i] = b
 		default:
-			return nil, nil, fmt.Errorf("unsupported encoding format: %s", c.Encoding)
+			return nil, nil, nil, fmt.Errorf("unsupported encoding format: %s", c.Encoding)
 		}
 	}
-	return marshaledLogs, desiredValues, nil
+	return marshaledLogs, desiredValues, metadataDesiredValues, nil
 }

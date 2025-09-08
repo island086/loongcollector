@@ -181,14 +181,22 @@ func (c *Converter) ToByteStream(logGroup *protocol.LogGroup) (stream interface{
 	return
 }
 
+func (c *Converter) ToByteStreamWithSelectedFieldsV3(logGroup *protocol.LogGroup, targetFields []string, targetMetadataFields []string) (stream interface{}, values []map[string]string, metadataValues []map[string]string, err error) {
+	switch c.Protocol {
+	case ProtocolCustomSingleFlatten:
+		if c.OnlyContents {
+			return c.ConvertToSingleProtocolStreamFlattenV3(logGroup, targetFields, targetMetadataFields)
+		}
+	}
+	stream, values, err = c.ConvertToInfluxdbProtocolStream(logGroup, targetFields)
+	return stream, values, nil, err
+}
+
 func (c *Converter) ToByteStreamWithSelectedFields(logGroup *protocol.LogGroup, targetFields []string) (stream interface{}, values []map[string]string, err error) {
 	switch c.Protocol {
 	case ProtocolCustomSingle:
 		return c.ConvertToSingleProtocolStream(logGroup, targetFields)
 	case ProtocolCustomSingleFlatten:
-		if c.OnlyContents {
-			return c.ConvertToSingleProtocolContentStreamFlatten(logGroup, targetFields)
-		}
 		return c.ConvertToSingleProtocolStreamFlatten(logGroup, targetFields)
 	case ProtocolInfluxdb:
 		return c.ConvertToInfluxdbProtocolStream(logGroup, targetFields)
