@@ -73,8 +73,8 @@ jobs:
         run: |
           docker images
           docker login -u 2237982184@qq.com -p Aa1798826054526 registry.cn-shenzhen.aliyuncs.com/xdownload
-          docker tag aliyun/loongcollector:3.1.4 registry.cn-shenzhen.aliyuncs.com/xdownload/loongcollector:3.1.4-custom
-          docker push registry.cn-shenzhen.aliyuncs.com/xdownload/loongcollector:3.1.4-custom
+          docker tag aliyun/loongcollector:3.1.4 registry.cn-shenzhen.aliyuncs.com/xdownload/loongcollector:3.1.5-custom
+          docker push registry.cn-shenzhen.aliyuncs.com/xdownload/loongcollector:3.1.5-custom
 
   actions-timeline:
     needs: [Build]
