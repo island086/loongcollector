@@ -189,7 +189,7 @@ func (c *Converter) ToByteStreamWithSelectedFieldsV3(logGroup *protocol.LogGroup
 		}
 	}
 	metadataValues = make([]map[string]string, len(logGroup.Logs))
-	stream, values, err = c.ConvertToInfluxdbProtocolStream(logGroup, targetFields)
+	stream, values, err = c.ToByteStreamWithSelectedFields(logGroup, targetFields)
 	return stream, values, metadataValues, err
 }
 
